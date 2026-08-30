@@ -90,7 +90,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   quantity: ["quantidade", "quantity", "cantidad"],
   price: ["preco", "price", "precio"],
   localValue: ["valor local", "local value", "valor en moneda local"],
-  value: ["valor", "value", "importe", "mutacao", "mutação", "mutation", "change"],
+  value: ["valor", "value", "importe", "mutacao", "mutação", "mutation", "change", "mudanca", "mudança"],
   exchangeRate: ["taxa de cambio", "taxa de câmbio", "exchange rate", "tipo de cambio"],
   fees: ["custos de transacao", "custos de transação", "transaction fee", "transaction costs", "costes de transaccion"],
   total: ["total"],
@@ -162,10 +162,13 @@ const KEYWORDS: Record<AssetOperation, string[]> = {
     "custos de transação",
     "comissao",
     "comissão",
+    "comiss", // cobre "Comissões de transação DEGIRO e/ou taxas de terceiros"
     "transaction fee",
     "transaction costs",
     "connectivity fee",
     "taxa de conectividade",
+    "custo de conectividade",
+    "conectividade",
     "corretagem",
     "exchange connection fee",
     "costes de conexion",
@@ -183,11 +186,28 @@ export function classifyOperation(description: string, quantity: number | null):
   return "outro";
 }
 
-/** Tenta extrair quantidade e preço embutidos no texto livre, ex: "Compra 10 @ 25,30 EUR". */
+/**
+ * Tenta extrair quantidade e preço embutidos no texto livre.
+ *
+ * A DEGIRO escreve, no "Estado de Conta", frases como:
+ *   "Compra 3 SAP SE@147,54 EUR (DE0007164600)"
+ *   "Compra 1 iShares Core S&P 500 UCITS ETF USD (Acc)@598,85 EUR (ISIN)"
+ *
+ * A quantidade vem logo a seguir a "Compra"/"Venda"; o preço vem a seguir ao
+ * "@", com o nome do produto (que pode conter números, "&", parênteses...)
+ * pelo meio — por isso não basta procurar "número @ número" diretamente.
+ */
 function extractQtyPriceFromText(text: string): { quantity: number | null; price: number | null } {
-  const m = text.match(/(\d+[.,]?\d*)\s*(?:@|a)\s*(\d+[.,]?\d*)/i);
-  if (!m) return { quantity: null, price: null };
-  return { quantity: parseEuroNumber(m[1]), price: parseEuroNumber(m[2]) };
+  const withVerb = text.match(
+    /^(?:compra|venda|buy|sell)\s+(\d+(?:[.,]\d+)?)\s+.+?@\s*(\d+(?:[.,]\d+)?)/i
+  );
+  if (withVerb) {
+    return { quantity: parseEuroNumber(withVerb[1]), price: parseEuroNumber(withVerb[2]) };
+  }
+  // Fallback genérico para outros formatos: "10 @ 25,30".
+  const generic = text.match(/(\d+[.,]?\d*)\s*(?:@|a)\s*(\d+[.,]?\d*)/i);
+  if (!generic) return { quantity: null, price: null };
+  return { quantity: parseEuroNumber(generic[1]), price: parseEuroNumber(generic[2]) };
 }
 
 // ---------------------------------------------------------------------
@@ -219,6 +239,7 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
 
   const rows: ParsedDegiroRow[] = [];
   let skipped = 0;
+  let cashRowsSkipped = 0;
 
   for (let i = 1; i < table.length; i++) {
     const raw = table[i];
@@ -230,8 +251,19 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
       continue;
     }
 
-    const product = (cols.product !== undefined ? raw[cols.product] : "")?.trim() || "(sem nome)";
+    const rawProduct = (cols.product !== undefined ? raw[cols.product] : "")?.trim() || "";
     const isin = cols.isin !== undefined ? raw[cols.isin]?.trim() || null : null;
+
+    // No "Estado de Conta", movimentos puramente de caixa (depósitos,
+    // levantamentos, cash sweeps, juros...) não têm Produto nem ISIN —
+    // não são transações de bolsa, por isso ignoramo-los aqui em vez de
+    // os transformar num ativo fantasma "(sem nome)".
+    if (format === "estado_conta" && !rawProduct && !isin) {
+      cashRowsSkipped++;
+      continue;
+    }
+
+    const product = rawProduct || "(sem nome)";
     const description =
       cols.description !== undefined ? raw[cols.description]?.trim() || "" : `${product}`;
     const orderId = cols.orderId !== undefined ? raw[cols.orderId]?.trim() || null : null;
@@ -289,6 +321,11 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
 
   if (skipped > 0) {
     warnings.push(`${skipped} linha(s) ignorada(s) por não terem uma data válida.`);
+  }
+  if (cashRowsSkipped > 0) {
+    warnings.push(
+      `${cashRowsSkipped} movimento(s) de caixa (depósitos, levantamentos, juros, cash sweep) ignorado(s) por não estarem associados a nenhum ativo.`
+    );
   }
 
   return { format, rows, warnings, skipped };

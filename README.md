@@ -105,6 +105,55 @@ palavra-passe que definiste no passo anterior.
 npx tsx test-fixtures/run-test.ts
 ```
 
+## Deploy no Vercel (para usares só no browser, sem VS Code)
+
+Correr `npm run dev` no VS Code é ótimo para desenvolver, mas para usares a
+app no dia-a-dia (telemóvel, outro computador, sem teres de abrir o VS
+Code nem deixar nada a correr no teu PC), o mais simples é publicá-la no
+**Vercel** — a empresa que faz o Next.js, tem plano gratuito, e o processo
+demora uns 5 minutos.
+
+### Opção A — pelo site do Vercel (mais fácil, sem terminal)
+1. Sobe o código para um repositório no GitHub (podes fazer isto direto do
+   VS Code: separador "Source Control" → "Publish to GitHub"; ou, se
+   preferires, usa a extensão/aplicação do GitHub Desktop).
+2. Vai a [vercel.com](https://vercel.com), entra com a tua conta GitHub e
+   clica **Add New → Project**.
+3. Escolhe o repositório do projeto. O Vercel deteta automaticamente que é
+   Next.js — não precisas de mudar nada nas definições de build.
+4. Antes de clicares em **Deploy**, abre a secção **Environment Variables**
+   e adiciona estas três (os mesmos valores que puseste no `.env.local`):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (só é necessária se um dia quiseres correr
+     os scripts `create-user`/`list-users` a partir de outro sítio; para a
+     app funcionar em si, as duas primeiras já chegam)
+5. Clica **Deploy**. Em 1-2 minutos tens um URL público tipo
+   `https://o-teu-projeto.vercel.app` — abre-o em qualquer browser, em
+   qualquer dispositivo.
+6. No dashboard da Supabase, em **Authentication → URL Configuration**,
+   adiciona esse URL do Vercel à lista de **Redirect URLs** (não é
+   estritamente necessário para o login por password, mas evita
+   surpresas se um dia adicionares outro método de login).
+
+De cada vez que fizeres alterações e as enviares para o GitHub (`git push`
+ou "Publish" no VS Code), o Vercel volta a publicar automaticamente a
+versão nova — não precisas de repetir estes passos.
+
+### Opção B — pelo terminal, sem GitHub
+```bash
+npm install -g vercel
+vercel login
+vercel        # segue as perguntas; a 1ª vez pergunta se queres criar o projeto
+vercel env add NEXT_PUBLIC_SUPABASE_URL production
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+vercel --prod # publica a versão final
+```
+
+Depois disto, o URL que o Vercel te der fica igual a qualquer site normal
+— acedes por ele em qualquer browser, sem VS Code, sem terminal, sem
+`npm run dev` a correr no teu PC.
+
 ## Funcionalidades
 
 ### 1. Dashboard de Património Global
@@ -136,7 +185,14 @@ categoria e tabela de detalhe com percentagens.
 - **Formato europeu:** trata números `1.234,56`, datas `dd-mm-aaaa`, e
   delimitador `;` ou `,` consoante o locale do export.
 - **Classificação da operação:** Compra, Venda, Dividendo, Comissão —
-  por palavras-chave multi-idioma (PT/EN/ES) na coluna Descrição/Mutação.
+  por palavras-chave multi-idioma (PT/EN/ES) na coluna Descrição/Mutação,
+  incluindo o padrão real da DEGIRO "Compra 3 Nome Do Produto@147,54 EUR
+  (ISIN)" (a quantidade e o preço vêm embutidos no texto, sem colunas
+  próprias, no export "Estado de Conta").
+- **Movimentos de caixa ignorados:** entradas que não são transações de
+  bolsa (depósitos, levantamentos, transferências entre a conta caixa e o
+  banco, juros) não têm Produto nem ISIN, e são ignoradas — não fazem
+  sentido como "transação de ativo" e só poluiriam o portefólio.
 - **Deduplicação:** cada linha gera um hash SHA-256 estável
   (`source_hash`), com uma constraint única `(user_id, source_hash)` na
   base de dados — re-carregar o mesmo ficheiro nunca duplica transações.

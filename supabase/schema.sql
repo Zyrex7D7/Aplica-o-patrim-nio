@@ -197,8 +197,13 @@ select
   sum(case when at.operation = 'compra' then at.quantity
            when at.operation = 'venda' then -at.quantity
            else 0 end) as quantity_held,
-  sum(case when at.operation = 'compra' then at.total_value
-           when at.operation = 'venda' then -at.total_value
+  -- "total_value" já vem com o sinal do movimento de caixa (compra = saída,
+  -- negativo; venda = entrada, positiva). Para chegar ao capital líquido
+  -- investido (um valor positivo quando ainda há dinheiro "preso" na
+  -- posição), invertemos o sinal em ambos os casos: uma compra de -1000€
+  -- soma +1000€ ao investido; uma venda de +400€ soma -400€ (reduz o
+  -- capital investido, porque já recebeste esse dinheiro de volta).
+  sum(case when at.operation in ('compra', 'venda') then -at.total_value
            else 0 end) as net_invested,
   sum(case when at.operation = 'dividendo' then at.total_value else 0 end) as total_dividends
 from public.asset_transactions at

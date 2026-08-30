@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardLabel } from "@/components/ui/card";
-import { PeriodFilter, resolvePeriodRange, type PeriodKey } from "@/components/reports/period-filter";
+import { PeriodFilter } from "@/components/reports/period-filter";
+import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
 import { CategoryBreakdownChart } from "@/components/reports/category-breakdown-chart";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { formatCurrency } from "@/lib/format";
