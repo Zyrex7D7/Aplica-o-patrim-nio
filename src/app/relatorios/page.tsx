@@ -2,10 +2,29 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardLabel } from "@/components/ui/card";
 import { PeriodFilter } from "@/components/reports/period-filter";
 import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
-import { CategoryBreakdownChart } from "@/components/reports/category-breakdown-chart";
+import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { formatCurrency } from "@/lib/format";
 import type { Category, Transaction } from "@/types/database";
+
+function groupByCategory(
+  rows: Transaction[],
+  categoryById: Map<string, Category>
+): DonutSlice[] {
+  const map = new Map<string, DonutSlice>();
+  for (const t of rows) {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    const key = cat?.id ?? "sem_categoria";
+    const name = cat?.name ?? "Sem categoria";
+    const color = cat?.color ?? "#57616F";
+    const existing = map.get(key);
+    if (existing) {
+      existing.value += Number(t.amount);
+    } else {
+      map.set(key, { name, value: Number(t.amount), color });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.value - a.value);
+}
 
 export default async function RelatoriosPage({
   searchParams,
@@ -41,22 +60,11 @@ export default async function RelatoriosPage({
   const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
   const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const byCategory = new Map<string, { name: string; value: number; color: string }>();
-  for (const t of expenses) {
-    const cat = t.category_id ? categoryById.get(t.category_id) : null;
-    const key = cat?.id ?? "sem_categoria";
-    const name = cat?.name ?? "Sem categoria";
-    const color = cat?.color ?? "#57616F";
-    const existing = byCategory.get(key);
-    if (existing) {
-      existing.value += Number(t.amount);
-    } else {
-      byCategory.set(key, { name, value: Number(t.amount), color });
-    }
-  }
+  const expensesByCategory = groupByCategory(expenses, categoryById);
+  const incomeByCategory = groupByCategory(income, categoryById);
 
   return (
-    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
@@ -71,37 +79,23 @@ export default async function RelatoriosPage({
         <StatCard label="Balanço" value={totalIncome - totalExpenses} />
       </div>
 
-      <Card>
-        <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
-        <CategoryBreakdownChart data={Array.from(byCategory.values())} />
-      </Card>
-
-      {byCategory.size > 0 && (
-        <Card className="mt-6">
-          <CardLabel className="mb-3">Detalhe</CardLabel>
-          <ul className="flex flex-col">
-            {Array.from(byCategory.values())
-              .sort((a, b) => b.value - a.value)
-              .map((c) => (
-                <li
-                  key={c.name}
-                  className="flex items-center justify-between py-2 border-b border-line-soft last:border-0 text-sm"
-                >
-                  <span className="flex items-center gap-2 text-text">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c.color }} />
-                    {c.name}
-                  </span>
-                  <span className="tabular text-text-muted">
-                    {formatCurrency(c.value)}{" "}
-                    <span className="text-text-faint">
-                      ({totalExpenses > 0 ? ((c.value / totalExpenses) * 100).toFixed(1) : "0.0"}%)
-                    </span>
-                  </span>
-                </li>
-              ))}
-          </ul>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
+          <DonutChart
+            slices={expensesByCategory}
+            emptyMessage="Sem despesas registadas neste período."
+          />
         </Card>
-      )}
+
+        <Card>
+          <CardLabel className="mb-4">Receitas por Categoria</CardLabel>
+          <DonutChart
+            slices={incomeByCategory}
+            emptyMessage="Sem receitas registadas neste período."
+          />
+        </Card>
+      </div>
     </div>
   );
 }

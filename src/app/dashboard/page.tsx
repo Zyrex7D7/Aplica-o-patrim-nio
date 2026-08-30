@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getNetWorthBreakdown } from "@/lib/data/net-worth";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { NetWorthPie } from "@/components/dashboard/net-worth-charts";
+import { DonutChart } from "@/components/charts/donut-chart";
 import { Card, CardLabel } from "@/components/ui/card";
 import { formatCurrency, formatSignedCurrency } from "@/lib/format";
 
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardLabel>Distribuição do Património</CardLabel>
           <div className="mt-4">
-            <NetWorthPie slices={slices} />
+            <DonutChart slices={slices} emptyMessage="Ainda sem saldo registado — adiciona contas e transações para veres a distribuição." />
           </div>
         </Card>
 
