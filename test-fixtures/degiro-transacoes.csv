@@ -1,0 +1,3 @@
+Data,Hora,Produto,ISIN,Bolsa de Valores,Código de produto,Quantidade,Preço,,Valor local,,Valor,,Taxa de câmbio,Custos de transação,,Total,,ID da ordem
+28-08-2026,10:15,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,EAM,VWCE,10,"105,32",EUR,"1.053,20",EUR,"-1.053,20",EUR,,"-2,00",EUR,"-1.055,20",EUR,abc-123
+15-07-2026,11:02,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,EAM,VWCE,-5,"110,00",EUR,"550,00",EUR,"550,00",EUR,,"-2,00",EUR,"548,00",EUR,def-456

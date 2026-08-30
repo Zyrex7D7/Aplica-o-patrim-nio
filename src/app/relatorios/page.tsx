@@ -1,0 +1,106 @@
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { PeriodFilter, resolvePeriodRange, type PeriodKey } from "@/components/reports/period-filter";
+import { CategoryBreakdownChart } from "@/components/reports/category-breakdown-chart";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { formatCurrency } from "@/lib/format";
+import type { Category, Transaction } from "@/types/database";
+
+export default async function RelatoriosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const { period: periodParam } = await searchParams;
+  const period = (periodParam ?? "3m") as PeriodKey;
+  const { from } = resolvePeriodRange(period);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: transactions }, { data: categories }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user!.id)
+      .gte("occurred_on", from)
+      .order("occurred_on", { ascending: false }),
+    supabase.from("categories").select("*").eq("user_id", user!.id),
+  ]);
+
+  const transactionsList: Transaction[] = transactions ?? [];
+  const categoriesList: Category[] = categories ?? [];
+  const categoryById = new Map(categoriesList.map((c) => [c.id, c]));
+
+  const expenses = transactionsList.filter((t) => t.type === "despesa");
+  const income = transactionsList.filter((t) => t.type === "receita");
+
+  const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const byCategory = new Map<string, { name: string; value: number; color: string }>();
+  for (const t of expenses) {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    const key = cat?.id ?? "sem_categoria";
+    const name = cat?.name ?? "Sem categoria";
+    const color = cat?.color ?? "#57616F";
+    const existing = byCategory.get(key);
+    if (existing) {
+      existing.value += Number(t.amount);
+    } else {
+      byCategory.set(key, { name, value: Number(t.amount), color });
+    }
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
+          <h1 className="font-display text-3xl text-text">Relatórios</h1>
+        </div>
+        <PeriodFilter active={period} />
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <StatCard label="Receitas no período" value={totalIncome} tone="gain" />
+        <StatCard label="Despesas no período" value={totalExpenses} tone="loss" />
+        <StatCard label="Balanço" value={totalIncome - totalExpenses} />
+      </div>
+
+      <Card>
+        <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
+        <CategoryBreakdownChart data={Array.from(byCategory.values())} />
+      </Card>
+
+      {byCategory.size > 0 && (
+        <Card className="mt-6">
+          <CardLabel className="mb-3">Detalhe</CardLabel>
+          <ul className="flex flex-col">
+            {Array.from(byCategory.values())
+              .sort((a, b) => b.value - a.value)
+              .map((c) => (
+                <li
+                  key={c.name}
+                  className="flex items-center justify-between py-2 border-b border-line-soft last:border-0 text-sm"
+                >
+                  <span className="flex items-center gap-2 text-text">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c.color }} />
+                    {c.name}
+                  </span>
+                  <span className="tabular text-text-muted">
+                    {formatCurrency(c.value)}{" "}
+                    <span className="text-text-faint">
+                      ({totalExpenses > 0 ? ((c.value / totalExpenses) * 100).toFixed(1) : "0.0"}%)
+                    </span>
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
