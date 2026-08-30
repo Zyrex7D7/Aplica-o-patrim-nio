@@ -3,7 +3,8 @@ import { getNetWorthBreakdown } from "@/lib/data/net-worth";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DonutChart } from "@/components/charts/donut-chart";
 import { Card, CardLabel } from "@/components/ui/card";
-import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+import { formatCurrency, formatSignedCurrency, formatDate } from "@/lib/format";
+import type { Account, Category, Transaction } from "@/types/database";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -11,7 +12,22 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const breakdown = await getNetWorthBreakdown(supabase, user!.id);
+  const [breakdown, { data: recentTx }, { data: accounts }, { data: categories }] = await Promise.all([
+    getNetWorthBreakdown(supabase, user!.id),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user!.id)
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase.from("accounts").select("*").eq("user_id", user!.id),
+    supabase.from("categories").select("*").eq("user_id", user!.id),
+  ]);
+
+  const accountById = new Map((accounts ?? []).map((a: Account) => [a.id, a]));
+  const categoryById = new Map((categories ?? []).map((c: Category) => [c.id, c]));
+  const recentTransactions: Transaction[] = recentTx ?? [];
 
   const slices = [
     { name: "Contas Bancárias", value: breakdown.cashInBanks, color: "var(--color-info)" },
@@ -100,6 +116,55 @@ export default async function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <CardLabel>Últimos Movimentos</CardLabel>
+          <a href="/transacoes" className="text-xs text-gold hover:underline underline-offset-2">
+            Ver todos
+          </a>
+        </div>
+        {recentTransactions.length === 0 ? (
+          <p className="text-sm text-text-muted">
+            Ainda não há movimentos registados.{" "}
+            <a href="/transacoes" className="text-gold underline underline-offset-2">
+              Regista o primeiro
+            </a>
+            .
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {recentTransactions.map((t) => {
+              const account = accountById.get(t.account_id);
+              const category = t.category_id ? categoryById.get(t.category_id) : null;
+              const sign = t.type === "receita" ? "+" : t.type === "despesa" ? "-" : "";
+              const toneClass =
+                t.type === "receita" ? "text-gain" : t.type === "despesa" ? "text-loss" : "text-text";
+              return (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between gap-3 py-2.5 border-b border-line-soft last:border-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-text truncate">
+                      {t.description ||
+                        category?.name ||
+                        (t.type === "transferencia" ? "Transferência" : t.type === "receita" ? "Receita" : "Despesa")}
+                    </p>
+                    <p className="text-xs text-text-faint mt-0.5">
+                      {formatDate(t.occurred_on)} · {account?.name ?? "—"}
+                    </p>
+                  </div>
+                  <span className={`tabular text-sm shrink-0 ${toneClass}`}>
+                    {sign}
+                    {formatCurrency(t.amount)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

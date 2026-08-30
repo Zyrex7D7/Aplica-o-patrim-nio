@@ -68,9 +68,15 @@ create table if not exists public.categories (
   color       text default '#8B93A1',          -- para os gráficos
   icon        text,                             -- nome de ícone (lucide-react)
   is_default  boolean not null default false,
+  -- Categorias marcadas com isto (ex: "Ajuste de Saldo") ficam de fora dos
+  -- Relatórios — servem para corrigir/definir saldos manualmente sem que
+  -- isso pareça um rendimento ou despesa real do período.
+  exclude_from_reports boolean not null default false,
   created_at  timestamptz not null default now(),
   unique (user_id, name, kind)
 );
+
+alter table public.categories add column if not exists exclude_from_reports boolean not null default false;
 
 -- -------------------------------------------------------------------------
 -- 3. TRANSAÇÕES FINANCEIRAS DIÁRIAS (orçamento: receitas / despesas / transferências)
@@ -246,7 +252,10 @@ select
   -- capital investido, porque já recebeste esse dinheiro de volta).
   sum(case when at.operation in ('compra', 'venda') then -at.total_value
            else 0 end) as net_invested,
-  sum(case when at.operation = 'dividendo' then at.total_value else 0 end) as total_dividends
+  sum(case when at.operation = 'dividendo' then at.total_value else 0 end) as total_dividends,
+  sum(case when at.operation = 'comissao' then at.total_value else 0 end) as total_fees,
+  min(case when at.operation = 'compra' then coalesce(at.occurred_at, at.occurred_on::timestamptz) end) as first_purchase_at,
+  count(*) filter (where at.operation in ('compra', 'venda')) as trade_count
 from public.asset_transactions at
 join public.assets ass on ass.id = at.asset_id
 group by at.user_id, at.asset_id, ass.name, ass.symbol, ass.isin, ass.currency;
@@ -465,5 +474,13 @@ begin
 
     (p_user_id, 'Outros',              'despesa', '#8B93A1', true)
   on conflict (user_id, name, kind) do nothing;
+
+  -- Categoria especial para corrigir/definir saldos manualmente (ex: saldo
+  -- inicial de uma conta) sem que isso conte como receita ou despesa real
+  -- nos Relatórios.
+  insert into public.categories (user_id, name, kind, color, is_default, exclude_from_reports) values
+    (p_user_id, 'Ajuste de Saldo', 'receita', '#57616F', true, true),
+    (p_user_id, 'Ajuste de Saldo', 'despesa', '#57616F', true, true)
+  on conflict (user_id, name, kind) do update set exclude_from_reports = true;
 end;
 $$;

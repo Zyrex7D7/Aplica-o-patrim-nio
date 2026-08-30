@@ -29,6 +29,7 @@ export interface Category {
   color: string | null;
   icon: string | null;
   is_default: boolean;
+  exclude_from_reports: boolean;
   created_at: string;
 }
 
@@ -108,6 +109,9 @@ export interface PortfolioPosition {
   quantity_held: number;
   net_invested: number;
   total_dividends: number;
+  total_fees: number;
+  first_purchase_at: string | null;
+  trade_count: number;
 }
 
 // Tipo mínimo compatível com o genérico esperado por @supabase/ssr.

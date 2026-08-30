@@ -35,8 +35,14 @@ export default async function PortfolioPage() {
   const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
 
   const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+  const totalFees = breakdown.positions.reduce((sum, p) => sum + Math.abs(Number(p.total_fees ?? 0)), 0);
+  const totalTrades = breakdown.positions.reduce((sum, p) => sum + Number(p.trade_count ?? 0), 0);
   const performancePct =
     breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
+  const totalReturnPct =
+    breakdown.portfolioCost !== 0
+      ? (breakdown.portfolioPnl + totalDividends) / breakdown.portfolioCost
+      : 0;
 
   const compositionSlices: DonutSlice[] = [...breakdown.positions]
     .sort((a, b) => b.marketValue - a.marketValue)
@@ -57,7 +63,7 @@ export default async function PortfolioPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
         <StatCard label="Capital investido" value={breakdown.portfolioCost} />
         <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
         <StatCard
@@ -66,6 +72,7 @@ export default async function PortfolioPage() {
           tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
         />
         <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
+        <StatCard label="Comissões Pagas" value={totalFees} tone="loss" />
         <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
       </div>
 
@@ -94,6 +101,24 @@ export default async function PortfolioPage() {
               <p className="text-xs text-text-faint mt-2">
                 Lucro/prejuízo não realizado face ao capital investido.
               </p>
+              <div className="ledger-rule mt-4 pt-3">
+                <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint">
+                  Retorno Total (com dividendos)
+                </p>
+                <p
+                  className={`tabular text-xl mt-1 ${
+                    totalReturnPct >= 0 ? "text-gain" : "text-loss"
+                  }`}
+                >
+                  {formatPercent(totalReturnPct)}
+                </p>
+              </div>
+              {totalTrades > 0 && (
+                <p className="text-xs text-text-faint mt-2">
+                  {totalTrades} transaç{totalTrades === 1 ? "ão" : "ões"} de compra/venda registada
+                  {totalTrades === 1 ? "" : "s"}.
+                </p>
+              )}
             </div>
             <div className="mt-6">
               <PerformanceHighlights positions={breakdown.positions} />

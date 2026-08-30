@@ -54,8 +54,17 @@ export default async function RelatoriosPage({
   const categoriesList: Category[] = categories ?? [];
   const categoryById = new Map(categoriesList.map((c) => [c.id, c]));
 
-  const expenses = transactionsList.filter((t) => t.type === "despesa");
-  const income = transactionsList.filter((t) => t.type === "receita");
+  // Categorias como "Ajuste de Saldo" servem para corrigir/definir saldos
+  // manualmente — não são receitas/despesas reais do período, por isso
+  // ficam de fora dos totais e dos gráficos dos Relatórios.
+  const reportable = transactionsList.filter((t) => {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    return !cat?.exclude_from_reports;
+  });
+  const excludedCount = transactionsList.length - reportable.length;
+
+  const expenses = reportable.filter((t) => t.type === "despesa");
+  const income = reportable.filter((t) => t.type === "receita");
 
   const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
   const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
@@ -72,6 +81,13 @@ export default async function RelatoriosPage({
         </div>
         <PeriodFilter active={period} />
       </header>
+
+      {excludedCount > 0 && (
+        <p className="text-xs text-text-faint mb-4">
+          {excludedCount} movimento(s) de &quot;Ajuste de Saldo&quot; não estão incluídos nestes totais
+          (não são receita/despesa real).
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <StatCard label="Receitas no período" value={totalIncome} tone="gain" />
