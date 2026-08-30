@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "create-user": "tsx --env-file=.env.local scripts/create-user.ts",
+    "list-users": "tsx --env-file=.env.local scripts/list-users.ts"
   },
   "dependencies": {
     "@fontsource/fraunces": "^5.3.0",

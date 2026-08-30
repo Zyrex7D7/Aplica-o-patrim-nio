@@ -14,7 +14,7 @@ importação automática de extratos da DEGIRO e cotações em tempo real.
 | Gráficos | **Recharts** | Gráfico de distribuição do património (donut) e de despesas por categoria (barras). |
 | Parsing CSV | **PapaParse** | Parser CSV robusto, usado como base para o parser específico da DEGIRO. |
 | Cotações | **yahoo-finance2 (v4)** | Resolve o símbolo Yahoo Finance a partir do ISIN e obtém o preço atual. |
-| Autenticação | **Supabase Auth (Magic Link)** | Sem gestão de passwords; login por email. |
+| Autenticação | **Supabase Auth (email + palavra-passe)** | Sem registo público — as contas são criadas pelo administrador com um script CLI, usando a Service Role Key. Login simples por email/password, sem depender de emails de convite. |
 
 ## Estrutura do Projeto
 
@@ -26,8 +26,7 @@ src/
 │   ├── transacoes/       # Receitas, despesas e transferências
 │   ├── relatorios/       # Filtros de período + despesas por categoria
 │   ├── portfolio/        # Upload do CSV DEGIRO + posições
-│   ├── login/            # Autenticação (magic link)
-│   ├── auth/callback/    # Troca de código OAuth por sessão
+│   ├── login/            # Autenticação (email + palavra-passe)
 │   └── api/
 │       ├── degiro/import/  # Parsing + inserção das transações DEGIRO
 │       └── quotes/         # Atualização das cotações via Yahoo Finance
@@ -39,6 +38,10 @@ src/
 │   └── supabase/         # Clientes Supabase (browser + servidor)
 ├── types/database.ts     # Tipos TS que espelham o schema SQL
 └── proxy.ts              # Proteção de rotas (equivalente ao antigo middleware)
+
+scripts/
+├── create-user.ts        # CLI de administração: cria utilizadores (email+password)
+└── list-users.ts         # CLI de administração: lista utilizadores existentes
 
 supabase/schema.sql        # Esquema completo (tabelas, views, triggers, RLS)
 test-fixtures/             # CSVs de exemplo + script para testar o parser
@@ -60,27 +63,42 @@ No **SQL Editor** do Supabase, corre o conteúdo de `supabase/schema.sql`
 - Triggers que recalculam automaticamente `accounts.current_balance` sempre
   que uma transação de orçamento ou de bolsa é inserida/alterada/apagada.
 - Row Level Security: cada utilizador só vê os seus próprios dados.
-- Função `seed_default_categories(user_id)`, chamada automaticamente no
-  primeiro login para criar categorias por omissão (Salário, Alimentação,
-  Transportes, etc.).
+- Função `seed_default_categories(user_id)`, chamada automaticamente pelo
+  script `create-user` para criar categorias por omissão (Salário, Alimentação,
+  Transportes, etc.) assim que a conta é criada.
 
 ### 3. Configura as variáveis de ambiente
 ```bash
 cp .env.local.example .env.local
 ```
-Edita `.env.local` e preenche `NEXT_PUBLIC_SUPABASE_URL` e
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do teu projeto.
+Edita `.env.local` e preenche:
+- `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings → API)
+- `SUPABASE_SERVICE_ROLE_KEY` (a chave secreta, também em Project Settings → API,
+  chamada `service_role`) — **só é usada pelos scripts de administração abaixo,
+  nunca pela aplicação em si nem exposta ao browser.**
 
-Em **Authentication → URL Configuration** no Supabase, adiciona
-`http://localhost:3000/auth/callback` aos Redirect URLs.
+### 4. Cria o teu utilizador
+Não há registo público (sem formulário de "criar conta" nem emails de
+convite). As contas são criadas diretamente por ti, o administrador:
 
-### 4. Instala e corre
+```bash
+npm run create-user -- --email tu@exemplo.com --password "umaPasswordForte123"
+```
+
+Isto cria a conta já confirmada (sem precisar de clicar em nenhum email) e
+prepara logo as categorias por omissão. Para veres as contas já criadas:
+
+```bash
+npm run list-users
+```
+
+### 5. Instala e corre
 ```bash
 npm install
 npm run dev
 ```
-Abre [http://localhost:3000](http://localhost:3000), entra com o teu email
-(magic link) e começa por criar as tuas contas em **Contas**.
+Abre [http://localhost:3000](http://localhost:3000) e entra com o email e a
+palavra-passe que definiste no passo anterior.
 
 ### Testar apenas o parser DEGIRO (sem Supabase)
 ```bash
@@ -129,6 +147,23 @@ categoria e tabela de detalhe com percentagens.
   cache `asset_quotes`, usado para calcular o valor atual e o
   Lucro/Prejuízo de cada posição.
 
+## Gestão de Utilizadores
+
+Esta aplicação **não tem registo público**. Só o administrador (quem tem
+acesso ao `.env.local` com a `SUPABASE_SERVICE_ROLE_KEY`) pode criar contas:
+
+```bash
+# Criar um novo utilizador (fica logo ativo, sem email de confirmação)
+npm run create-user -- --email familiar@exemplo.com --password "outraPasswordForte"
+
+# Ver todos os utilizadores existentes
+npm run list-users
+```
+
+Para revogar acesso ou repor a palavra-passe de alguém, usa o dashboard do
+Supabase em **Authentication → Users** (podes eliminar o utilizador ou
+enviar um link de reposição de password a partir daí, se preferires).
+
 ## Notas de Produção
 
 - O middleware de autenticação está em `src/proxy.ts` (renomeado de
@@ -136,5 +171,8 @@ categoria e tabela de detalhe com percentagens.
 - As chamadas ao Yahoo Finance não têm chave de API, mas não têm SLA
   garantido; para uso intensivo, considera um cache mais agressivo ou uma
   API de cotações paga.
-- O `service_role key` da Supabase **nunca** é usado no cliente; todas as
-  operações passam pela RLS com a sessão do utilizador autenticado.
+- A `SUPABASE_SERVICE_ROLE_KEY` só é usada pelos scripts `create-user` e
+  `list-users`, correndo no teu computador — a aplicação em si (páginas,
+  Server Actions, rotas de API) usa sempre a `anon key` e depende da
+  sessão do utilizador autenticado, com toda a segurança garantida pela
+  Row Level Security.
