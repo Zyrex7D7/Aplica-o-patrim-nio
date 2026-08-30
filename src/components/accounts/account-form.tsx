@@ -10,13 +10,13 @@ export function AccountForm() {
 
   async function action(formData: FormData) {
     startTransition(async () => {
-      try {
-        await createAccount(formData);
-        formRef.current?.reset();
-        toast.success("Conta criada.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao criar conta.");
+      const result = await createAccount(formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
       }
+      formRef.current?.reset();
+      toast.success("Conta criada.");
     });
   }
 

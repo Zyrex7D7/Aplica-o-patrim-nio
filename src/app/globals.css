@@ -94,3 +94,22 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * =========================================================================
+ * POLIMENTO MOBILE / PWA
+ * =========================================================================
+ */
+html, body {
+  overscroll-behavior-y: none; /* evita o "puxar para atualizar" acidental do browser */
+}
+
+* {
+  -webkit-tap-highlight-color: transparent; /* remove o flash cinzento ao tocar, típico de apps nativas */
+}
+
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important; /* evita o zoom automático do Safari iOS ao focar um campo */
+  }
+}

@@ -1,11 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { NavSidebar } from "@/components/nav-sidebar";
+import { MobileNav } from "@/components/mobile-nav";
+import { RegisterServiceWorker } from "@/components/register-sw";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Livro — Património & Finanças Pessoais",
   description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Livro",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B0F14",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -14,8 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full bg-ink text-text font-sans">
         <div className="flex min-h-screen">
           <NavSidebar />
-          <main className="flex-1 min-w-0">{children}</main>
+          <main className="flex-1 min-w-0 pb-20 md:pb-0">{children}</main>
         </div>
+        <MobileNav />
+        <RegisterServiceWorker />
         <Toaster theme="dark" position="top-right" richColors />
       </body>
     </html>

@@ -1,0 +1,4430 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+public/
+  file.svg
+  globe.svg
+  next.svg
+  vercel.svg
+  window.svg
+scripts/
+  create-user.ts
+  list-users.ts
+src/
+  app/
+    api/
+      degiro/
+        import/
+          route.ts
+      quotes/
+        route.ts
+    auth/
+      callback/
+        route.ts
+    contas/
+      actions.ts
+      page.tsx
+    dashboard/
+      page.tsx
+    login/
+      page.tsx
+    portfolio/
+      page.tsx
+    relatorios/
+      page.tsx
+    transacoes/
+      actions.ts
+      page.tsx
+    favicon.ico
+    globals.css
+    layout.tsx
+    page.tsx
+  components/
+    accounts/
+      account-form.tsx
+      archive-account-button.tsx
+    charts/
+      donut-chart.tsx
+    dashboard/
+      net-worth-charts.tsx
+      stat-card.tsx
+    portfolio/
+      degiro-upload.tsx
+      holdings-table.tsx
+      performance-highlights.tsx
+      refresh-quotes-button.tsx
+    reports/
+      category-breakdown-chart.tsx
+      period-filter.tsx
+    transactions/
+      category-quick-add.tsx
+      transaction-form.tsx
+      transaction-list.tsx
+    ui/
+      card.tsx
+    nav-sidebar.tsx
+  lib/
+    data/
+      net-worth.ts
+    degiro/
+      format.ts
+      parser.ts
+    market/
+      quotes.ts
+    reports/
+      period.ts
+    supabase/
+      client.ts
+      server.ts
+    format.ts
+  types/
+    database.ts
+  proxy.ts
+supabase/
+  schema.sql
+test-fixtures/
+  degiro-conta.csv
+  degiro-transacoes.csv
+  run-test.ts
+.gitignore
+AGENTS.md
+CLAUDE.md
+eslint.config.mjs
+next.config.ts
+package.json
+postcss.config.mjs
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path="scripts/create-user.ts">
+/**
+ * Script de administração: cria um utilizador diretamente na Supabase,
+ * sem enviar qualquer email de convite ou magic link.
+ *
+ * Usa a SERVICE ROLE KEY (nunca a anon key) — esta chave tem acesso total
+ * à base de dados e contorna a Row Level Security, por isso só deve ser
+ * usada aqui, em scripts do lado do servidor, e nunca no browser.
+ *
+ * Uso:
+ *   npm run create-user -- --email tu@exemplo.com --password "umaPasswordForte123"
+ *
+ * (ou, sem npm): node --env-file=.env.local -e "..." — mas o script já lê
+ * o .env.local sozinho via `tsx --env-file=.env.local`, configurado no
+ * package.json.
+ */
+import { createClient } from "@supabase/supabase-js";
+
+function parseArgs(): { email: string; password: string } {
+  const args = process.argv.slice(2);
+  const get = (flag: string) => {
+    const idx = args.indexOf(flag);
+    return idx !== -1 ? args[idx + 1] : undefined;
+  };
+
+  const email = get("--email");
+  const password = get("--password");
+
+  if (!email || !password) {
+    console.error(
+      "\nUso: npm run create-user -- --email tu@exemplo.com --password \"umaPasswordForte123\"\n"
+    );
+    process.exit(1);
+  }
+  if (password.length < 8) {
+    console.error("\nA palavra-passe deve ter pelo menos 8 caracteres.\n");
+    process.exit(1);
+  }
+
+  return { email, password };
+}
+
+async function main() {
+  const { email, password } = parseArgs();
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    console.error(
+      "\nFaltam variáveis de ambiente. Confirma que .env.local tem:\n" +
+        "  NEXT_PUBLIC_SUPABASE_URL=...\n" +
+        "  SUPABASE_SERVICE_ROLE_KEY=...\n" +
+        "\n(a Service Role Key está em Project Settings -> API -> service_role, no dashboard Supabase)\n"
+    );
+    process.exit(1);
+  }
+
+  // Client "admin": usa a service role key, nunca exposta ao browser.
+  const admin = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true, // conta fica ativa de imediato, sem email de confirmação
+  });
+
+  if (error) {
+    console.error(`\nErro ao criar utilizador: ${error.message}\n`);
+    process.exit(1);
+  }
+
+  const userId = data.user!.id;
+
+  // Cria as categorias por omissão para este utilizador.
+  const { error: seedError } = await admin.rpc("seed_default_categories", {
+    p_user_id: userId,
+  });
+
+  if (seedError) {
+    console.warn(
+      `\nUtilizador criado, mas falhou o seed de categorias por omissão: ${seedError.message}\n` +
+        "Podes correr manualmente no SQL Editor: select public.seed_default_categories('" +
+        userId +
+        "');\n"
+    );
+  }
+
+  console.log(`\n✓ Utilizador criado: ${email} (id: ${userId})`);
+  console.log("  Já pode entrar em /login com o email e a palavra-passe indicados.\n");
+}
+
+main();
+</file>
+
+<file path="scripts/list-users.ts">
+/**
+ * Lista os utilizadores existentes na Supabase (id, email, data de criação).
+ * Uso: npm run list-users
+ */
+import { createClient } from "@supabase/supabase-js";
+
+async function main() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    console.error(
+      "\nFaltam NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no .env.local\n"
+    );
+    process.exit(1);
+  }
+
+  const admin = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data, error } = await admin.auth.admin.listUsers();
+  if (error) {
+    console.error(`\nErro ao listar utilizadores: ${error.message}\n`);
+    process.exit(1);
+  }
+
+  if (data.users.length === 0) {
+    console.log("\nAinda não existem utilizadores. Cria um com `npm run create-user`.\n");
+    return;
+  }
+
+  console.log("");
+  for (const u of data.users) {
+    console.log(`${u.email}   (id: ${u.id})   criado em ${new Date(u.created_at).toLocaleString("pt-PT")}`);
+  }
+  console.log("");
+}
+
+main();
+</file>
+
+<file path="src/app/api/quotes/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getQuotes, resolveSymbolFromIsin } from "@/lib/market/quotes";
+
+/**
+ * GET /api/quotes
+ * Atualiza o cache `asset_quotes` com cotações atuais para todos os ativos
+ * do portefólio do utilizador autenticado, resolvendo o símbolo Yahoo
+ * Finance a partir do ISIN quando ainda não o conhecemos.
+ */
+export async function GET(_req: NextRequest) {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
+
+  const { data: positions, error } = await supabase
+    .from("portfolio_positions")
+    .select("asset_id, symbol, isin, name")
+    .eq("user_id", auth.user.id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const updates: { asset_id: string; price: number; currency: string; fetched_at: string }[] = [];
+  const resolvedSymbols: { asset_id: string; symbol: string }[] = [];
+
+  for (const pos of positions ?? []) {
+    let symbol = pos.symbol as string | null;
+
+    if (!symbol) {
+      const resolved = await resolveSymbolFromIsin(pos.isin ?? pos.name);
+      if (resolved) {
+        symbol = resolved.symbol;
+        resolvedSymbols.push({ asset_id: pos.asset_id, symbol });
+      }
+    }
+    if (!symbol) continue;
+
+    const [quote] = await getQuotes([symbol]);
+    if (quote) {
+      updates.push({
+        asset_id: pos.asset_id,
+        price: quote.price,
+        currency: quote.currency,
+        fetched_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  // Persiste o símbolo Yahoo Finance recém-descoberto no catálogo de ativos.
+  for (const r of resolvedSymbols) {
+    await supabase.from("assets").update({ symbol: r.symbol }).eq("id", r.asset_id);
+  }
+
+  if (updates.length > 0) {
+    await supabase.from("asset_quotes").upsert(updates, { onConflict: "asset_id" });
+  }
+
+  return NextResponse.json({ updated: updates.length, quotes: updates });
+}
+</file>
+
+<file path="src/app/auth/callback/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+export async function GET(request: NextRequest) {
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+
+  if (code) {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.exchangeCodeForSession(code);
+    if (data?.user) {
+      // Garante categorias por omissão na primeira vez que o utilizador entra.
+      await supabase.rpc("seed_default_categories", { p_user_id: data.user.id });
+    }
+  }
+
+  return NextResponse.redirect(`${origin}/dashboard`);
+}
+</file>
+
+<file path="src/app/contas/actions.ts">
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import type { AccountType } from "@/types/database";
+
+export async function createAccount(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? "banco") as AccountType;
+  const institution = String(formData.get("institution") ?? "").trim() || null;
+  const openingBalance = Number(String(formData.get("opening_balance") ?? "0").replace(",", "."));
+  const currency = String(formData.get("currency") ?? "EUR");
+
+  if (!name) throw new Error("O nome da conta é obrigatório.");
+
+  const { error } = await supabase.from("accounts").insert({
+    user_id: user.id,
+    name,
+    type,
+    institution,
+    opening_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
+    current_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
+    currency,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+}
+
+export async function archiveAccount(accountId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("accounts").update({ is_archived: true }).eq("id", accountId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+}
+</file>
+
+<file path="src/app/transacoes/actions.ts">
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import type { TransactionType } from "@/types/database";
+
+function parseAmount(raw: FormDataEntryValue | null): number {
+  return Number(String(raw ?? "0").replace(",", "."));
+}
+
+export async function createTransaction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
+
+  const type = String(formData.get("type") ?? "despesa") as TransactionType;
+  const amount = parseAmount(formData.get("amount"));
+  const occurredOn = String(formData.get("occurred_on") ?? "");
+  const accountId = String(formData.get("account_id") ?? "");
+  const transferAccountId = String(formData.get("transfer_account_id") ?? "") || null;
+  const categoryId = String(formData.get("category_id") ?? "") || null;
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("O valor tem de ser maior que zero.");
+  if (!occurredOn) throw new Error("A data é obrigatória.");
+  if (!accountId) throw new Error("Escolhe a conta de origem/destino.");
+  if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
+    throw new Error("Escolhe uma conta de destino diferente da conta de origem.");
+  }
+
+  const { error } = await supabase.from("transactions").insert({
+    user_id: user.id,
+    type,
+    amount,
+    occurred_on: occurredOn,
+    account_id: accountId,
+    transfer_account_id: type === "transferencia" ? transferAccountId : null,
+    category_id: type === "transferencia" ? null : categoryId,
+    description,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/transacoes");
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
+}
+
+export async function deleteTransaction(transactionId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("transactions").delete().eq("id", transactionId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/transacoes");
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
+}
+
+export async function createCategory(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "despesa") as "receita" | "despesa";
+  const color = String(formData.get("color") ?? "#8B93A1");
+
+  if (!name) throw new Error("O nome da categoria é obrigatório.");
+
+  const { error } = await supabase.from("categories").insert({
+    user_id: user.id,
+    name,
+    kind,
+    color,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/transacoes");
+}
+</file>
+
+<file path="src/app/transacoes/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { TransactionForm } from "@/components/transactions/transaction-form";
+import { TransactionList } from "@/components/transactions/transaction-list";
+import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
+import { Card, CardLabel } from "@/components/ui/card";
+import type { Account, Category, Transaction } from "@/types/database";
+
+export default async function TransacoesPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: accounts }, { data: categories }, { data: transactions }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
+    supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user!.id)
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(100),
+  ]);
+
+  const accountsList: Account[] = accounts ?? [];
+  const categoriesList: Category[] = categories ?? [];
+  const transactionsList: Transaction[] = transactions ?? [];
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
+        <h1 className="font-display text-3xl text-text">Movimentos</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Regista receitas, despesas e transferências entre contas. Os saldos das contas
+          envolvidas atualizam-se de imediato.
+        </p>
+      </header>
+
+      {accountsList.length === 0 ? (
+        <Card className="mb-8">
+          <p className="text-sm text-text-muted">
+            Precisas de pelo menos uma conta antes de registares movimentos.{" "}
+            <a href="/contas" className="text-gold underline underline-offset-2">
+              Cria uma conta
+            </a>
+            .
+          </p>
+        </Card>
+      ) : (
+        <Card className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <CardLabel>Novo Movimento</CardLabel>
+            <CategoryQuickAdd />
+          </div>
+          <TransactionForm accounts={accountsList} categories={categoriesList} />
+        </Card>
+      )}
+
+      <Card>
+        <CardLabel className="mb-3">Últimos 100 Movimentos</CardLabel>
+        <TransactionList transactions={transactionsList} accounts={accountsList} categories={categoriesList} />
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/globals.css">
+@import "tailwindcss";
+
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/600-italic.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+/*
+ * =========================================================================
+ * TOKENS DE DESIGN — "Livro-Razão" (Ledger)
+ * =========================================================================
+ * Paleta de tinta escura inspirada em extratos bancários e livros-razão
+ * contabilísticos: fundo quase-preto, réguas finas em vez de sombras,
+ * números tabulares em mono, e um único acento dourado ("património")
+ * que se distingue do verde (ganho) e vermelho (perda).
+ */
+:root {
+  --color-ink:          #0B0F14;
+  --color-surface:      #12171F;
+  --color-surface-alt:  #1A212B;
+  --color-line:         #232B36;
+  --color-line-soft:    #1A212B;
+  --color-text:         #EDEFF2;
+  --color-text-muted:   #8A93A3;
+  --color-text-faint:   #57616F;
+  --color-gold:         #D9A441;
+  --color-gold-soft:    #3A2F1B;
+  --color-gain:         #35D28A;
+  --color-gain-soft:    #123023;
+  --color-loss:         #E5636A;
+  --color-loss-soft:    #331A1D;
+  --color-info:         #6C9BD1;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-line: var(--color-line);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-gold: var(--color-gold);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-gain: var(--color-gain);
+  --color-gain-soft: var(--color-gain-soft);
+  --color-loss: var(--color-loss);
+  --color-loss-soft: var(--color-loss-soft);
+  --color-info: var(--color-info);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.ledger-rule {
+  border-top: 1px solid var(--color-line);
+}
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</file>
+
+<file path="src/app/layout.tsx">
+import type { Metadata } from "next";
+import "./globals.css";
+import { NavSidebar } from "@/components/nav-sidebar";
+import { Toaster } from "sonner";
+
+export const metadata: Metadata = {
+  title: "Livro — Património & Finanças Pessoais",
+  description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="pt-PT" className="h-full antialiased">
+      <body className="min-h-full bg-ink text-text font-sans">
+        <div className="flex min-h-screen">
+          <NavSidebar />
+          <main className="flex-1 min-w-0">{children}</main>
+        </div>
+        <Toaster theme="dark" position="top-right" richColors />
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="src/app/page.tsx">
+import { redirect } from "next/navigation";
+
+export default function RootPage() {
+  redirect("/login");
+}
+</file>
+
+<file path="src/components/accounts/archive-account-button.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Archive } from "lucide-react";
+import { toast } from "sonner";
+import { archiveAccount } from "@/app/contas/actions";
+
+export function ArchiveAccountButton({ accountId }: { accountId: string }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleClick() {
+    if (!confirm("Arquivar esta conta? Deixa de aparecer no dashboard, mas o histórico mantém-se.")) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await archiveAccount(accountId);
+        toast.success("Conta arquivada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao arquivar conta.");
+      }
+    });
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isPending}
+      title="Arquivar conta"
+      className="text-text-faint hover:text-loss transition-colors disabled:opacity-50"
+    >
+      <Archive size={15} strokeWidth={1.75} />
+    </button>
+  );
+}
+</file>
+
+<file path="src/components/charts/donut-chart.tsx">
+"use client";
+
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { formatCurrency } from "@/lib/format";
+
+export interface DonutSlice {
+  name: string;
+  value: number;
+  color: string;
+  /** Texto extra opcional a mostrar por baixo do nome na legenda (ex: ISIN). */
+  sublabel?: string;
+}
+
+/**
+ * Quando há demasiadas fatias, o donut fica ilegível e a legenda enche o
+ * ecrã todo. Acima deste número, agrupamos as fatias mais pequenas numa
+ * única fatia "Outras" — a lista de detalhe completa continua disponível
+ * fora deste componente sempre que exista.
+ */
+const MAX_SLICES = 7;
+
+export function DonutChart({
+  slices,
+  size = 220,
+  emptyMessage,
+}: {
+  slices: DonutSlice[];
+  size?: number;
+  emptyMessage?: string;
+}) {
+  const positive = slices.filter((s) => s.value > 0);
+  const sorted = [...positive].sort((a, b) => b.value - a.value);
+
+  let data = sorted;
+  if (sorted.length > MAX_SLICES) {
+    const head = sorted.slice(0, MAX_SLICES - 1);
+    const rest = sorted.slice(MAX_SLICES - 1);
+    const restTotal = rest.reduce((sum, s) => sum + s.value, 0);
+    data = [...head, { name: "Outras", value: restTotal, color: "#5B6472" }];
+  }
+
+  const total = data.reduce((sum, s) => sum + s.value, 0);
+
+  if (data.length === 0) {
+    return (
+      <div className="h-56 flex items-center justify-center text-sm text-text-faint">
+        {emptyMessage ?? "Sem dados para mostrar neste período."}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col md:flex-row items-center gap-6">
+      <div className="shrink-0" style={{ width: size, height: size }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={size * 0.28}
+              outerRadius={size * 0.4}
+              paddingAngle={2}
+              stroke="var(--color-ink)"
+              strokeWidth={2}
+            >
+              {data.map((slice) => (
+                <Cell key={slice.name} fill={slice.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                background: "var(--color-surface-alt)",
+                border: "1px solid var(--color-line)",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+              formatter={(value, name) => [
+                `${formatCurrency(Number(value))} (${total > 0 ? ((Number(value) / total) * 100).toFixed(1) : "0.0"}%)`,
+                String(name),
+              ]}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      <ul className="flex-1 w-full min-w-0 flex flex-col gap-2">
+        {data.map((slice) => {
+          const pct = total > 0 ? (slice.value / total) * 100 : 0;
+          return (
+            <li key={slice.name} className="flex items-center justify-between gap-3 text-sm">
+              <span className="flex items-center gap-2 min-w-0">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: slice.color }}
+                />
+                <span className="min-w-0">
+                  <span className="text-text truncate block">{slice.name}</span>
+                  {slice.sublabel && (
+                    <span className="text-text-faint text-xs block">{slice.sublabel}</span>
+                  )}
+                </span>
+              </span>
+              <span className="tabular text-text-muted shrink-0 flex items-baseline gap-2">
+                {formatCurrency(slice.value)}
+                <span className="text-text-faint text-xs w-12 text-right">{pct.toFixed(1)}%</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/net-worth-charts.tsx">
+"use client";
+
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { formatCurrency } from "@/lib/format";
+
+interface Slice {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export function NetWorthPie({ slices }: { slices: Slice[] }) {
+  const data = slices.filter((s) => s.value > 0);
+
+  if (data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-sm text-text-faint">
+        Ainda sem saldo registado — adiciona contas e transações para veres a distribuição.
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <PieChart>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          innerRadius={70}
+          outerRadius={100}
+          paddingAngle={2}
+          stroke="var(--color-ink)"
+          strokeWidth={2}
+        >
+          {data.map((slice) => (
+            <Cell key={slice.name} fill={slice.color} />
+          ))}
+        </Pie>
+        <Tooltip
+          contentStyle={{
+            background: "var(--color-surface-alt)",
+            border: "1px solid var(--color-line)",
+            borderRadius: 8,
+            fontSize: 12,
+          }}
+          formatter={(value) => formatCurrency(Number(value))}
+        />
+        <Legend
+          verticalAlign="bottom"
+          height={36}
+          formatter={(value) => <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>{value}</span>}
+        />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/stat-card.tsx">
+import { Card, CardLabel } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format";
+import { cx } from "@/lib/format";
+
+export function StatCard({
+  label,
+  value,
+  tone = "default",
+  hint,
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "gain" | "loss" | "gold";
+  hint?: string;
+}) {
+  const toneClass =
+    tone === "gain" ? "text-gain" : tone === "loss" ? "text-loss" : tone === "gold" ? "text-gold" : "text-text";
+
+  return (
+    <Card>
+      <CardLabel>{label}</CardLabel>
+      <p className={cx("tabular text-2xl mt-2 font-medium", toneClass)}>{formatCurrency(value)}</p>
+      {hint && <p className="text-xs text-text-faint mt-1">{hint}</p>}
+    </Card>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/performance-highlights.tsx">
+import { formatCurrency, formatPercent } from "@/lib/format";
+import type { PositionRow } from "@/components/portfolio/holdings-table";
+
+function pnlPct(p: PositionRow): number {
+  const pnl = p.marketValue - p.net_invested;
+  return p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
+}
+
+export function PerformanceHighlights({ positions }: { positions: PositionRow[] }) {
+  if (positions.length < 2) return null;
+
+  const sorted = [...positions].sort((a, b) => pnlPct(b) - pnlPct(a));
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="rounded-lg border border-line-soft bg-surface-alt/40 px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">
+          Melhor Posição
+        </p>
+        <p className="text-text text-sm">{best.name}</p>
+        <p className="tabular text-gain text-lg mt-1">
+          {formatPercent(pnlPct(best))}
+          <span className="text-xs text-text-faint ml-2">
+            ({formatCurrency(best.marketValue - best.net_invested)})
+          </span>
+        </p>
+      </div>
+      <div className="rounded-lg border border-line-soft bg-surface-alt/40 px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">
+          Pior Posição
+        </p>
+        <p className="text-text text-sm">{worst.name}</p>
+        <p className={`tabular text-lg mt-1 ${pnlPct(worst) >= 0 ? "text-gain" : "text-loss"}`}>
+          {formatPercent(pnlPct(worst))}
+          <span className="text-xs text-text-faint ml-2">
+            ({formatCurrency(worst.marketValue - worst.net_invested)})
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/refresh-quotes-button.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
+export function RefreshQuotesButton() {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function handleClick() {
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/quotes");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Erro ao atualizar cotações.");
+        toast.success(`${data.updated} cotação(ões) atualizada(s).`);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao atualizar cotações.");
+      }
+    });
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isPending}
+      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-gold transition-colors disabled:opacity-50"
+    >
+      <RefreshCw size={13} strokeWidth={1.75} className={isPending ? "animate-spin" : ""} />
+      {isPending ? "A atualizar..." : "Atualizar cotações"}
+    </button>
+  );
+}
+</file>
+
+<file path="src/components/reports/category-breakdown-chart.tsx">
+"use client";
+
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { formatCurrency } from "@/lib/format";
+
+export interface CategorySlice {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export function CategoryBreakdownChart({ data }: { data: CategorySlice[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-sm text-text-faint">
+        Sem despesas registadas neste período.
+      </div>
+    );
+  }
+
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(220, sorted.length * 42)}>
+      <BarChart data={sorted} layout="vertical" margin={{ left: 8, right: 24 }}>
+        <XAxis type="number" hide />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={120}
+          tick={{ fill: "var(--color-text-muted)", fontSize: 12 }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <Tooltip
+          cursor={{ fill: "var(--color-surface-alt)" }}
+          contentStyle={{
+            background: "var(--color-surface-alt)",
+            border: "1px solid var(--color-line)",
+            borderRadius: 8,
+            fontSize: 12,
+          }}
+          formatter={(value) => formatCurrency(Number(value))}
+        />
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
+          {sorted.map((slice) => (
+            <Cell key={slice.name} fill={slice.color} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+</file>
+
+<file path="src/components/transactions/category-quick-add.tsx">
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { createCategory } from "@/app/transacoes/actions";
+
+export function CategoryQuickAdd() {
+  const [open, setOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
+
+  async function action(formData: FormData) {
+    startTransition(async () => {
+      try {
+        await createCategory(formData);
+        formRef.current?.reset();
+        toast.success("Categoria criada.");
+        setOpen(false);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao criar categoria.");
+      }
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 text-xs text-text-faint hover:text-gold transition-colors"
+      >
+        <Plus size={13} strokeWidth={1.75} />
+        Nova categoria
+      </button>
+    );
+  }
+
+  return (
+    <form ref={formRef} action={action} className="flex items-center gap-2">
+      <input
+        name="name"
+        required
+        placeholder="Nome da categoria"
+        className="rounded-md border border-line bg-surface-alt px-2 py-1 text-xs outline-none focus:border-gold"
+      />
+      <select
+        name="kind"
+        className="rounded-md border border-line bg-surface-alt px-2 py-1 text-xs outline-none focus:border-gold"
+      >
+        <option value="despesa">Despesa</option>
+        <option value="receita">Receita</option>
+      </select>
+      <input name="color" type="color" defaultValue="#8B93A1" className="h-6 w-8 rounded border border-line bg-transparent" />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="text-xs text-gold hover:opacity-80 disabled:opacity-50"
+      >
+        Guardar
+      </button>
+      <button type="button" onClick={() => setOpen(false)} className="text-xs text-text-faint hover:text-text">
+        Cancelar
+      </button>
+    </form>
+  );
+}
+</file>
+
+<file path="src/components/transactions/transaction-form.tsx">
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { createTransaction } from "@/app/transacoes/actions";
+import type { Account, Category } from "@/types/database";
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+export function TransactionForm({
+  accounts,
+  categories,
+}: {
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [type, setType] = useState<"receita" | "despesa" | "transferencia">("despesa");
+  const [isPending, startTransition] = useTransition();
+
+  const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
+
+  async function action(formData: FormData) {
+    startTransition(async () => {
+      try {
+        await createTransaction(formData);
+        formRef.current?.reset();
+        setType("despesa");
+        toast.success("Movimento registado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao registar movimento.");
+      }
+    });
+  }
+
+  return (
+    <form ref={formRef} action={action} className="flex flex-col gap-3">
+      <div className="flex gap-2">
+        {(["despesa", "receita", "transferencia"] as const).map((t) => (
+          <label
+            key={t}
+            className={`flex-1 text-center cursor-pointer rounded-md border px-3 py-2 text-sm capitalize transition-colors ${
+              type === t
+                ? "border-gold text-gold bg-surface-alt"
+                : "border-line text-text-muted hover:text-text"
+            }`}
+          >
+            <input
+              type="radio"
+              name="type"
+              value={t}
+              checked={type === t}
+              onChange={() => setType(t)}
+              className="hidden"
+            />
+            {t === "transferencia" ? "Transferência" : t}
+          </label>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <input
+          name="amount"
+          required
+          placeholder="Valor"
+          inputMode="decimal"
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+        <input
+          name="occurred_on"
+          type="date"
+          required
+          defaultValue={TODAY}
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+        <select
+          name="account_id"
+          required
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+        >
+          <option value="">{type === "transferencia" ? "Conta de origem" : "Conta"}</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
+        {type === "transferencia" ? (
+          <select
+            name="transfer_account_id"
+            required
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          >
+            <option value="">Conta de destino</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <select
+            name="category_id"
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          >
+            <option value="">Categoria (opcional)</option>
+            {filteredCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        <input
+          name="description"
+          placeholder="Descrição (opcional)"
+          className="flex-1 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+        >
+          {isPending ? "A guardar..." : "Registar"}
+        </button>
+      </div>
+    </form>
+  );
+}
+</file>
+
+<file path="src/components/transactions/transaction-list.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteTransaction } from "@/app/transacoes/actions";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { Account, Category, Transaction } from "@/types/database";
+
+interface Row extends Transaction {
+  accountName: string;
+  transferAccountName: string | null;
+  categoryName: string | null;
+  categoryColor: string | null;
+}
+
+export function TransactionList({
+  transactions,
+  accounts,
+  categories,
+}: {
+  transactions: Transaction[];
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  const rows: Row[] = transactions.map((t) => ({
+    ...t,
+    accountName: accountById.get(t.account_id)?.name ?? "—",
+    transferAccountName: t.transfer_account_id ? accountById.get(t.transfer_account_id)?.name ?? "—" : null,
+    categoryName: t.category_id ? categoryById.get(t.category_id)?.name ?? null : null,
+    categoryColor: t.category_id ? categoryById.get(t.category_id)?.color ?? null : null,
+  }));
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-text-muted py-6 text-center">Ainda não há movimentos registados.</p>;
+  }
+
+  return (
+    <ul className="flex flex-col">
+      {rows.map((t) => (
+        <TransactionRow key={t.id} row={t} />
+      ))}
+    </ul>
+  );
+}
+
+function TransactionRow({ row }: { row: Row }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete() {
+    if (!confirm("Eliminar este movimento?")) return;
+    startTransition(async () => {
+      try {
+        await deleteTransaction(row.id);
+        toast.success("Movimento eliminado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao eliminar movimento.");
+      }
+    });
+  }
+
+  const sign = row.type === "receita" ? "+" : row.type === "despesa" ? "-" : "";
+  const toneClass =
+    row.type === "receita" ? "text-gain" : row.type === "despesa" ? "text-loss" : "text-text";
+
+  return (
+    <li className="flex items-center justify-between gap-3 py-3 border-b border-line-soft last:border-0">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {row.categoryColor && (
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: row.categoryColor }}
+            />
+          )}
+          <p className="text-sm text-text truncate">
+            {row.description ||
+              row.categoryName ||
+              (row.type === "transferencia" ? "Transferência" : row.type === "receita" ? "Receita" : "Despesa")}
+          </p>
+        </div>
+        <p className="text-xs text-text-faint mt-0.5">
+          {formatDate(row.occurred_on)} · {row.accountName}
+          {row.transferAccountName ? ` → ${row.transferAccountName}` : ""}
+          {row.categoryName ? ` · ${row.categoryName}` : ""}
+        </p>
+      </div>
+      <span className={`tabular text-sm shrink-0 ${toneClass}`}>
+        {sign}
+        {formatCurrency(row.amount)}
+      </span>
+      <button
+        onClick={handleDelete}
+        disabled={isPending}
+        className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
+        title="Eliminar"
+      >
+        <Trash2 size={14} strokeWidth={1.75} />
+      </button>
+    </li>
+  );
+}
+</file>
+
+<file path="src/components/ui/card.tsx">
+import { clsx } from "clsx";
+import type { HTMLAttributes } from "react";
+
+export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={clsx(
+        "rounded-lg border border-line bg-surface p-5",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export function CardLabel({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p
+      className={clsx(
+        "text-[11px] uppercase tracking-[0.14em] text-text-faint font-medium",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+</file>
+
+<file path="src/components/nav-sidebar.tsx">
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutGrid, Wallet, ArrowLeftRight, PieChart, LineChart } from "lucide-react";
+import { cx } from "@/lib/format";
+
+const ITEMS = [
+  { href: "/dashboard", label: "Património", icon: LayoutGrid },
+  { href: "/contas", label: "Contas", icon: Wallet },
+  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
+  { href: "/relatorios", label: "Relatórios", icon: PieChart },
+  { href: "/portfolio", label: "Portefólio", icon: LineChart },
+];
+
+export function NavSidebar() {
+  const pathname = usePathname();
+
+  return (
+    <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">
+      <div className="px-2 mb-8">
+        <p className="font-display text-xl italic tracking-tight text-text">Livro</p>
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
+          Património &amp; Finanças
+        </p>
+      </div>
+
+      <nav className="flex flex-col gap-1">
+        {ITEMS.map((item) => {
+          const active = pathname?.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cx(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                active
+                  ? "bg-surface-alt text-gold"
+                  : "text-text-muted hover:text-text hover:bg-surface-alt/60"
+              )}
+            >
+              <Icon size={16} strokeWidth={1.75} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto pt-6 ledger-rule text-[11px] text-text-faint leading-relaxed">
+        Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
+      </div>
+    </aside>
+  );
+}
+</file>
+
+<file path="src/lib/degiro/format.ts">
+/**
+ * Utilitários de formatação para o parser da DEGIRO.
+ * A DEGIRO exporta CSVs no formato europeu: separador decimal "," e
+ * separador de milhares ".", datas "dd-mm-aaaa" e delimitador ";" (locale
+ * PT/ES) ou "," (locale EN/US). O parser tem de lidar com ambos.
+ */
+
+/** Remove acentos e normaliza para minúsculas, para comparação "fuzzy" de headers. */
+export function normalize(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Converte um número em formato europeu ("1.234,56" ou "1234,56" ou "-12,3")
+ * para um `number` JS. Também aceita formato "americano" (1,234.56) como
+ * fallback, caso o ficheiro tenha vindo doutro locale.
+ */
+export function parseEuroNumber(raw: string | undefined | null): number | null {
+  if (raw === undefined || raw === null) return null;
+  let s = String(raw).trim();
+  if (s === "" || s === "-" ) return null;
+
+  // Remove símbolos de moeda e espaços (incluindo espaços não-separáveis).
+  s = s.replace(/[€$£\s\u00A0]/g, "");
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+
+  if (hasComma && hasDot) {
+    // O último separador encontrado é o decimal; o outro é milhares.
+    const lastComma = s.lastIndexOf(",");
+    const lastDot = s.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      // formato europeu: 1.234,56
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      // formato US: 1,234.56
+      s = s.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    // Só vírgula -> assume decimal europeu: 1234,56
+    s = s.replace(",", ".");
+  }
+  // Só ponto, ou nenhum separador -> já está em formato JS válido.
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Faz parse de uma data da DEGIRO em formato "dd-mm-aaaa" ou "dd/mm/aaaa".
+ * Devolve uma string ISO "aaaa-mm-dd" pronta para gravar numa coluna `date`.
+ */
+export function parseDegiroDate(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+  if (!m) {
+    // já pode vir em ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    return null;
+  }
+  const [, d, mo, yRaw] = m;
+  const y = yRaw.length === 2 ? `20${yRaw}` : yRaw;
+  return `${y.padStart(4, "0")}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/** Combina data ISO ("aaaa-mm-dd") com hora ("hh:mm") num timestamp ISO. */
+export function combineDateTime(isoDate: string, time?: string | null): string | null {
+  if (!time || !/^\d{1,2}:\d{2}(:\d{2})?$/.test(time.trim())) return null;
+  const t = time.trim().length === 5 ? `${time.trim()}:00` : time.trim();
+  return `${isoDate}T${t}`;
+}
+
+/** Hash SHA-256 estável (hex) usando a Web Crypto API — funciona em browser, Node 19+ e edge runtime. */
+export async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+</file>
+
+<file path="src/lib/market/quotes.ts">
+import YahooFinance from "yahoo-finance2";
+
+// Na v4 do yahoo-finance2, o export por omissão é uma classe — precisa de
+// ser instanciada uma única vez e reutilizada entre pedidos.
+const yahooFinance = new YahooFinance();
+
+/**
+ * Módulo de cotações em tempo (quase) real via `yahoo-finance2`.
+ *
+ * A DEGIRO identifica os ativos por ISIN, mas o Yahoo Finance funciona por
+ * "ticker" (símbolo). Por isso:
+ *   1. `resolveSymbolFromIsin` usa a pesquisa do Yahoo para encontrar o
+ *      símbolo mais provável a partir do ISIN ou do nome do produto.
+ *   2. `getQuote` devolve o preço atual + moeda para um símbolo já
+ *      conhecido, para atualizar o valor do portefólio e o P/L.
+ */
+
+export interface ResolvedSymbol {
+  symbol: string;
+  shortname?: string;
+  exchange?: string;
+  currency?: string;
+}
+
+export async function resolveSymbolFromIsin(
+  isinOrName: string
+): Promise<ResolvedSymbol | null> {
+  try {
+    const result = await yahooFinance.search(isinOrName, { quotesCount: 5 });
+    const best = result.quotes?.find(
+      (q): q is typeof q & { symbol: string } =>
+        "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
+    );
+    if (!best) return null;
+    return {
+      symbol: best.symbol,
+      shortname: "shortname" in best && typeof best.shortname === "string" ? best.shortname : undefined,
+      exchange: "exchange" in best && typeof best.exchange === "string" ? best.exchange : undefined,
+    };
+  } catch (err) {
+    console.error(`Falha ao resolver símbolo para "${isinOrName}":`, err);
+    return null;
+  }
+}
+
+export interface LiveQuote {
+  symbol: string;
+  price: number;
+  currency: string;
+  changePercent: number | null;
+  marketState: string | null;
+}
+
+export async function getQuote(symbol: string): Promise<LiveQuote | null> {
+  try {
+    const q = await yahooFinance.quote(symbol);
+    if (!q || q.regularMarketPrice === undefined) return null;
+    return {
+      symbol,
+      price: q.regularMarketPrice,
+      currency: q.currency ?? "EUR",
+      changePercent: q.regularMarketChangePercent ?? null,
+      marketState: q.marketState ?? null,
+    };
+  } catch (err) {
+    console.error(`Falha ao obter cotação para "${symbol}":`, err);
+    return null;
+  }
+}
+
+export async function getQuotes(symbols: string[]): Promise<LiveQuote[]> {
+  const unique = Array.from(new Set(symbols.filter(Boolean)));
+  const results = await Promise.allSettled(unique.map((s) => getQuote(s)));
+  return results
+    .filter((r): r is PromiseFulfilledResult<LiveQuote | null> => r.status === "fulfilled")
+    .map((r) => r.value)
+    .filter((v): v is LiveQuote => v !== null);
+}
+</file>
+
+<file path="src/lib/reports/period.ts">
+export const PERIODS = [
+  { key: "1m", label: "Último Mês" },
+  { key: "3m", label: "3 Meses" },
+  { key: "6m", label: "6 Meses" },
+  { key: "12m", label: "12 Meses" },
+  { key: "ytd", label: "Ano Atual" },
+] as const;
+
+export type PeriodKey = (typeof PERIODS)[number]["key"];
+
+export function resolvePeriodRange(period: string): { from: string; label: string } {
+  const now = new Date();
+  const from = new Date(now);
+
+  switch (period) {
+    case "3m":
+      from.setMonth(now.getMonth() - 3);
+      break;
+    case "6m":
+      from.setMonth(now.getMonth() - 6);
+      break;
+    case "12m":
+      from.setMonth(now.getMonth() - 12);
+      break;
+    case "ytd":
+      from.setMonth(0, 1);
+      break;
+    case "1m":
+    default:
+      from.setMonth(now.getMonth() - 1);
+      break;
+  }
+
+  return { from: from.toISOString().slice(0, 10), label: period };
+}
+</file>
+
+<file path="src/lib/supabase/client.ts">
+import { createBrowserClient } from "@supabase/ssr";
+import type { Database } from "@/types/database";
+
+/**
+ * Cliente Supabase para uso em Client Components ("use client").
+ * Usa as chaves públicas (anon key) — seguro para expor no browser
+ * porque toda a segurança de dados é garantida pelo Row Level Security (RLS).
+ */
+export function createClient() {
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+</file>
+
+<file path="src/lib/supabase/server.ts">
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import type { Database } from "@/types/database";
+
+/**
+ * Cliente Supabase para uso em Server Components, Server Actions e Route
+ * Handlers. Lê/escreve os cookies de sessão do Next.js para manter o
+ * utilizador autenticado entre pedidos.
+ */
+export async function createClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Ignorado: `setAll` foi chamado a partir de um Server Component.
+            // Isto é seguro se tiveres middleware a refrescar as sessões.
+          }
+        },
+      },
+    }
+  );
+}
+</file>
+
+<file path="src/lib/format.ts">
+export function formatCurrency(value: number, currency = "EUR"): string {
+  return new Intl.NumberFormat("pt-PT", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+export function formatSignedCurrency(value: number, currency = "EUR"): string {
+  const formatted = formatCurrency(Math.abs(value), currency);
+  if (value > 0) return `+${formatted}`;
+  if (value < 0) return `-${formatted}`;
+  return formatted;
+}
+
+export function formatPercent(value: number): string {
+  return new Intl.NumberFormat("pt-PT", {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    signDisplay: "exceptZero",
+  }).format(value);
+}
+
+export function formatDate(iso: string): string {
+  return new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "short", year: "numeric" }).format(
+    new Date(iso)
+  );
+}
+
+export function cx(...classes: (string | false | null | undefined)[]): string {
+  return classes.filter(Boolean).join(" ");
+}
+</file>
+
+<file path="test-fixtures/degiro-conta.csv">
+Data,Hora,Data valor,Produto,ISIN,Descrição,FX,,Mutação,,Saldo,ID da ordem
+20-08-2026,08:30,20-08-2026,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,Dividendo,,EUR,"18,42",EUR,"1.240,10",
+20-08-2026,08:31,20-08-2026,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,Imposto sobre dividendo,,EUR,"-2,76",EUR,"1.237,34",
+10-08-2026,09:15,10-08-2026,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,DEGIRO Custos de transação e/ou terceiros,,EUR,"-2,00",EUR,"1.235,34",xyz-789
+</file>
+
+<file path="test-fixtures/degiro-transacoes.csv">
+Data,Hora,Produto,ISIN,Bolsa de Valores,Código de produto,Quantidade,Preço,,Valor local,,Valor,,Taxa de câmbio,Custos de transação,,Total,,ID da ordem
+28-08-2026,10:15,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,EAM,VWCE,10,"105,32",EUR,"1.053,20",EUR,"-1.053,20",EUR,,"-2,00",EUR,"-1.055,20",EUR,abc-123
+15-07-2026,11:02,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,EAM,VWCE,-5,"110,00",EUR,"550,00",EUR,"550,00",EUR,,"-2,00",EUR,"548,00",EUR,def-456
+</file>
+
+<file path="test-fixtures/run-test.ts">
+import { readFileSync } from "node:fs";
+import { parseDegiroCsv } from "../src/lib/degiro/parser";
+
+async function run(path: string) {
+  const text = readFileSync(path, "utf-8");
+  const result = await parseDegiroCsv(text);
+  console.log(`\n=== ${path} ===`);
+  console.log("Formato detetado:", result.format);
+  console.log("Avisos:", result.warnings);
+  for (const r of result.rows) {
+    console.log({
+      date: r.date,
+      product: r.product,
+      isin: r.isin,
+      operation: r.operation,
+      quantity: r.quantity,
+      price: r.price,
+      totalValue: r.totalValue,
+      currency: r.currency,
+      fees: r.fees,
+      hash: r.sourceHash.slice(0, 12),
+    });
+  }
+}
+
+async function main() {
+  await run("test-fixtures/degiro-transacoes.csv");
+  await run("test-fixtures/degiro-conta.csv");
+
+  // Verifica idempotência: correr o mesmo ficheiro duas vezes gera os mesmos hashes.
+  const text = readFileSync("test-fixtures/degiro-transacoes.csv", "utf-8");
+  const r1 = await parseDegiroCsv(text);
+  const r2 = await parseDegiroCsv(text);
+  const same = r1.rows.every((row, i) => row.sourceHash === r2.rows[i].sourceHash);
+  console.log("\nHashes idênticos em re-parse (deduplicação):", same);
+}
+
+main();
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="src/app/api/degiro/import/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { hashFileContent, parseDegiroCsv } from "@/lib/degiro/parser";
+
+/**
+ * POST /api/degiro/import
+ * Body: { csvText: string, fileName: string, accountId: string }
+ *
+ * 1. Faz parse do CSV no servidor (fonte de verdade — nunca confiar apenas
+ *    no parsing feito no browser).
+ * 2. Garante que cada ISIN/produto tem uma linha correspondente em `assets`.
+ * 3. Insere as `asset_transactions`, ignorando duplicados através da
+ *    restrição única (user_id, source_hash).
+ * 4. Regista um resumo em `csv_imports` para auditoria/histórico.
+ */
+export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const { csvText, fileName, accountId } = body ?? {};
+  if (!csvText || !fileName || !accountId) {
+    return NextResponse.json(
+      { error: "Faltam campos obrigatórios: csvText, fileName, accountId." },
+      { status: 400 }
+    );
+  }
+
+  const userId = auth.user.id;
+  const fileHash = await hashFileContent(csvText);
+
+  // Deteta re-upload do mesmo ficheiro exato antes de fazer qualquer trabalho.
+  const { data: existingImport } = await supabase
+    .from("csv_imports")
+    .select("id, created_at, rows_inserted")
+    .eq("user_id", userId)
+    .eq("file_hash", fileHash)
+    .maybeSingle();
+
+  if (existingImport) {
+    return NextResponse.json({
+      alreadyImported: true,
+      message: `Este ficheiro já foi importado em ${new Date(existingImport.created_at).toLocaleString("pt-PT")}.`,
+      previousImport: existingImport,
+    });
+  }
+
+  const parsed = await parseDegiroCsv(csvText);
+
+  if (parsed.rows.length === 0) {
+    return NextResponse.json(
+      { error: "Não foi possível extrair nenhuma transação válida do ficheiro.", warnings: parsed.warnings },
+      { status: 422 }
+    );
+  }
+
+  // --- 1. Upsert de ativos (por ISIN; fallback pelo nome do produto) ------
+  const assetIdByKey = new Map<string, string>();
+  const uniqueAssets = new Map<string, { isin: string | null; name: string; currency: string }>();
+  for (const row of parsed.rows) {
+    const key = row.isin ?? `name:${row.product}`;
+    if (!uniqueAssets.has(key)) {
+      uniqueAssets.set(key, { isin: row.isin, name: row.product, currency: row.currency });
+    }
+  }
+
+  for (const [key, asset] of uniqueAssets) {
+    if (asset.isin) {
+      const { data: existing } = await supabase
+        .from("assets")
+        .select("id")
+        .eq("isin", asset.isin)
+        .maybeSingle();
+
+      if (existing) {
+        assetIdByKey.set(key, existing.id);
+        continue;
+      }
+    }
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from("assets")
+      .insert({ isin: asset.isin, name: asset.name, currency: asset.currency })
+      .select("id")
+      .single();
+
+    if (insertErr) {
+      // corrida entre pedidos concorrentes ou ISIN já existe -> tenta ler de novo
+      const { data: fallback } = await supabase
+        .from("assets")
+        .select("id")
+        .eq("isin", asset.isin ?? "")
+        .maybeSingle();
+      if (fallback) assetIdByKey.set(key, fallback.id);
+      continue;
+    }
+    assetIdByKey.set(key, inserted.id);
+  }
+
+  // --- 2. Inserção das transações (ignora duplicados pelo source_hash) ---
+  const rowsToInsert = parsed.rows.map((row) => {
+    const key = row.isin ?? `name:${row.product}`;
+    return {
+      user_id: userId,
+      account_id: accountId,
+      asset_id: assetIdByKey.get(key)!,
+      operation: row.operation,
+      occurred_on: row.date,
+      occurred_at: row.datetime,
+      quantity: row.quantity,
+      price: row.price,
+      local_value: row.localValue,
+      fees: row.fees,
+      total_value: row.totalValue,
+      currency: row.currency,
+      exchange_rate: row.exchangeRate,
+      description: row.description,
+      order_id: row.orderId,
+      source_hash: row.sourceHash,
+      source: "degiro",
+      raw_row: row.raw,
+    };
+  });
+
+  const { data: insertedRows, error: insertError } = await supabase
+    .from("asset_transactions")
+    .upsert(rowsToInsert, { onConflict: "user_id,source_hash", ignoreDuplicates: true })
+    .select("id");
+
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
+
+  const rowsInserted = insertedRows?.length ?? 0;
+  const rowsDuplicated = rowsToInsert.length - rowsInserted;
+
+  await supabase.from("csv_imports").insert({
+    user_id: userId,
+    account_id: accountId,
+    file_name: fileName,
+    file_hash: fileHash,
+    rows_total: parsed.rows.length,
+    rows_inserted: rowsInserted,
+    rows_duplicated: rowsDuplicated,
+    rows_failed: parsed.skipped,
+  });
+
+  // --- 3. Reconcilia o saldo da conta com o valor que a própria DEGIRO
+  //         reportou (coluna "Saldo") na linha mais recente do ficheiro.
+  //         Isto garante que depósitos, levantamentos, cash sweeps e juros
+  //         — que não modelamos individualmente — continuam refletidos no
+  //         saldo livre da conta, sem termos de os tratar um a um.
+  let reconciledBalance: { balance: number; at: string } | null = null;
+  if (parsed.latestBalance) {
+    const { error: reconcileError } = await supabase.rpc("reconcile_account_balance", {
+      p_account_id: accountId,
+      p_balance: parsed.latestBalance.balance,
+      p_at: parsed.latestBalance.occurredAt,
+    });
+    if (reconcileError) {
+      console.error("Falha ao reconciliar saldo da conta:", reconcileError.message);
+    } else {
+      reconciledBalance = { balance: parsed.latestBalance.balance, at: parsed.latestBalance.occurredAt };
+    }
+  }
+
+  return NextResponse.json({
+    alreadyImported: false,
+    format: parsed.format,
+    rowsTotal: parsed.rows.length,
+    rowsInserted,
+    rowsDuplicated,
+    rowsSkipped: parsed.skipped,
+    warnings: parsed.warnings,
+    reconciledBalance,
+  });
+}
+</file>
+
+<file path="src/app/contas/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { AccountForm } from "@/components/accounts/account-form";
+import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
+import { Card, CardLabel } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format";
+import type { Account } from "@/types/database";
+
+const TYPE_LABEL: Record<Account["type"], string> = {
+  banco: "Banco",
+  poupanca: "Poupança",
+  corretora: "Corretora",
+  numerario: "Numerário",
+};
+
+export default async function ContasPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("user_id", user!.id)
+    .eq("is_archived", false)
+    .order("type")
+    .order("name");
+
+  const list: Account[] = accounts ?? [];
+  const total = list.reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
+          Liquidez
+        </p>
+        <h1 className="font-display text-3xl text-text">Contas</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Bancos, corretoras e numerário. Os saldos atualizam-se automaticamente com as
+          receitas, despesas e transações de investimento que registares.
+        </p>
+      </header>
+
+      <Card className="mb-8">
+        <CardLabel className="mb-3">Nova Conta</CardLabel>
+        <AccountForm />
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <CardLabel>As Tuas Contas</CardLabel>
+          <span className="tabular text-sm text-text-muted">
+            Total: <span className="text-text font-medium">{formatCurrency(total)}</span>
+          </span>
+        </div>
+
+        {list.length === 0 ? (
+          <p className="text-sm text-text-muted py-6 text-center">
+            Ainda não tens contas. Cria a primeira acima.
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {list.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center justify-between py-3 border-b border-line-soft last:border-0"
+              >
+                <div>
+                  <p className="text-sm text-text">{a.name}</p>
+                  <p className="text-xs text-text-faint mt-0.5">
+                    {TYPE_LABEL[a.type]}
+                    {a.institution ? ` · ${a.institution}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="tabular text-sm text-text">
+                    {formatCurrency(Number(a.current_balance), a.currency)}
+                  </span>
+                  <ArchiveAccountButton accountId={a.id} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/login/page.tsx">
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) {
+      toast.error(
+        error.message === "Invalid login credentials"
+          ? "Email ou palavra-passe incorretos."
+          : error.message
+      );
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+        <p className="font-display italic text-3xl text-text mb-1">Livro</p>
+        <p className="text-sm text-text-muted mb-8">
+          O teu gestor de património e finanças pessoais.
+        </p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <label className="text-[11px] uppercase tracking-[0.14em] text-text-faint">Email</label>
+          <input
+            type="email"
+            required
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@exemplo.com"
+            className="rounded-md border border-line bg-surface-alt px-3 py-2.5 text-sm text-text outline-none focus:border-gold"
+          />
+
+          <label className="text-[11px] uppercase tracking-[0.14em] text-text-faint mt-2">
+            Palavra-passe
+          </label>
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            className="rounded-md border border-line bg-surface-alt px-3 py-2.5 text-sm text-text outline-none focus:border-gold"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-3 rounded-md bg-gold px-3 py-2.5 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? "A entrar..." : "Entrar"}
+          </button>
+        </form>
+
+        <p className="text-xs text-text-faint mt-6 leading-relaxed">
+          Não há registo público. As contas são criadas pelo administrador com{" "}
+          <code className="text-text-muted">npm run create-user</code>.
+        </p>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/accounts/account-form.tsx">
+"use client";
+
+import { useRef, useTransition } from "react";
+import { createAccount } from "@/app/contas/actions";
+import { toast } from "sonner";
+
+export function AccountForm() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
+
+  async function action(formData: FormData) {
+    startTransition(async () => {
+      try {
+        await createAccount(formData);
+        formRef.current?.reset();
+        toast.success("Conta criada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao criar conta.");
+      }
+    });
+  }
+
+  return (
+    <form ref={formRef} action={action} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <input
+        name="name"
+        required
+        placeholder="Nome (ex: Santander)"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+      />
+      <select
+        name="type"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+      >
+        <option value="banco">Banco</option>
+        <option value="poupanca">Poupança</option>
+        <option value="corretora">Corretora</option>
+        <option value="numerario">Numerário</option>
+      </select>
+      <input
+        name="institution"
+        placeholder="Instituição (opcional)"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+      />
+      <input
+        name="opening_balance"
+        placeholder="Saldo inicial"
+        inputMode="decimal"
+        defaultValue="0"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+      />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="rounded-md bg-gold px-3 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+      >
+        {isPending ? "A criar..." : "Adicionar Conta"}
+      </button>
+      <input type="hidden" name="currency" value="EUR" />
+    </form>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/degiro-upload.tsx">
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { UploadCloud } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import type { Account } from "@/types/database";
+
+interface ImportResult {
+  alreadyImported?: boolean;
+  message?: string;
+  format?: string;
+  rowsTotal?: number;
+  rowsInserted?: number;
+  rowsDuplicated?: number;
+  rowsSkipped?: number;
+  warnings?: string[];
+  error?: string;
+  reconciledBalance?: { balance: number; at: string } | null;
+}
+
+export function DegiroUpload({ brokerAccounts }: { brokerAccounts: Account[] }) {
+  const [accountId, setAccountId] = useState(brokerAccounts[0]?.id ?? "");
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  function handleFile(file: File) {
+    if (!accountId) {
+      toast.error("Escolhe primeiro a corretora onde este extrato foi gerado.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const csvText = await file.text();
+        const res = await fetch("/api/degiro/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ csvText, fileName: file.name, accountId }),
+        });
+        const data: ImportResult = await res.json();
+        setResult(data);
+
+        if (!res.ok) {
+          toast.error(data.error ?? "Erro ao importar o ficheiro.");
+          return;
+        }
+        if (data.alreadyImported) {
+          toast.info(data.message ?? "Ficheiro já importado anteriormente.");
+          return;
+        }
+        toast.success(`${data.rowsInserted} transação(ões) importada(s).`);
+        router.refresh();
+      } catch {
+        toast.error("Não foi possível ler o ficheiro.");
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    });
+  }
+
+  if (brokerAccounts.length === 0) {
+    return (
+      <p className="text-sm text-text-muted">
+        Precisas de uma conta do tipo &quot;Corretora&quot; antes de importares. Vai a{" "}
+        <a href="/contas" className="text-gold underline underline-offset-2">
+          Contas
+        </a>{" "}
+        e cria uma (ex: DEGIRO).
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <select
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold sm:w-64"
+        >
+          {brokerAccounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
+        <label
+          className={`flex-1 flex items-center justify-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+            isPending
+              ? "border-line text-text-faint opacity-60"
+              : "border-line-soft text-text-muted hover:border-gold hover:text-gold"
+          }`}
+        >
+          <UploadCloud size={16} strokeWidth={1.75} />
+          {isPending ? "A processar..." : "Escolher CSV da DEGIRO (Transacções ou Estado de Conta)"}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            disabled={isPending}
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+          />
+        </label>
+      </div>
+
+      {result && (
+        <div className="rounded-md border border-line-soft bg-surface-alt/60 px-4 py-3 text-xs text-text-muted">
+          {result.error ? (
+            <p className="text-loss">{result.error}</p>
+          ) : result.alreadyImported ? (
+            <p>{result.message}</p>
+          ) : (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <span>
+                Formato detetado: <span className="text-text">{result.format}</span>
+              </span>
+              <span>
+                Linhas no ficheiro: <span className="text-text">{result.rowsTotal}</span>
+              </span>
+              <span className="text-gain">Inseridas: {result.rowsInserted}</span>
+              <span>Duplicadas (ignoradas): {result.rowsDuplicated}</span>
+              {(result.rowsSkipped ?? 0) > 0 && <span className="text-loss">Ignoradas: {result.rowsSkipped}</span>}
+            </div>
+          )}
+          {result.warnings && result.warnings.length > 0 && (
+            <ul className="mt-2 list-disc list-inside text-text-faint">
+              {result.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          )}
+          {result.reconciledBalance && (
+            <p className="mt-2 text-gain">
+              Saldo da conta atualizado para {result.reconciledBalance.balance.toLocaleString("pt-PT", {
+                style: "currency",
+                currency: "EUR",
+              })}{" "}
+              (conforme reportado pela DEGIRO em{" "}
+              {new Date(result.reconciledBalance.at).toLocaleDateString("pt-PT")}).
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/holdings-table.tsx">
+import { formatCurrency, formatPercent } from "@/lib/format";
+
+export interface PositionRow {
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  isin: string | null;
+  quantity_held: number;
+  net_invested: number;
+  total_dividends: number;
+  currentPrice: number | null;
+  marketValue: number;
+}
+
+export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
+  if (positions.length === 0) {
+    return (
+      <p className="text-sm text-text-muted py-6 text-center">
+        Ainda sem posições. Importa um extrato da DEGIRO acima.
+      </p>
+    );
+  }
+
+  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
+  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
+            <th className="py-2 pr-4 font-medium">Ativo</th>
+            <th className="py-2 pr-4 font-medium text-right">Qtd.</th>
+            <th className="py-2 pr-4 font-medium text-right">Custo Médio</th>
+            <th className="py-2 pr-4 font-medium text-right">Preço Atual</th>
+            <th className="py-2 pr-4 font-medium text-right">Valor Atual</th>
+            <th className="py-2 pr-4 font-medium text-right">Peso</th>
+            <th className="py-2 pr-4 font-medium text-right">Lucro/Prejuízo</th>
+            <th className="py-2 font-medium text-right">Dividendos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((p) => {
+            const pnl = p.marketValue - p.net_invested;
+            const pnlPct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
+            const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
+            const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
+            return (
+              <tr key={p.asset_id} className="border-b border-line-soft last:border-0">
+                <td className="py-2.5 pr-4">
+                  <p className="text-text">{p.name}</p>
+                  <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                  {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })}
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                  {formatCurrency(avgCost)}
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular text-text">
+                  {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular text-text">
+                  {formatCurrency(p.marketValue)}
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                  {(weight * 100).toFixed(1)}%
+                </td>
+                <td
+                  className={`py-2.5 pr-4 text-right tabular ${
+                    pnl >= 0 ? "text-gain" : "text-loss"
+                  }`}
+                >
+                  {formatCurrency(pnl)}
+                  <span className="text-xs ml-1 opacity-70">({formatPercent(pnlPct)})</span>
+                </td>
+                <td className="py-2.5 text-right tabular text-text-muted">
+                  {formatCurrency(p.total_dividends)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/reports/period-filter.tsx">
+"use client";
+
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { cx } from "@/lib/format";
+import { PERIODS, type PeriodKey } from "@/lib/reports/period";
+
+export function PeriodFilter({ active }: { active: PeriodKey }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {PERIODS.map((p) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("period", p.key);
+        const isActive = active === p.key;
+        return (
+          <Link
+            key={p.key}
+            href={`${pathname}?${params.toString()}`}
+            className={cx(
+              "rounded-full border px-3 py-1.5 text-xs transition-colors",
+              isActive
+                ? "border-gold text-gold bg-surface-alt"
+                : "border-line text-text-muted hover:text-text"
+            )}
+          >
+            {p.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+</file>
+
+<file path="src/lib/data/net-worth.ts">
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Account, PortfolioPosition } from "@/types/database";
+
+export interface NetWorthBreakdown {
+  totalNetWorth: number;
+  cashInBanks: number;
+  cashInSavings: number;
+  cashInBrokers: number;
+  physicalCash: number;
+  portfolioValue: number;
+  portfolioCost: number;
+  portfolioPnl: number;
+  accounts: Account[];
+  positions: (PortfolioPosition & { currentPrice: number | null; marketValue: number })[];
+}
+
+/**
+ * Agrega, num único objeto, tudo o que o Dashboard de Património precisa:
+ * saldos das contas (banco / corretora / numerário) + valor atual do
+ * portefólio de investimentos, usando o cache de cotações `asset_quotes`.
+ */
+export async function getNetWorthBreakdown(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  userId: string
+): Promise<NetWorthBreakdown> {
+  const [{ data: accounts }, { data: positions }, { data: quotes }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", userId).eq("is_archived", false),
+    supabase.from("portfolio_positions").select("*").eq("user_id", userId),
+    supabase.from("asset_quotes").select("*"),
+  ]);
+
+  const quoteByAsset = new Map((quotes ?? []).map((q: { asset_id: string; price: number }) => [q.asset_id, q.price]));
+
+  const activePositions = (positions ?? []).filter((p: PortfolioPosition) => p.quantity_held > 0.0000001);
+
+  const enrichedPositions = activePositions.map((p: PortfolioPosition) => {
+    const currentPrice = quoteByAsset.get(p.asset_id) ?? null;
+    const marketValue = currentPrice !== null ? currentPrice * p.quantity_held : p.net_invested;
+    return { ...p, currentPrice, marketValue };
+  });
+
+  const portfolioValue = enrichedPositions.reduce((sum, p) => sum + p.marketValue, 0);
+  const portfolioCost = activePositions.reduce((sum: number, p: PortfolioPosition) => sum + p.net_invested, 0);
+
+  const accountsList: Account[] = accounts ?? [];
+  const cashInBanks = accountsList
+    .filter((a) => a.type === "banco")
+    .reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const cashInSavings = accountsList
+    .filter((a) => a.type === "poupanca")
+    .reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const cashInBrokers = accountsList
+    .filter((a) => a.type === "corretora")
+    .reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const physicalCash = accountsList
+    .filter((a) => a.type === "numerario")
+    .reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  const totalNetWorth = cashInBanks + cashInSavings + cashInBrokers + physicalCash + portfolioValue;
+
+  return {
+    totalNetWorth,
+    cashInBanks,
+    cashInSavings,
+    cashInBrokers,
+    physicalCash,
+    portfolioValue,
+    portfolioCost,
+    portfolioPnl: portfolioValue - portfolioCost,
+    accounts: accountsList,
+    positions: enrichedPositions,
+  };
+}
+</file>
+
+<file path="src/types/database.ts">
+// Tipos manuais que espelham supabase/schema.sql.
+// Para gerar automaticamente a partir do teu projeto real, corre:
+//   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
+
+export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
+export type CategoryKind = "receita" | "despesa";
+export type TransactionType = "receita" | "despesa" | "transferencia";
+export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
+
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  institution: string | null;
+  opening_balance: number;
+  current_balance: number;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Category {
+  id: string;
+  user_id: string;
+  name: string;
+  kind: CategoryKind;
+  color: string | null;
+  icon: string | null;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  occurred_on: string;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Asset {
+  id: string;
+  isin: string | null;
+  symbol: string | null;
+  name: string;
+  currency: string;
+  created_at: string;
+}
+
+export interface AssetTransaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  asset_id: string;
+  operation: AssetOperation;
+  occurred_on: string;
+  occurred_at: string | null;
+  quantity: number | null;
+  price: number | null;
+  local_value: number | null;
+  fees: number | null;
+  total_value: number;
+  currency: string | null;
+  exchange_rate: number | null;
+  description: string | null;
+  order_id: string | null;
+  source_hash: string;
+  source: string;
+  raw_row: Record<string, string> | null;
+  created_at: string;
+}
+
+export interface AssetQuote {
+  asset_id: string;
+  price: number;
+  currency: string;
+  fetched_at: string;
+}
+
+export interface CsvImport {
+  id: string;
+  user_id: string;
+  account_id: string | null;
+  file_name: string;
+  file_hash: string;
+  rows_total: number;
+  rows_inserted: number;
+  rows_duplicated: number;
+  rows_failed: number;
+  created_at: string;
+}
+
+export interface PortfolioPosition {
+  user_id: string;
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  isin: string | null;
+  currency: string;
+  quantity_held: number;
+  net_invested: number;
+  total_dividends: number;
+}
+
+// Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
+// Substitui por `supabase gen types` quando ligares a um projeto real.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Database = any;
+</file>
+
+<file path="src/proxy.ts">
+import { createServerClient } from "@supabase/ssr";
+import { type NextRequest, NextResponse } from "next/server";
+
+const PUBLIC_PATHS = ["/login"];
+
+export async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+  const isRoot = request.nextUrl.pathname === "/";
+
+  if (!user && !isPublic && !isRoot) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (user && (isPublic || isRoot)) {
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = "/dashboard";
+    return NextResponse.redirect(dashboardUrl);
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+};
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /**
+   * Necessário quando acedes ao dev server por um IP de rede local em vez de
+   * "localhost" (ex: através do adaptador virtual do WSL2 no Windows, ou a
+   * partir de outro dispositivo na mesma rede). Sem isto, o Next.js bloqueia
+   * os pedidos de HMR e dos chunks JS/CSS por segurança, e a app fica sem
+   * estilos nem interatividade.
+   *
+   * Adiciona aqui o(s) IP(s) que aparecem no aviso "Blocked cross-origin
+   * request ... from '<IP>'." no terminal.
+   */
+  allowedDevOrigins: ["172.30.240.1"],
+};
+
+export default nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "patrimonio-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "create-user": "tsx --env-file=.env.local scripts/create-user.ts",
+    "list-users": "tsx --env-file=.env.local scripts/list-users.ts"
+  },
+  "dependencies": {
+    "@fontsource/fraunces": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.37.0",
+    "next": "16.3.3",
+    "papaparse": "^5.7.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "recharts": "^3.10.1",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.6.0",
+    "yahoo-finance2": "^4.0.2",
+    "zod": "^4.5.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="src/app/dashboard/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { DonutChart } from "@/components/charts/donut-chart";
+import { Card, CardLabel } from "@/components/ui/card";
+import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const breakdown = await getNetWorthBreakdown(supabase, user!.id);
+
+  const slices = [
+    { name: "Contas Bancárias", value: breakdown.cashInBanks, color: "var(--color-info)" },
+    { name: "Poupança", value: breakdown.cashInSavings, color: "#B48CE0" },
+    { name: "Corretoras (livre)", value: breakdown.cashInBrokers, color: "var(--color-gold)" },
+    { name: "Numerário", value: breakdown.physicalCash, color: "#8A93A3" },
+    { name: "Portefólio", value: breakdown.portfolioValue, color: "var(--color-gain)" },
+  ];
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-10">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
+          Património Global
+        </p>
+        <p className="font-display text-5xl tabular text-text">
+          {formatCurrency(breakdown.totalNetWorth)}
+        </p>
+        <p className="text-sm text-text-muted mt-2">
+          Soma de contas bancárias, poupança, saldo livre em corretoras, numerário e valor atual
+          do portefólio de investimentos.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+        <StatCard label="Contas Bancárias" value={breakdown.cashInBanks} />
+        <StatCard label="Poupança" value={breakdown.cashInSavings} />
+        <StatCard label="Corretoras (saldo livre)" value={breakdown.cashInBrokers} />
+        <StatCard label="Numerário" value={breakdown.physicalCash} />
+        <StatCard label="Portefólio (valor atual)" value={breakdown.portfolioValue} tone="gold" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <Card className="lg:col-span-2">
+          <CardLabel>Distribuição do Património</CardLabel>
+          <div className="mt-4">
+            <DonutChart slices={slices} emptyMessage="Ainda sem saldo registado — adiciona contas e transações para veres a distribuição." />
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardLabel>Investimentos — Custo vs. Valor Atual</CardLabel>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-text-faint">Capital investido</p>
+              <p className="tabular text-xl text-text mt-1">{formatCurrency(breakdown.portfolioCost)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-faint">Lucro / Prejuízo não realizado</p>
+              <p
+                className={`tabular text-xl mt-1 ${
+                  breakdown.portfolioPnl >= 0 ? "text-gain" : "text-loss"
+                }`}
+              >
+                {formatSignedCurrency(breakdown.portfolioPnl)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 ledger-rule pt-4">
+            <p className="text-xs text-text-faint mb-3">Posições atuais</p>
+            {breakdown.positions.length === 0 ? (
+              <p className="text-sm text-text-muted">
+                Ainda não importaste transações de bolsa. Vai a{" "}
+                <a href="/portfolio" className="text-gold underline underline-offset-2">
+                  Portefólio
+                </a>{" "}
+                para carregar o CSV da DEGIRO.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {breakdown.positions.map((p) => (
+                  <li
+                    key={p.asset_id}
+                    className="flex items-center justify-between text-sm py-1.5 border-b border-line-soft last:border-0"
+                  >
+                    <span className="text-text">{p.name}</span>
+                    <span className="tabular text-text-muted">
+                      {p.quantity_held.toLocaleString("pt-PT")} un.
+                    </span>
+                    <span className="tabular text-text">{formatCurrency(p.marketValue)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/portfolio/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { DegiroUpload } from "@/components/portfolio/degiro-upload";
+import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
+import { HoldingsTable } from "@/components/portfolio/holdings-table";
+import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
+import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { formatPercent } from "@/lib/format";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import type { Account } from "@/types/database";
+
+const PALETTE = [
+  "var(--color-gold)",
+  "var(--color-gain)",
+  "var(--color-info)",
+  "#B48CE0",
+  "#F2789F",
+  "#5EC8D8",
+  "#D9A441",
+];
+
+export default async function PortfolioPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: accounts }, breakdown] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
+    getNetWorthBreakdown(supabase, user!.id),
+  ]);
+
+  const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
+  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+  const performancePct =
+    breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
+
+  const compositionSlices: DonutSlice[] = [...breakdown.positions]
+    .sort((a, b) => b.marketValue - a.marketValue)
+    .map((p, i) => ({
+      name: p.name,
+      value: p.marketValue,
+      color: PALETTE[i % PALETTE.length],
+    }));
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
+        <h1 className="font-display text-3xl text-text">Portefólio</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
+          acompanha o valor atual e o lucro ou prejuízo de cada posição.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <StatCard label="Capital investido" value={breakdown.portfolioCost} />
+        <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
+        <StatCard
+          label="Lucro / Prejuízo"
+          value={breakdown.portfolioPnl}
+          tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
+        />
+        <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
+        <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
+      </div>
+
+      <Card className="mb-8">
+        <CardLabel className="mb-3">Importar Extrato DEGIRO</CardLabel>
+        <DegiroUpload brokerAccounts={brokerAccounts} />
+      </Card>
+
+      {breakdown.positions.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+          <Card className="lg:col-span-3">
+            <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
+            <DonutChart slices={compositionSlices} />
+          </Card>
+
+          <Card className="lg:col-span-2 flex flex-col justify-between">
+            <div>
+              <CardLabel className="mb-3">Desempenho Global</CardLabel>
+              <p
+                className={`font-display text-4xl tabular ${
+                  performancePct >= 0 ? "text-gain" : "text-loss"
+                }`}
+              >
+                {formatPercent(performancePct)}
+              </p>
+              <p className="text-xs text-text-faint mt-2">
+                Lucro/prejuízo não realizado face ao capital investido.
+              </p>
+            </div>
+            <div className="mt-6">
+              <PerformanceHighlights positions={breakdown.positions} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <CardLabel>Posições Atuais</CardLabel>
+          <RefreshQuotesButton />
+        </div>
+        <HoldingsTable positions={breakdown.positions} />
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/relatorios/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { PeriodFilter } from "@/components/reports/period-filter";
+import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
+import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
+import { StatCard } from "@/components/dashboard/stat-card";
+import type { Category, Transaction } from "@/types/database";
+
+function groupByCategory(
+  rows: Transaction[],
+  categoryById: Map<string, Category>
+): DonutSlice[] {
+  const map = new Map<string, DonutSlice>();
+  for (const t of rows) {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    const key = cat?.id ?? "sem_categoria";
+    const name = cat?.name ?? "Sem categoria";
+    const color = cat?.color ?? "#57616F";
+    const existing = map.get(key);
+    if (existing) {
+      existing.value += Number(t.amount);
+    } else {
+      map.set(key, { name, value: Number(t.amount), color });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.value - a.value);
+}
+
+export default async function RelatoriosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const { period: periodParam } = await searchParams;
+  const period = (periodParam ?? "3m") as PeriodKey;
+  const { from } = resolvePeriodRange(period);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: transactions }, { data: categories }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user!.id)
+      .gte("occurred_on", from)
+      .order("occurred_on", { ascending: false }),
+    supabase.from("categories").select("*").eq("user_id", user!.id),
+  ]);
+
+  const transactionsList: Transaction[] = transactions ?? [];
+  const categoriesList: Category[] = categories ?? [];
+  const categoryById = new Map(categoriesList.map((c) => [c.id, c]));
+
+  const expenses = transactionsList.filter((t) => t.type === "despesa");
+  const income = transactionsList.filter((t) => t.type === "receita");
+
+  const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const expensesByCategory = groupByCategory(expenses, categoryById);
+  const incomeByCategory = groupByCategory(income, categoryById);
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
+          <h1 className="font-display text-3xl text-text">Relatórios</h1>
+        </div>
+        <PeriodFilter active={period} />
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <StatCard label="Receitas no período" value={totalIncome} tone="gain" />
+        <StatCard label="Despesas no período" value={totalExpenses} tone="loss" />
+        <StatCard label="Balanço" value={totalIncome - totalExpenses} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
+          <DonutChart
+            slices={expensesByCategory}
+            emptyMessage="Sem despesas registadas neste período."
+          />
+        </Card>
+
+        <Card>
+          <CardLabel className="mb-4">Receitas por Categoria</CardLabel>
+          <DonutChart
+            slices={incomeByCategory}
+            emptyMessage="Sem receitas registadas neste período."
+          />
+        </Card>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/lib/degiro/parser.ts">
+import Papa from "papaparse";
+import { normalize, parseEuroNumber, parseDegiroDate, combineDateTime, sha256Hex } from "./format";
+import type { AssetOperation } from "@/types/database";
+
+/**
+ * =========================================================================
+ * PARSER DE CSV DA DEGIRO
+ * =========================================================================
+ * A DEGIRO tem, na prática, dois exports distintos que os utilizadores
+ * costumam carregar:
+ *
+ *   1. "Transacções" (Transactions.csv)  — uma linha por execução de bolsa,
+ *      com colunas explícitas de Quantidade e Preço.
+ *
+ *   2. "Estado de Conta" (Account.csv)   — um extrato de movimentos de caixa
+ *      (compras, vendas, dividendos, comissões, depósitos...) onde a
+ *      operação tem de ser inferida a partir do texto livre da coluna
+ *      "Descrição" / "Mutação".
+ *
+ * Este parser deteta automaticamente o formato pelo cabeçalho e lida com:
+ *   - delimitador ";" (locale PT/ES) ou "," (locale EN/US)
+ *   - números europeus "1.234,56"
+ *   - colunas de moeda "sem nome" que a DEGIRO intercala a seguir a cada
+ *     coluna de valor (ex: [Valor Local] [ ] -> moeda | valor)
+ *   - datas "dd-mm-aaaa"
+ * =========================================================================
+ */
+
+export interface ParsedDegiroRow {
+  /** Índice da linha no ficheiro original (para mostrar erros ao utilizador). */
+  rowIndex: number;
+  date: string; // ISO aaaa-mm-dd
+  datetime: string | null;
+  product: string;
+  isin: string | null;
+  operation: AssetOperation;
+  quantity: number | null;
+  price: number | null;
+  localValue: number | null;
+  fees: number;
+  totalValue: number;
+  currency: string;
+  exchangeRate: number | null;
+  description: string;
+  orderId: string | null;
+  /**
+   * Saldo da conta (coluna "Saldo") reportado pela própria DEGIRO nesta
+   * linha, se existir. É o valor mais fiável para reconciliar o saldo
+   * livre da conta — reflete TODOS os movimentos (depósitos, levantamentos,
+   * cash sweeps, juros, compras, vendas, dividendos, comissões), incluindo
+   * os que não conseguimos/quisemos modelar individualmente.
+   */
+  balance: number | null;
+  /** Hash estável da linha original — usado para deduplicação. */
+  sourceHash: string;
+  /** Linha crua (mapa header->valor) guardada para auditoria. */
+  raw: Record<string, string>;
+}
+
+export interface DegiroParseResult {
+  format: "transacoes" | "estado_conta" | "desconhecido";
+  rows: ParsedDegiroRow[];
+  warnings: string[];
+  skipped: number;
+  /**
+   * O checkpoint de saldo mais recente encontrado no ficheiro (de QUALQUER
+   * linha, incluindo movimentos de caixa que não geram uma
+   * "transação de bolsa"). Usado para reconciliar o saldo livre da conta
+   * com o valor que a própria DEGIRO reporta, em vez de o recalcularmos a
+   * partir da soma das nossas próprias transações (frágil e incompleto).
+   */
+  latestBalance: { balance: number; occurredAt: string } | null;
+}
+
+// ---------------------------------------------------------------------
+// Deteção de delimitador e leitura crua do CSV
+// ---------------------------------------------------------------------
+
+function detectDelimiter(sampleLine: string): string {
+  const semicolons = (sampleLine.match(/;/g) || []).length;
+  const commas = (sampleLine.match(/,/g) || []).length;
+  return semicolons >= commas ? ";" : ",";
+}
+
+/** Faz parse cru do texto CSV para array de arrays de strings. */
+function parseRaw(text: string): string[][] {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter = detectDelimiter(firstLine);
+  const result = Papa.parse<string[]>(text, {
+    delimiter,
+    skipEmptyLines: true,
+  });
+  return result.data as string[][];
+}
+
+// ---------------------------------------------------------------------
+// Resolução de colunas por "fuzzy matching" de aliases
+// ---------------------------------------------------------------------
+
+const HEADER_ALIASES: Record<string, string[]> = {
+  date: ["data", "date", "fecha"],
+  time: ["hora", "time", "hora local"],
+  valueDate: ["data valor", "value date", "fecha valor"],
+  product: ["produto", "product", "producto"],
+  isin: ["isin"],
+  quantity: ["quantidade", "quantity", "cantidad"],
+  price: ["preco", "price", "precio"],
+  localValue: ["valor local", "local value", "valor en moneda local"],
+  value: ["valor", "value", "importe", "mutacao", "mutação", "mutation", "change", "mudanca", "mudança"],
+  exchangeRate: ["taxa de cambio", "taxa de câmbio", "exchange rate", "tipo de cambio"],
+  fees: ["custos de transacao", "custos de transação", "transaction fee", "transaction costs", "costes de transaccion"],
+  total: ["total"],
+  description: ["descricao", "descrição", "description", "descripcion"],
+  orderId: ["id da ordem", "id ordem", "order id", "id de la orden"],
+  balance: ["saldo", "balance"],
+};
+
+/** Normaliza um cabeçalho para comparação (sem acentos, minúsculas, sem excesso de espaço). */
+function normHeader(h: string): string {
+  return normalize(h).replace(/\s+/g, " ");
+}
+
+/**
+ * Localiza, para cada campo lógico, o índice da coluna correspondente no
+ * cabeçalho, tentando todos os aliases conhecidos.
+ */
+function resolveColumns(header: string[]): Record<string, number> {
+  const normalized = header.map(normHeader);
+  const cols: Record<string, number> = {};
+  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+    // 1ª passagem: correspondência exata (evita que "Data valor" seja
+    // confundido com a coluna "Valor" só porque contém essa substring).
+    let idx = normalized.findIndex((h) => aliases.includes(h));
+    // 2ª passagem: correspondência parcial, só usada se nada bateu certo.
+    if (idx === -1) {
+      idx = normalized.findIndex((h) => h !== "" && aliases.some((a) => h.includes(a)));
+    }
+    if (idx !== -1) cols[field] = idx;
+  }
+  return cols;
+}
+
+/**
+ * A DEGIRO por vezes exporta um par [código de moeda][valor] onde a coluna
+ * do código de moeda não tem cabeçalho (fica em branco). Quando isso
+ * acontece, o valor numérico está na coluna seguinte à que encontrámos.
+ * Esta função deteta esse padrão: se a célula na posição `idx` parecer um
+ * código de moeda (3 letras maiúsculas) em vez de um número, avança 1.
+ */
+function resolveValueAndCurrency(
+  row: string[],
+  idx: number | undefined
+): { value: number | null; currency: string | null } {
+  if (idx === undefined) return { value: null, currency: null };
+  const cell = (row[idx] ?? "").trim();
+  if (/^[A-Z]{3}$/.test(cell)) {
+    // A própria coluna resolvida é o código de moeda -> o valor está a seguir.
+    return { value: parseEuroNumber(row[idx + 1]), currency: cell };
+  }
+  // Verifica se a coluna seguinte é que traz o código de moeda (par invertido).
+  const nextCell = (row[idx + 1] ?? "").trim();
+  if (/^[A-Z]{3}$/.test(nextCell)) {
+    return { value: parseEuroNumber(cell), currency: nextCell };
+  }
+  return { value: parseEuroNumber(cell), currency: null };
+}
+
+// ---------------------------------------------------------------------
+// Classificação da operação a partir do texto livre (Descrição / Mutação)
+// ---------------------------------------------------------------------
+
+const KEYWORDS: Record<AssetOperation, string[]> = {
+  compra: ["compra", "buy", "compra de acciones"],
+  venda: ["venda", "sell", "venta"],
+  dividendo: ["dividendo", "dividend", "dividend tax", "imposto sobre dividendo", "retencao de imposto"],
+  comissao: [
+    "custos de transacao",
+    "custos de transação",
+    "comissao",
+    "comissão",
+    "comiss", // cobre "Comissões de transação DEGIRO e/ou taxas de terceiros"
+    "transaction fee",
+    "transaction costs",
+    "connectivity fee",
+    "taxa de conectividade",
+    "custo de conectividade",
+    "conectividade",
+    "corretagem",
+    "exchange connection fee",
+    "costes de conexion",
+  ],
+  outro: [],
+};
+
+export function classifyOperation(description: string, quantity: number | null): AssetOperation {
+  const text = normalize(description);
+  for (const op of ["dividendo", "comissao", "compra", "venda"] as const) {
+    if (KEYWORDS[op].some((kw) => text.includes(normalize(kw)))) return op;
+  }
+  // Sem correspondência textual: usa o sinal da quantidade como último recurso.
+  if (quantity !== null) return quantity > 0 ? "compra" : quantity < 0 ? "venda" : "outro";
+  return "outro";
+}
+
+/**
+ * Tenta extrair quantidade e preço embutidos no texto livre.
+ *
+ * A DEGIRO escreve, no "Estado de Conta", frases como:
+ *   "Compra 3 SAP SE@147,54 EUR (DE0007164600)"
+ *   "Compra 1 iShares Core S&P 500 UCITS ETF USD (Acc)@598,85 EUR (ISIN)"
+ *
+ * A quantidade vem logo a seguir a "Compra"/"Venda"; o preço vem a seguir ao
+ * "@", com o nome do produto (que pode conter números, "&", parênteses...)
+ * pelo meio — por isso não basta procurar "número @ número" diretamente.
+ */
+function extractQtyPriceFromText(text: string): { quantity: number | null; price: number | null } {
+  const withVerb = text.match(
+    /^(?:compra|venda|buy|sell)\s+(\d+(?:[.,]\d+)?)\s+.+?@\s*(\d+(?:[.,]\d+)?)/i
+  );
+  if (withVerb) {
+    return { quantity: parseEuroNumber(withVerb[1]), price: parseEuroNumber(withVerb[2]) };
+  }
+  // Fallback genérico para outros formatos: "10 @ 25,30".
+  const generic = text.match(/(\d+[.,]?\d*)\s*(?:@|a)\s*(\d+[.,]?\d*)/i);
+  if (!generic) return { quantity: null, price: null };
+  return { quantity: parseEuroNumber(generic[1]), price: parseEuroNumber(generic[2]) };
+}
+
+// ---------------------------------------------------------------------
+// Parser principal
+// ---------------------------------------------------------------------
+
+export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
+  const table = parseRaw(text);
+  if (table.length < 2) {
+    return {
+      format: "desconhecido",
+      rows: [],
+      warnings: ["Ficheiro vazio ou sem linhas de dados."],
+      skipped: 0,
+      latestBalance: null,
+    };
+  }
+
+  const header = table[0];
+  const cols = resolveColumns(header);
+  const warnings: string[] = [];
+
+  if (cols.date === undefined || cols.product === undefined) {
+    warnings.push(
+      "Não foi possível reconhecer as colunas 'Data' e 'Produto'. Verifica se exportaste o CSV correto da DEGIRO."
+    );
+  }
+
+  const format: DegiroParseResult["format"] =
+    cols.quantity !== undefined && cols.price !== undefined
+      ? "transacoes"
+      : cols.description !== undefined
+      ? "estado_conta"
+      : "desconhecido";
+
+  const rows: ParsedDegiroRow[] = [];
+  let skipped = 0;
+  let cashRowsSkipped = 0;
+  let latestBalance: DegiroParseResult["latestBalance"] = null;
+
+  for (let i = 1; i < table.length; i++) {
+    const raw = table[i];
+    if (!raw || raw.every((c) => !c || c.trim() === "")) continue;
+
+    const isoDate = parseDegiroDate(cols.date !== undefined ? raw[cols.date] : undefined);
+    if (!isoDate) {
+      skipped++;
+      continue;
+    }
+
+    const time = cols.time !== undefined ? raw[cols.time] : undefined;
+    const occurredAt = combineDateTime(isoDate, time) ?? `${isoDate}T00:00:00`;
+
+    // Regista o checkpoint de saldo desta linha (se existir), independen-
+    // temente de a linha vir a ser guardada como "transação de bolsa" ou
+    // ignorada como movimento de caixa — o saldo mais recente do ficheiro
+    // é o que interessa para reconciliar a conta, esteja onde estiver.
+    const rowBalance = resolveValueAndCurrency(raw, cols.balance).value;
+    if (rowBalance !== null && (!latestBalance || occurredAt > latestBalance.occurredAt)) {
+      latestBalance = { balance: rowBalance, occurredAt };
+    }
+
+    const rawProduct = (cols.product !== undefined ? raw[cols.product] : "")?.trim() || "";
+    const isin = cols.isin !== undefined ? raw[cols.isin]?.trim() || null : null;
+
+    // No "Estado de Conta", movimentos puramente de caixa (depósitos,
+    // levantamentos, cash sweeps, juros...) não têm Produto nem ISIN —
+    // não são transações de bolsa, por isso ignoramo-los aqui em vez de
+    // os transformar num ativo fantasma "(sem nome)".
+    if (format === "estado_conta" && !rawProduct && !isin) {
+      cashRowsSkipped++;
+      continue;
+    }
+
+    const product = rawProduct || "(sem nome)";
+    const description =
+      cols.description !== undefined ? raw[cols.description]?.trim() || "" : `${product}`;
+    const orderId = cols.orderId !== undefined ? raw[cols.orderId]?.trim() || null : null;
+
+    let quantity = cols.quantity !== undefined ? parseEuroNumber(raw[cols.quantity]) : null;
+    let price = cols.price !== undefined ? parseEuroNumber(raw[cols.price]) : null;
+
+    if (quantity === null && price === null && description) {
+      const extracted = extractQtyPriceFromText(description);
+      quantity = extracted.quantity;
+      price = extracted.price;
+    }
+
+    const localValueRes = resolveValueAndCurrency(raw, cols.localValue);
+    const valueRes = resolveValueAndCurrency(raw, cols.value);
+    const totalRes = resolveValueAndCurrency(raw, cols.total);
+    const feesRes = resolveValueAndCurrency(raw, cols.fees);
+    const exchangeRate = cols.exchangeRate !== undefined ? parseEuroNumber(raw[cols.exchangeRate]) : null;
+
+    // Valor total em EUR: preferimos a coluna "Total"; se não existir, usamos
+    // "Valor" (extrato de conta); em último caso o valor local.
+    const totalValue = totalRes.value ?? valueRes.value ?? localValueRes.value ?? 0;
+    const currency = totalRes.currency ?? valueRes.currency ?? localValueRes.currency ?? "EUR";
+    const fees = Math.abs(feesRes.value ?? 0);
+
+    const operation = classifyOperation(description || product, quantity);
+
+    const rowForHash = raw.join("|");
+    const sourceHash = await sha256Hex(rowForHash);
+
+    const rawRecord: Record<string, string> = {};
+    header.forEach((h, idx) => (rawRecord[h || `col_${idx}`] = raw[idx] ?? ""));
+
+    rows.push({
+      rowIndex: i,
+      date: isoDate,
+      datetime: occurredAt,
+      product,
+      isin,
+      operation,
+      quantity: quantity !== null ? Math.abs(quantity) : null,
+      price: price !== null ? Math.abs(price) : null,
+      localValue: localValueRes.value,
+      fees,
+      totalValue,
+      currency,
+      exchangeRate,
+      description: description || product,
+      orderId,
+      balance: rowBalance,
+      sourceHash,
+      raw: rawRecord,
+    });
+  }
+
+  if (skipped > 0) {
+    warnings.push(`${skipped} linha(s) ignorada(s) por não terem uma data válida.`);
+  }
+  if (cashRowsSkipped > 0) {
+    warnings.push(
+      `${cashRowsSkipped} movimento(s) de caixa (depósitos, levantamentos, juros, cash sweep) ignorado(s) por não estarem associados a nenhum ativo.`
+    );
+  }
+
+  return { format, rows, warnings, skipped, latestBalance };
+}
+
+/** Hash do ficheiro inteiro (usado para detetar reimportação do mesmo CSV). */
+export async function hashFileContent(text: string): Promise<string> {
+  return sha256Hex(text);
+}
+</file>
+
+<file path="supabase/schema.sql">
+-- =========================================================================
+-- Gestor de Património e Finanças Pessoais — Esquema Supabase (Postgres)
+-- =========================================================================
+-- Este script é idempotente (pode ser corrido várias vezes em segurança).
+-- Corre isto no SQL Editor do teu projeto Supabase.
+-- =========================================================================
+
+create extension if not exists "pgcrypto";
+
+-- -------------------------------------------------------------------------
+-- 1. CONTAS (bancos, corretoras, numerário)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type account_type as enum ('banco', 'corretora', 'numerario', 'poupanca');
+exception when duplicate_object then null;
+end $$;
+
+-- Migração suave: se o enum já existir de uma instalação anterior sem o
+-- valor 'poupanca', acrescenta-o agora. "IF NOT EXISTS" já torna isto
+-- seguro por si só — não precisa (nem pode, de forma fiável) de estar
+-- dentro de um bloco PL/pgSQL.
+alter type account_type add value if not exists 'poupanca';
+
+create table if not exists public.accounts (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  name          text not null,                 -- ex: "Santander", "DEGIRO", "Carteira"
+  type          account_type not null,
+  currency      text not null default 'EUR',
+  institution   text,                          -- ex: "Santander Totta", "DEGIRO B.V."
+  opening_balance numeric(18,2) not null default 0,
+  -- "Ponto de reconciliação": quando importamos um extrato da DEGIRO,
+  -- confiamos no saldo que a PRÓPRIA DEGIRO reporta (coluna "Saldo") em vez
+  -- de tentarmos recalcular tudo a partir das nossas transações — isso
+  -- captura automaticamente depósitos, levantamentos, cash sweeps, juros,
+  -- etc. que não modelamos individualmente. A partir deste ponto, só
+  -- somamos movimentos (transactions/asset_transactions) que aconteçam
+  -- DEPOIS de reconciled_at.
+  reconciled_balance numeric(18,2),
+  reconciled_at      timestamptz,
+  -- saldo corrente é derivado (ver view account_balances), mas guardamos
+  -- também um cache atualizado por trigger para leitura rápida no dashboard.
+  current_balance numeric(18,2) not null default 0,
+  is_archived   boolean not null default false,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+-- Migração suave para instalações já existentes (idempotente).
+alter table public.accounts add column if not exists reconciled_balance numeric(18,2);
+alter table public.accounts add column if not exists reconciled_at timestamptz;
+
+create index if not exists idx_accounts_user on public.accounts(user_id);
+
+-- -------------------------------------------------------------------------
+-- 2. CATEGORIAS (personalizáveis, para receitas/despesas)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type category_kind as enum ('receita', 'despesa');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.categories (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  name        text not null,
+  kind        category_kind not null,
+  color       text default '#8B93A1',          -- para os gráficos
+  icon        text,                             -- nome de ícone (lucide-react)
+  is_default  boolean not null default false,
+  created_at  timestamptz not null default now(),
+  unique (user_id, name, kind)
+);
+
+-- -------------------------------------------------------------------------
+-- 3. TRANSAÇÕES FINANCEIRAS DIÁRIAS (orçamento: receitas / despesas / transferências)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type transaction_type as enum ('receita', 'despesa', 'transferencia');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.transactions (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  type            transaction_type not null,
+  amount          numeric(18,2) not null check (amount > 0),
+  occurred_on     date not null,
+  account_id      uuid not null references public.accounts(id) on delete cascade,
+  -- usado apenas quando type = 'transferencia' (conta de destino)
+  transfer_account_id uuid references public.accounts(id) on delete set null,
+  category_id     uuid references public.categories(id) on delete set null,
+  description     text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  check (
+    (type = 'transferencia' and transfer_account_id is not null and transfer_account_id <> account_id)
+    or (type <> 'transferencia' and transfer_account_id is null)
+  )
+);
+
+create index if not exists idx_transactions_user_date on public.transactions(user_id, occurred_on desc);
+create index if not exists idx_transactions_account on public.transactions(account_id);
+create index if not exists idx_transactions_category on public.transactions(category_id);
+
+-- -------------------------------------------------------------------------
+-- 4. ATIVOS (instrumentos financeiros — ações, ETFs, etc.)
+-- -------------------------------------------------------------------------
+create table if not exists public.assets (
+  id          uuid primary key default gen_random_uuid(),
+  isin        text unique,                       -- pode ser null p/ ativos sem ISIN
+  symbol      text,                               -- ticker Yahoo Finance, ex: "VWCE.DE"
+  name        text not null,
+  currency    text not null default 'EUR',
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_assets_isin on public.assets(isin);
+create index if not exists idx_assets_symbol on public.assets(symbol);
+
+-- -------------------------------------------------------------------------
+-- 5. TRANSAÇÕES DE BOLSA (compras, vendas, dividendos, comissões — DEGIRO)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type asset_operation as enum ('compra', 'venda', 'dividendo', 'comissao', 'outro');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.asset_transactions (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  account_id      uuid not null references public.accounts(id) on delete cascade,
+  asset_id        uuid not null references public.assets(id) on delete cascade,
+  operation       asset_operation not null,
+  occurred_on     date not null,
+  occurred_at     timestamptz,                     -- data+hora, se disponível no CSV
+  quantity        numeric(18,6),                   -- null em dividendos/comissões avulsas
+  price           numeric(18,6),                   -- preço unitário na moeda local do ativo
+  local_value     numeric(18,2),                   -- valor na moeda local (coluna "Montante")
+  fees            numeric(18,2) default 0,
+  total_value     numeric(18,2) not null,           -- valor total em EUR (coluna "Total")
+  currency        text default 'EUR',
+  exchange_rate   numeric(18,6),
+  description     text,                             -- texto original da coluna Descrição
+  order_id        text,                              -- coluna "ID Ordem" da DEGIRO, se existir
+  -- hash único da linha original do CSV -> previne duplicados em re-importações
+  source_hash     text not null,
+  source          text not null default 'degiro',
+  raw_row         jsonb,                             -- guarda a linha original para auditoria
+  created_at      timestamptz not null default now(),
+  unique (user_id, source_hash)
+);
+
+create index if not exists idx_asset_tx_user_date on public.asset_transactions(user_id, occurred_on desc);
+create index if not exists idx_asset_tx_asset on public.asset_transactions(asset_id);
+create index if not exists idx_asset_tx_account on public.asset_transactions(account_id);
+
+-- -------------------------------------------------------------------------
+-- 6. COTAÇÕES (cache de preços atuais, para não bombardear a API a cada load)
+-- -------------------------------------------------------------------------
+create table if not exists public.asset_quotes (
+  asset_id      uuid primary key references public.assets(id) on delete cascade,
+  price         numeric(18,6) not null,
+  currency      text not null default 'EUR',
+  fetched_at    timestamptz not null default now()
+);
+
+-- -------------------------------------------------------------------------
+-- 7. IMPORTAÇÕES CSV (histórico/auditoria de uploads DEGIRO)
+-- -------------------------------------------------------------------------
+create table if not exists public.csv_imports (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  account_id      uuid references public.accounts(id) on delete set null,
+  file_name       text not null,
+  file_hash       text not null,               -- hash do ficheiro inteiro
+  rows_total      integer not null default 0,
+  rows_inserted   integer not null default 0,
+  rows_duplicated integer not null default 0,
+  rows_failed     integer not null default 0,
+  created_at      timestamptz not null default now(),
+  unique (user_id, file_hash)
+);
+
+-- =========================================================================
+-- VIEWS
+-- =========================================================================
+
+-- Saldo corrente de cada conta a partir das transações (fonte de verdade).
+--
+-- Ponto de partida: coalesce(reconciled_balance, opening_balance). Se a
+-- conta tiver sido reconciliada (ex: por uma importação DEGIRO), só somamos
+-- movimentos que aconteceram DEPOIS desse ponto — o saldo reconciliado já
+-- inclui o efeito de tudo o que aconteceu até lá.
+create or replace view public.account_balances as
+select
+  a.id as account_id,
+  a.user_id,
+  a.name,
+  a.type,
+  a.currency,
+  coalesce(a.reconciled_balance, a.opening_balance)
+    + coalesce(sum(case
+                     when t.occurred_on::timestamptz <= coalesce(a.reconciled_at, '-infinity'::timestamptz) then 0
+                     when t.type = 'receita' then t.amount
+                     when t.type = 'despesa' then -t.amount
+                     when t.type = 'transferencia' and t.account_id = a.id then -t.amount
+                     else 0 end), 0)
+    + coalesce((
+        select sum(t2.amount) from public.transactions t2
+        where t2.type = 'transferencia' and t2.transfer_account_id = a.id
+          and t2.occurred_on::timestamptz > coalesce(a.reconciled_at, '-infinity'::timestamptz)
+      ), 0)
+    + coalesce((
+        select sum(-at.total_value) from public.asset_transactions at
+        where at.account_id = a.id and at.operation in ('compra','comissao')
+          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
+      ), 0)
+    + coalesce((
+        select sum(at.total_value) from public.asset_transactions at
+        where at.account_id = a.id and at.operation in ('venda','dividendo')
+          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
+      ), 0)
+  as current_balance
+from public.accounts a
+left join public.transactions t on t.account_id = a.id
+group by a.id;
+
+-- Posições atuais do portefólio (quantidade líquida por ativo e preço médio de custo).
+create or replace view public.portfolio_positions as
+select
+  at.user_id,
+  at.asset_id,
+  ass.name,
+  ass.symbol,
+  ass.isin,
+  ass.currency,
+  sum(case when at.operation = 'compra' then at.quantity
+           when at.operation = 'venda' then -at.quantity
+           else 0 end) as quantity_held,
+  -- "total_value" já vem com o sinal do movimento de caixa (compra = saída,
+  -- negativo; venda = entrada, positiva). Para chegar ao capital líquido
+  -- investido (um valor positivo quando ainda há dinheiro "preso" na
+  -- posição), invertemos o sinal em ambos os casos: uma compra de -1000€
+  -- soma +1000€ ao investido; uma venda de +400€ soma -400€ (reduz o
+  -- capital investido, porque já recebeste esse dinheiro de volta).
+  sum(case when at.operation in ('compra', 'venda') then -at.total_value
+           else 0 end) as net_invested,
+  sum(case when at.operation = 'dividendo' then at.total_value else 0 end) as total_dividends
+from public.asset_transactions at
+join public.assets ass on ass.id = at.asset_id
+group by at.user_id, at.asset_id, ass.name, ass.symbol, ass.isin, ass.currency;
+
+-- =========================================================================
+-- TRIGGERS: manter accounts.current_balance sincronizado (cache de leitura)
+-- =========================================================================
+create or replace function public.refresh_account_balance(p_account_id uuid)
+returns void language plpgsql as $$
+begin
+  update public.accounts a
+  set current_balance = coalesce(v.current_balance, a.opening_balance),
+      updated_at = now()
+  from public.account_balances v
+  where v.account_id = a.id and a.id = p_account_id;
+end;
+$$;
+
+-- Fixa o saldo de uma conta a um valor conhecido num determinado instante
+-- (ex: o saldo que a DEGIRO reportou na última linha de um extrato
+-- importado). Só avança o ponto de reconciliação para a frente no tempo —
+-- reimportar um ficheiro mais antigo nunca faz a conta "recuar".
+create or replace function public.reconcile_account_balance(
+  p_account_id uuid,
+  p_balance numeric,
+  p_at timestamptz
+)
+returns void language plpgsql as $$
+begin
+  update public.accounts
+  set reconciled_balance = p_balance,
+      reconciled_at = p_at
+  where id = p_account_id
+    and (reconciled_at is null or p_at > reconciled_at);
+
+  perform public.refresh_account_balance(p_account_id);
+end;
+$$;
+
+create or replace function public.trg_transactions_refresh_balance()
+returns trigger language plpgsql as $$
+begin
+  if TG_OP = 'DELETE' then
+    perform public.refresh_account_balance(old.account_id);
+    if old.transfer_account_id is not null then
+      perform public.refresh_account_balance(old.transfer_account_id);
+    end if;
+    return old;
+  else
+    perform public.refresh_account_balance(new.account_id);
+    if new.transfer_account_id is not null then
+      perform public.refresh_account_balance(new.transfer_account_id);
+    end if;
+    if TG_OP = 'UPDATE' and old.account_id <> new.account_id then
+      perform public.refresh_account_balance(old.account_id);
+    end if;
+    return new;
+  end if;
+end;
+$$;
+
+drop trigger if exists transactions_balance_trigger on public.transactions;
+create trigger transactions_balance_trigger
+after insert or update or delete on public.transactions
+for each row execute function public.trg_transactions_refresh_balance();
+
+create or replace function public.trg_asset_transactions_refresh_balance()
+returns trigger language plpgsql as $$
+begin
+  if TG_OP = 'DELETE' then
+    perform public.refresh_account_balance(old.account_id);
+    return old;
+  else
+    perform public.refresh_account_balance(new.account_id);
+    return new;
+  end if;
+end;
+$$;
+
+drop trigger if exists asset_transactions_balance_trigger on public.asset_transactions;
+create trigger asset_transactions_balance_trigger
+after insert or update or delete on public.asset_transactions
+for each row execute function public.trg_asset_transactions_refresh_balance();
+
+-- =========================================================================
+-- ROW LEVEL SECURITY
+-- =========================================================================
+alter table public.accounts enable row level security;
+alter table public.categories enable row level security;
+alter table public.transactions enable row level security;
+alter table public.asset_transactions enable row level security;
+alter table public.csv_imports enable row level security;
+alter table public.assets enable row level security;
+alter table public.asset_quotes enable row level security;
+
+-- accounts
+drop policy if exists "accounts_select_own" on public.accounts;
+create policy "accounts_select_own" on public.accounts for select using (auth.uid() = user_id);
+drop policy if exists "accounts_insert_own" on public.accounts;
+create policy "accounts_insert_own" on public.accounts for insert with check (auth.uid() = user_id);
+drop policy if exists "accounts_update_own" on public.accounts;
+create policy "accounts_update_own" on public.accounts for update using (auth.uid() = user_id);
+drop policy if exists "accounts_delete_own" on public.accounts;
+create policy "accounts_delete_own" on public.accounts for delete using (auth.uid() = user_id);
+
+-- categories
+drop policy if exists "categories_select_own" on public.categories;
+create policy "categories_select_own" on public.categories for select using (auth.uid() = user_id);
+drop policy if exists "categories_insert_own" on public.categories;
+create policy "categories_insert_own" on public.categories for insert with check (auth.uid() = user_id);
+drop policy if exists "categories_update_own" on public.categories;
+create policy "categories_update_own" on public.categories for update using (auth.uid() = user_id);
+drop policy if exists "categories_delete_own" on public.categories;
+create policy "categories_delete_own" on public.categories for delete using (auth.uid() = user_id);
+
+-- transactions
+drop policy if exists "transactions_select_own" on public.transactions;
+create policy "transactions_select_own" on public.transactions for select using (auth.uid() = user_id);
+drop policy if exists "transactions_insert_own" on public.transactions;
+create policy "transactions_insert_own" on public.transactions for insert with check (auth.uid() = user_id);
+drop policy if exists "transactions_update_own" on public.transactions;
+create policy "transactions_update_own" on public.transactions for update using (auth.uid() = user_id);
+drop policy if exists "transactions_delete_own" on public.transactions;
+create policy "transactions_delete_own" on public.transactions for delete using (auth.uid() = user_id);
+
+-- asset_transactions
+drop policy if exists "asset_tx_select_own" on public.asset_transactions;
+create policy "asset_tx_select_own" on public.asset_transactions for select using (auth.uid() = user_id);
+drop policy if exists "asset_tx_insert_own" on public.asset_transactions;
+create policy "asset_tx_insert_own" on public.asset_transactions for insert with check (auth.uid() = user_id);
+drop policy if exists "asset_tx_update_own" on public.asset_transactions;
+create policy "asset_tx_update_own" on public.asset_transactions for update using (auth.uid() = user_id);
+drop policy if exists "asset_tx_delete_own" on public.asset_transactions;
+create policy "asset_tx_delete_own" on public.asset_transactions for delete using (auth.uid() = user_id);
+
+-- csv_imports
+drop policy if exists "csv_imports_select_own" on public.csv_imports;
+create policy "csv_imports_select_own" on public.csv_imports for select using (auth.uid() = user_id);
+drop policy if exists "csv_imports_insert_own" on public.csv_imports;
+create policy "csv_imports_insert_own" on public.csv_imports for insert with check (auth.uid() = user_id);
+
+-- assets & quotes: catálogo partilhado, leitura para todos os utilizadores autenticados
+drop policy if exists "assets_select_all_authenticated" on public.assets;
+create policy "assets_select_all_authenticated" on public.assets for select using (auth.role() = 'authenticated');
+drop policy if exists "assets_insert_authenticated" on public.assets;
+create policy "assets_insert_authenticated" on public.assets for insert with check (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_select_all_authenticated" on public.asset_quotes;
+create policy "asset_quotes_select_all_authenticated" on public.asset_quotes for select using (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_upsert_authenticated" on public.asset_quotes;
+create policy "asset_quotes_upsert_authenticated" on public.asset_quotes for insert with check (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_update_authenticated" on public.asset_quotes;
+create policy "asset_quotes_update_authenticated" on public.asset_quotes for update using (auth.role() = 'authenticated');
+
+-- =========================================================================
+-- CATEGORIAS PRÉ-DEFINIDAS (opcional: correr manualmente por utilizador,
+-- ou chamar esta função depois do signup a partir de um trigger auth.users)
+-- =========================================================================
+create or replace function public.seed_default_categories(p_user_id uuid)
+returns void language plpgsql as $$
+begin
+  insert into public.categories (user_id, name, kind, color, is_default) values
+    -- Receitas
+    (p_user_id, 'Salário',             'receita', '#3DDC97', true),
+    (p_user_id, 'Freelance / Extra',   'receita', '#2FB380', true),
+    (p_user_id, 'Dividendos',          'receita', '#4C9AFF', true),
+    (p_user_id, 'Reembolsos',          'receita', '#63C7B2', true),
+    (p_user_id, 'Presentes Recebidos', 'receita', '#8FD9C4', true),
+    (p_user_id, 'Outros Rendimentos',  'receita', '#8B93A1', true),
+
+    -- Casa e contas fixas
+    (p_user_id, 'Renda / Prestação Casa', 'despesa', '#9B7EDE', true),
+    (p_user_id, 'Condomínio',             'despesa', '#A98CE0', true),
+    (p_user_id, 'Eletricidade',           'despesa', '#D9A441', true),
+    (p_user_id, 'Água',                   'despesa', '#4FB6D9', true),
+    (p_user_id, 'Gás',                    'despesa', '#E08A3C', true),
+    (p_user_id, 'Internet / TV',          'despesa', '#7C8CF8', true),
+    (p_user_id, 'Telemóvel',              'despesa', '#6E7BE0', true),
+    (p_user_id, 'Manutenção da Casa',     'despesa', '#B69A78', true),
+
+    -- Alimentação
+    (p_user_id, 'Supermercado',        'despesa', '#E5484D', true),
+    (p_user_id, 'Restaurantes',        'despesa', '#F0685E', true),
+    (p_user_id, 'Cafés / Snacks',      'despesa', '#F58F86', true),
+
+    -- Transportes
+    (p_user_id, 'Combustível',         'despesa', '#D9A441', true),
+    (p_user_id, 'Transportes Públicos','despesa', '#C98F2E', true),
+    (p_user_id, 'Manutenção do Carro', 'despesa', '#B87F1E', true),
+    (p_user_id, 'Portagens / Parque',  'despesa', '#DDB05A', true),
+    (p_user_id, 'Seguro Automóvel',    'despesa', '#C79A4A', true),
+
+    -- Saúde e bem-estar
+    (p_user_id, 'Farmácia',            'despesa', '#F2789F', true),
+    (p_user_id, 'Médico / Consultas',  'despesa', '#EE5A88', true),
+    (p_user_id, 'Ginásio / Desporto',  'despesa', '#F79CB7', true),
+    (p_user_id, 'Seguro de Saúde',     'despesa', '#E56E97', true),
+
+    -- Educação e desenvolvimento
+    (p_user_id, 'Educação / Cursos',   'despesa', '#5B8DEF', true),
+    (p_user_id, 'Livros',              'despesa', '#7FA6F5', true),
+
+    -- Lazer e estilo de vida
+    (p_user_id, 'Lazer / Entretenimento', 'despesa', '#5EC8D8', true),
+    (p_user_id, 'Viagens / Férias',       'despesa', '#4AB0C2', true),
+    (p_user_id, 'Subscrições (Streaming, Apps)', 'despesa', '#7C8CF8', true),
+    (p_user_id, 'Roupa / Calçado',        'despesa', '#F2B84B', true),
+    (p_user_id, 'Compras Diversas',       'despesa', '#F0A82E', true),
+    (p_user_id, 'Presentes Dados',        'despesa', '#F5C97A', true),
+    (p_user_id, 'Animais de Estimação',   'despesa', '#8FBF6B', true),
+
+    -- Finanças e obrigações
+    (p_user_id, 'Impostos',            'despesa', '#B0525C', true),
+    (p_user_id, 'Comissões Bancárias', 'despesa', '#9C6B6F', true),
+    (p_user_id, 'Seguros (Outros)',    'despesa', '#A87A82', true),
+    (p_user_id, 'Poupança / Investimento', 'despesa', '#3DDC97', true),
+
+    (p_user_id, 'Outros',              'despesa', '#8B93A1', true)
+  on conflict (user_id, name, kind) do nothing;
+end;
+$$;
+</file>
+
+<file path="README.md">
+# Livro — Gestor de Património e Finanças Pessoais
+
+Aplicação web completa de gestão de património e orçamento pessoal, com
+importação automática de extratos da DEGIRO e cotações em tempo real.
+
+## Stack Tecnológica
+
+| Camada | Escolha | Porquê |
+|---|---|---|
+| Framework | **Next.js 16** (App Router, Server Components, Server Actions) | Renderização no servidor para dados financeiros sensíveis, rotas de API integradas para o parser e as cotações, e Server Actions eliminam a necessidade de uma camada REST separada. |
+| Linguagem | **TypeScript** | Segurança de tipos ponta a ponta entre o schema Supabase e a UI. |
+| Base de Dados | **Supabase** (Postgres + Auth + Row Level Security) | Pedido explícito. Usa-se Postgres puro com views e triggers para manter os saldos das contas sempre consistentes, e RLS para isolar os dados de cada utilizador. |
+| Estilos | **Tailwind CSS v4** | Utilitários modernos, tema "Livro-Razão" (ledger) definido em `globals.css`. |
+| Gráficos | **Recharts** | Gráfico de distribuição do património (donut) e de despesas por categoria (barras). |
+| Parsing CSV | **PapaParse** | Parser CSV robusto, usado como base para o parser específico da DEGIRO. |
+| Cotações | **yahoo-finance2 (v4)** | Resolve o símbolo Yahoo Finance a partir do ISIN e obtém o preço atual. |
+| Autenticação | **Supabase Auth (email + palavra-passe)** | Sem registo público — as contas são criadas pelo administrador com um script CLI, usando a Service Role Key. Login simples por email/password, sem depender de emails de convite. |
+
+## Estrutura do Projeto
+
+```
+src/
+├── app/
+│   ├── dashboard/        # Património Global (Net Worth)
+│   ├── contas/           # CRUD de Contas (banco/poupança/corretora/numerário)
+│   ├── transacoes/       # Receitas, despesas e transferências
+│   ├── relatorios/       # Filtros de período + despesas por categoria
+│   ├── portfolio/        # Upload do CSV DEGIRO + posições
+│   ├── login/            # Autenticação (email + palavra-passe)
+│   └── api/
+│       ├── degiro/import/  # Parsing + inserção das transações DEGIRO
+│       └── quotes/         # Atualização das cotações via Yahoo Finance
+├── components/           # Componentes de UI organizados por domínio
+├── lib/
+│   ├── degiro/           # Parser CSV DEGIRO (formato europeu, deduplicação)
+│   ├── market/           # Integração com yahoo-finance2
+│   ├── data/             # Agregação de dados para o dashboard (net worth)
+│   └── supabase/         # Clientes Supabase (browser + servidor)
+├── types/database.ts     # Tipos TS que espelham o schema SQL
+└── proxy.ts              # Proteção de rotas (equivalente ao antigo middleware)
+
+scripts/
+├── create-user.ts        # CLI de administração: cria utilizadores (email+password)
+└── list-users.ts         # CLI de administração: lista utilizadores existentes
+
+supabase/schema.sql        # Esquema completo (tabelas, views, triggers, RLS)
+test-fixtures/             # CSVs de exemplo + script para testar o parser
+```
+
+## Como Correr Localmente
+
+### 1. Cria um projeto Supabase
+Vai a [supabase.com](https://supabase.com), cria um projeto novo e copia o
+`Project URL` e a `anon public key` (Project Settings → API).
+
+### 2. Aplica o esquema SQL
+No **SQL Editor** do Supabase, corre o conteúdo de `supabase/schema.sql`
+(é idempotente — podes correr várias vezes em segurança). Isto cria:
+- Tabelas: `accounts`, `categories`, `transactions`, `assets`,
+  `asset_transactions`, `asset_quotes`, `csv_imports`.
+- Views: `account_balances` (saldo corrente derivado), `portfolio_positions`
+  (posições agregadas por ativo).
+- Triggers que recalculam automaticamente `accounts.current_balance` sempre
+  que uma transação de orçamento ou de bolsa é inserida/alterada/apagada.
+- Row Level Security: cada utilizador só vê os seus próprios dados.
+- Função `seed_default_categories(user_id)`, chamada automaticamente pelo
+  script `create-user` para criar categorias por omissão (Salário, Alimentação,
+  Transportes, etc.) assim que a conta é criada.
+
+### 3. Configura as variáveis de ambiente
+```bash
+cp .env.local.example .env.local
+```
+Edita `.env.local` e preenche:
+- `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings → API)
+- `SUPABASE_SERVICE_ROLE_KEY` (a chave secreta, também em Project Settings → API,
+  chamada `service_role`) — **só é usada pelos scripts de administração abaixo,
+  nunca pela aplicação em si nem exposta ao browser.**
+
+### 4. Cria o teu utilizador
+Não há registo público (sem formulário de "criar conta" nem emails de
+convite). As contas são criadas diretamente por ti, o administrador:
+
+```bash
+npm run create-user -- --email tu@exemplo.com --password "umaPasswordForte123"
+```
+
+Isto cria a conta já confirmada (sem precisar de clicar em nenhum email) e
+prepara logo as categorias por omissão. Para veres as contas já criadas:
+
+```bash
+npm run list-users
+```
+
+### 5. Instala e corre
+```bash
+npm install
+npm run dev
+```
+Abre [http://localhost:3000](http://localhost:3000) e entra com o email e a
+palavra-passe que definiste no passo anterior.
+
+### Testar apenas o parser DEGIRO (sem Supabase)
+```bash
+npx tsx test-fixtures/run-test.ts
+```
+
+## Deploy no Vercel (para usares só no browser, sem VS Code)
+
+Correr `npm run dev` no VS Code é ótimo para desenvolver, mas para usares a
+app no dia-a-dia (telemóvel, outro computador, sem teres de abrir o VS
+Code nem deixar nada a correr no teu PC), o mais simples é publicá-la no
+**Vercel** — a empresa que faz o Next.js, tem plano gratuito, e o processo
+demora uns 5 minutos.
+
+### Opção A — pelo site do Vercel (mais fácil, sem terminal)
+1. Sobe o código para um repositório no GitHub (podes fazer isto direto do
+   VS Code: separador "Source Control" → "Publish to GitHub"; ou, se
+   preferires, usa a extensão/aplicação do GitHub Desktop).
+2. Vai a [vercel.com](https://vercel.com), entra com a tua conta GitHub e
+   clica **Add New → Project**.
+3. Escolhe o repositório do projeto. O Vercel deteta automaticamente que é
+   Next.js — não precisas de mudar nada nas definições de build.
+4. Antes de clicares em **Deploy**, abre a secção **Environment Variables**
+   e adiciona estas três (os mesmos valores que puseste no `.env.local`):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (só é necessária se um dia quiseres correr
+     os scripts `create-user`/`list-users` a partir de outro sítio; para a
+     app funcionar em si, as duas primeiras já chegam)
+5. Clica **Deploy**. Em 1-2 minutos tens um URL público tipo
+   `https://o-teu-projeto.vercel.app` — abre-o em qualquer browser, em
+   qualquer dispositivo.
+6. No dashboard da Supabase, em **Authentication → URL Configuration**,
+   adiciona esse URL do Vercel à lista de **Redirect URLs** (não é
+   estritamente necessário para o login por password, mas evita
+   surpresas se um dia adicionares outro método de login).
+
+De cada vez que fizeres alterações e as enviares para o GitHub (`git push`
+ou "Publish" no VS Code), o Vercel volta a publicar automaticamente a
+versão nova — não precisas de repetir estes passos.
+
+### Opção B — pelo terminal, sem GitHub
+```bash
+npm install -g vercel
+vercel login
+vercel        # segue as perguntas; a 1ª vez pergunta se queres criar o projeto
+vercel env add NEXT_PUBLIC_SUPABASE_URL production
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+vercel --prod # publica a versão final
+```
+
+Depois disto, o URL que o Vercel te der fica igual a qualquer site normal
+— acedes por ele em qualquer browser, sem VS Code, sem terminal, sem
+`npm run dev` a correr no teu PC.
+
+## Funcionalidades
+
+### 1. Dashboard de Património Global
+Soma em tempo real: saldo em contas bancárias + saldo livre em corretoras +
+numerário + valor atual do portefólio (via cotações Yahoo Finance). Inclui
+gráfico de distribuição (donut) e resumo de custo vs. valor atual do
+portefólio.
+
+### 2. Gestão de Contas
+CRUD simples de contas (Banco / Poupança / Corretora / Numerário). O saldo apresentado
+(`current_balance`) é recalculado automaticamente por triggers Postgres
+sempre que há um movimento de orçamento ou uma transação de bolsa associada
+à conta — nunca precisas de o atualizar manualmente.
+
+### 3. Orçamento (Receitas e Despesas)
+Formulário com Tipo (Receita / Despesa / Transferência), Valor, Data, Conta,
+Categoria personalizável e Descrição livre. Podes criar categorias novas
+diretamente no formulário.
+
+### 4. Relatórios
+Filtros rápidos de período (1/3/6/12 meses, Ano Atual) via query string
+(`?period=3m`), com gráfico de barras da distribuição de despesas por
+categoria e tabela de detalhe com percentagens.
+
+### 5. Portefólio + Parser DEGIRO
+- **Deteção automática de formato:** reconhece tanto o export
+  "Transações" (com Quantidade/Preço explícitos) como o "Estado de Conta"
+  (extrato de caixa, onde a operação é inferida do texto da Descrição).
+- **Formato europeu:** trata números `1.234,56`, datas `dd-mm-aaaa`, e
+  delimitador `;` ou `,` consoante o locale do export.
+- **Classificação da operação:** Compra, Venda, Dividendo, Comissão —
+  por palavras-chave multi-idioma (PT/EN/ES) na coluna Descrição/Mutação,
+  incluindo o padrão real da DEGIRO "Compra 3 Nome Do Produto@147,54 EUR
+  (ISIN)" (a quantidade e o preço vêm embutidos no texto, sem colunas
+  próprias, no export "Estado de Conta").
+- **Movimentos de caixa ignorados:** entradas que não são transações de
+  bolsa (depósitos, levantamentos, transferências entre a conta caixa e o
+  banco, juros) não têm Produto nem ISIN, e são ignoradas — não fazem
+  sentido como "transação de ativo" e só poluiriam o portefólio.
+- **Deduplicação:** cada linha gera um hash SHA-256 estável
+  (`source_hash`), com uma constraint única `(user_id, source_hash)` na
+  base de dados — re-carregar o mesmo ficheiro nunca duplica transações.
+  O hash do ficheiro inteiro também é guardado em `csv_imports` para
+  detetar re-uploads completos antes de reprocessar.
+- **Cotações em tempo real:** botão "Atualizar cotações" resolve o
+  símbolo Yahoo Finance a partir do ISIN (na primeira vez) e atualiza o
+  cache `asset_quotes`, usado para calcular o valor atual e o
+  Lucro/Prejuízo de cada posição.
+
+## Gestão de Utilizadores
+
+Esta aplicação **não tem registo público**. Só o administrador (quem tem
+acesso ao `.env.local` com a `SUPABASE_SERVICE_ROLE_KEY`) pode criar contas:
+
+```bash
+# Criar um novo utilizador (fica logo ativo, sem email de confirmação)
+npm run create-user -- --email familiar@exemplo.com --password "outraPasswordForte"
+
+# Ver todos os utilizadores existentes
+npm run list-users
+```
+
+Para revogar acesso ou repor a palavra-passe de alguém, usa o dashboard do
+Supabase em **Authentication → Users** (podes eliminar o utilizador ou
+enviar um link de reposição de password a partir daí, se preferires).
+
+## Notas de Produção
+
+- O middleware de autenticação está em `src/proxy.ts` (renomeado de
+  `middleware.ts` — convenção alterada no Next.js 16).
+- As chamadas ao Yahoo Finance não têm chave de API, mas não têm SLA
+  garantido; para uso intensivo, considera um cache mais agressivo ou uma
+  API de cotações paga.
+- A `SUPABASE_SERVICE_ROLE_KEY` só é usada pelos scripts `create-user` e
+  `list-users`, correndo no teu computador — a aplicação em si (páginas,
+  Server Actions, rotas de API) usa sempre a `anon key` e depende da
+  sessão do utilizador autenticado, com toda a segurança garantida pela
+  Row Level Security.
+</file>
+
+</files>
