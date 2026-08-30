@@ -33,6 +33,7 @@ export function AccountForm() {
         className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
       >
         <option value="banco">Banco</option>
+        <option value="poupanca">Poupança</option>
         <option value="corretora">Corretora</option>
         <option value="numerario">Numerário</option>
       </select>

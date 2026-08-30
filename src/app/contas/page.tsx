@@ -7,6 +7,7 @@ import type { Account } from "@/types/database";
 
 const TYPE_LABEL: Record<Account["type"], string> = {
   banco: "Banco",
+  poupanca: "Poupança",
   corretora: "Corretora",
   numerario: "Numerário",
 };

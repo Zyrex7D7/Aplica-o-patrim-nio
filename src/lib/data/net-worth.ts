@@ -4,6 +4,7 @@ import type { Account, PortfolioPosition } from "@/types/database";
 export interface NetWorthBreakdown {
   totalNetWorth: number;
   cashInBanks: number;
+  cashInSavings: number;
   cashInBrokers: number;
   physicalCash: number;
   portfolioValue: number;
@@ -46,6 +47,9 @@ export async function getNetWorthBreakdown(
   const cashInBanks = accountsList
     .filter((a) => a.type === "banco")
     .reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const cashInSavings = accountsList
+    .filter((a) => a.type === "poupanca")
+    .reduce((sum, a) => sum + Number(a.current_balance), 0);
   const cashInBrokers = accountsList
     .filter((a) => a.type === "corretora")
     .reduce((sum, a) => sum + Number(a.current_balance), 0);
@@ -53,11 +57,12 @@ export async function getNetWorthBreakdown(
     .filter((a) => a.type === "numerario")
     .reduce((sum, a) => sum + Number(a.current_balance), 0);
 
-  const totalNetWorth = cashInBanks + cashInBrokers + physicalCash + portfolioValue;
+  const totalNetWorth = cashInBanks + cashInSavings + cashInBrokers + physicalCash + portfolioValue;
 
   return {
     totalNetWorth,
     cashInBanks,
+    cashInSavings,
     cashInBrokers,
     physicalCash,
     portfolioValue,

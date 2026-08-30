@@ -2,7 +2,7 @@
 // Para gerar automaticamente a partir do teu projeto real, corre:
 //   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
 
-export type AccountType = "banco" | "corretora" | "numerario";
+export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
 export type CategoryKind = "receita" | "despesa";
 export type TransactionType = "receita" | "despesa" | "transferencia";
 export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";

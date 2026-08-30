@@ -15,6 +15,7 @@ export default async function DashboardPage() {
 
   const slices = [
     { name: "Contas Bancárias", value: breakdown.cashInBanks, color: "var(--color-info)" },
+    { name: "Poupança", value: breakdown.cashInSavings, color: "#B48CE0" },
     { name: "Corretoras (livre)", value: breakdown.cashInBrokers, color: "var(--color-gold)" },
     { name: "Numerário", value: breakdown.physicalCash, color: "#8A93A3" },
     { name: "Portefólio", value: breakdown.portfolioValue, color: "var(--color-gain)" },
@@ -30,13 +31,14 @@ export default async function DashboardPage() {
           {formatCurrency(breakdown.totalNetWorth)}
         </p>
         <p className="text-sm text-text-muted mt-2">
-          Soma de contas bancárias, saldo livre em corretoras, numerário e valor atual do
-          portefólio de investimentos.
+          Soma de contas bancárias, poupança, saldo livre em corretoras, numerário e valor atual
+          do portefólio de investimentos.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
         <StatCard label="Contas Bancárias" value={breakdown.cashInBanks} />
+        <StatCard label="Poupança" value={breakdown.cashInSavings} />
         <StatCard label="Corretoras (saldo livre)" value={breakdown.cashInBrokers} />
         <StatCard label="Numerário" value={breakdown.physicalCash} />
         <StatCard label="Portefólio (valor atual)" value={breakdown.portfolioValue} tone="gold" />

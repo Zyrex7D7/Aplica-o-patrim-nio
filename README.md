@@ -22,7 +22,7 @@ importação automática de extratos da DEGIRO e cotações em tempo real.
 src/
 ├── app/
 │   ├── dashboard/        # Património Global (Net Worth)
-│   ├── contas/           # CRUD de Contas (banco/corretora/numerário)
+│   ├── contas/           # CRUD de Contas (banco/poupança/corretora/numerário)
 │   ├── transacoes/       # Receitas, despesas e transferências
 │   ├── relatorios/       # Filtros de período + despesas por categoria
 │   ├── portfolio/        # Upload do CSV DEGIRO + posições
@@ -163,7 +163,7 @@ gráfico de distribuição (donut) e resumo de custo vs. valor atual do
 portefólio.
 
 ### 2. Gestão de Contas
-CRUD simples de contas (Banco / Corretora / Numerário). O saldo apresentado
+CRUD simples de contas (Banco / Poupança / Corretora / Numerário). O saldo apresentado
 (`current_balance`) é recalculado automaticamente por triggers Postgres
 sempre que há um movimento de orçamento ou uma transação de bolsa associada
 à conta — nunca precisas de o atualizar manualmente.

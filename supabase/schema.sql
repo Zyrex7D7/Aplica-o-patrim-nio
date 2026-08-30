@@ -11,9 +11,15 @@ create extension if not exists "pgcrypto";
 -- 1. CONTAS (bancos, corretoras, numerário)
 -- -------------------------------------------------------------------------
 do $$ begin
-  create type account_type as enum ('banco', 'corretora', 'numerario');
+  create type account_type as enum ('banco', 'corretora', 'numerario', 'poupanca');
 exception when duplicate_object then null;
 end $$;
+
+-- Migração suave: se o enum já existir de uma instalação anterior sem o
+-- valor 'poupanca', acrescenta-o agora. "IF NOT EXISTS" já torna isto
+-- seguro por si só — não precisa (nem pode, de forma fiável) de estar
+-- dentro de um bloco PL/pgSQL.
+alter type account_type add value if not exists 'poupanca';
 
 create table if not exists public.accounts (
   id            uuid primary key default gen_random_uuid(),
