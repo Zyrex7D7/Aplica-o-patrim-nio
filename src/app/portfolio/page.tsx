@@ -19,6 +19,7 @@ export default async function PortfolioPage() {
   ]);
 
   const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
+  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
 
   return (
     <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
@@ -31,7 +32,7 @@ export default async function PortfolioPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Capital investido" value={breakdown.portfolioCost} />
         <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
         <StatCard
@@ -39,6 +40,7 @@ export default async function PortfolioPage() {
           value={breakdown.portfolioPnl}
           tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
         />
+        <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
       </div>
 
       <Card className="mb-8">

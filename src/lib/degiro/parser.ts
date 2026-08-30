@@ -43,6 +43,14 @@ export interface ParsedDegiroRow {
   exchangeRate: number | null;
   description: string;
   orderId: string | null;
+  /**
+   * Saldo da conta (coluna "Saldo") reportado pela própria DEGIRO nesta
+   * linha, se existir. É o valor mais fiável para reconciliar o saldo
+   * livre da conta — reflete TODOS os movimentos (depósitos, levantamentos,
+   * cash sweeps, juros, compras, vendas, dividendos, comissões), incluindo
+   * os que não conseguimos/quisemos modelar individualmente.
+   */
+  balance: number | null;
   /** Hash estável da linha original — usado para deduplicação. */
   sourceHash: string;
   /** Linha crua (mapa header->valor) guardada para auditoria. */
@@ -54,6 +62,14 @@ export interface DegiroParseResult {
   rows: ParsedDegiroRow[];
   warnings: string[];
   skipped: number;
+  /**
+   * O checkpoint de saldo mais recente encontrado no ficheiro (de QUALQUER
+   * linha, incluindo movimentos de caixa que não geram uma
+   * "transação de bolsa"). Usado para reconciliar o saldo livre da conta
+   * com o valor que a própria DEGIRO reporta, em vez de o recalcularmos a
+   * partir da soma das nossas próprias transações (frágil e incompleto).
+   */
+  latestBalance: { balance: number; occurredAt: string } | null;
 }
 
 // ---------------------------------------------------------------------
@@ -217,7 +233,13 @@ function extractQtyPriceFromText(text: string): { quantity: number | null; price
 export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
   const table = parseRaw(text);
   if (table.length < 2) {
-    return { format: "desconhecido", rows: [], warnings: ["Ficheiro vazio ou sem linhas de dados."], skipped: 0 };
+    return {
+      format: "desconhecido",
+      rows: [],
+      warnings: ["Ficheiro vazio ou sem linhas de dados."],
+      skipped: 0,
+      latestBalance: null,
+    };
   }
 
   const header = table[0];
@@ -240,6 +262,7 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
   const rows: ParsedDegiroRow[] = [];
   let skipped = 0;
   let cashRowsSkipped = 0;
+  let latestBalance: DegiroParseResult["latestBalance"] = null;
 
   for (let i = 1; i < table.length; i++) {
     const raw = table[i];
@@ -249,6 +272,18 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     if (!isoDate) {
       skipped++;
       continue;
+    }
+
+    const time = cols.time !== undefined ? raw[cols.time] : undefined;
+    const occurredAt = combineDateTime(isoDate, time) ?? `${isoDate}T00:00:00`;
+
+    // Regista o checkpoint de saldo desta linha (se existir), independen-
+    // temente de a linha vir a ser guardada como "transação de bolsa" ou
+    // ignorada como movimento de caixa — o saldo mais recente do ficheiro
+    // é o que interessa para reconciliar a conta, esteja onde estiver.
+    const rowBalance = resolveValueAndCurrency(raw, cols.balance).value;
+    if (rowBalance !== null && (!latestBalance || occurredAt > latestBalance.occurredAt)) {
+      latestBalance = { balance: rowBalance, occurredAt };
     }
 
     const rawProduct = (cols.product !== undefined ? raw[cols.product] : "")?.trim() || "";
@@ -267,7 +302,6 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     const description =
       cols.description !== undefined ? raw[cols.description]?.trim() || "" : `${product}`;
     const orderId = cols.orderId !== undefined ? raw[cols.orderId]?.trim() || null : null;
-    const time = cols.time !== undefined ? raw[cols.time] : undefined;
 
     let quantity = cols.quantity !== undefined ? parseEuroNumber(raw[cols.quantity]) : null;
     let price = cols.price !== undefined ? parseEuroNumber(raw[cols.price]) : null;
@@ -301,7 +335,7 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     rows.push({
       rowIndex: i,
       date: isoDate,
-      datetime: combineDateTime(isoDate, time),
+      datetime: occurredAt,
       product,
       isin,
       operation,
@@ -314,6 +348,7 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
       exchangeRate,
       description: description || product,
       orderId,
+      balance: rowBalance,
       sourceHash,
       raw: rawRecord,
     });
@@ -328,7 +363,7 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     );
   }
 
-  return { format, rows, warnings, skipped };
+  return { format, rows, warnings, skipped, latestBalance };
 }
 
 /** Hash do ficheiro inteiro (usado para detetar reimportação do mesmo CSV). */

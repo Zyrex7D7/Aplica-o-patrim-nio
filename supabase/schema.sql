@@ -10,7 +10,10 @@ create extension if not exists "pgcrypto";
 -- -------------------------------------------------------------------------
 -- 1. CONTAS (bancos, corretoras, numerário)
 -- -------------------------------------------------------------------------
-create type account_type as enum ('banco', 'corretora', 'numerario');
+do $$ begin
+  create type account_type as enum ('banco', 'corretora', 'numerario');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.accounts (
   id            uuid primary key default gen_random_uuid(),
@@ -20,6 +23,15 @@ create table if not exists public.accounts (
   currency      text not null default 'EUR',
   institution   text,                          -- ex: "Santander Totta", "DEGIRO B.V."
   opening_balance numeric(18,2) not null default 0,
+  -- "Ponto de reconciliação": quando importamos um extrato da DEGIRO,
+  -- confiamos no saldo que a PRÓPRIA DEGIRO reporta (coluna "Saldo") em vez
+  -- de tentarmos recalcular tudo a partir das nossas transações — isso
+  -- captura automaticamente depósitos, levantamentos, cash sweeps, juros,
+  -- etc. que não modelamos individualmente. A partir deste ponto, só
+  -- somamos movimentos (transactions/asset_transactions) que aconteçam
+  -- DEPOIS de reconciled_at.
+  reconciled_balance numeric(18,2),
+  reconciled_at      timestamptz,
   -- saldo corrente é derivado (ver view account_balances), mas guardamos
   -- também um cache atualizado por trigger para leitura rápida no dashboard.
   current_balance numeric(18,2) not null default 0,
@@ -28,12 +40,19 @@ create table if not exists public.accounts (
   updated_at    timestamptz not null default now()
 );
 
+-- Migração suave para instalações já existentes (idempotente).
+alter table public.accounts add column if not exists reconciled_balance numeric(18,2);
+alter table public.accounts add column if not exists reconciled_at timestamptz;
+
 create index if not exists idx_accounts_user on public.accounts(user_id);
 
 -- -------------------------------------------------------------------------
 -- 2. CATEGORIAS (personalizáveis, para receitas/despesas)
 -- -------------------------------------------------------------------------
-create type category_kind as enum ('receita', 'despesa');
+do $$ begin
+  create type category_kind as enum ('receita', 'despesa');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.categories (
   id          uuid primary key default gen_random_uuid(),
@@ -50,7 +69,10 @@ create table if not exists public.categories (
 -- -------------------------------------------------------------------------
 -- 3. TRANSAÇÕES FINANCEIRAS DIÁRIAS (orçamento: receitas / despesas / transferências)
 -- -------------------------------------------------------------------------
-create type transaction_type as enum ('receita', 'despesa', 'transferencia');
+do $$ begin
+  create type transaction_type as enum ('receita', 'despesa', 'transferencia');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.transactions (
   id              uuid primary key default gen_random_uuid(),
@@ -93,7 +115,10 @@ create index if not exists idx_assets_symbol on public.assets(symbol);
 -- -------------------------------------------------------------------------
 -- 5. TRANSAÇÕES DE BOLSA (compras, vendas, dividendos, comissões — DEGIRO)
 -- -------------------------------------------------------------------------
-create type asset_operation as enum ('compra', 'venda', 'dividendo', 'comissao', 'outro');
+do $$ begin
+  create type asset_operation as enum ('compra', 'venda', 'dividendo', 'comissao', 'outro');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.asset_transactions (
   id              uuid primary key default gen_random_uuid(),
@@ -156,6 +181,11 @@ create table if not exists public.csv_imports (
 -- =========================================================================
 
 -- Saldo corrente de cada conta a partir das transações (fonte de verdade).
+--
+-- Ponto de partida: coalesce(reconciled_balance, opening_balance). Se a
+-- conta tiver sido reconciliada (ex: por uma importação DEGIRO), só somamos
+-- movimentos que aconteceram DEPOIS desse ponto — o saldo reconciliado já
+-- inclui o efeito de tudo o que aconteceu até lá.
 create or replace view public.account_balances as
 select
   a.id as account_id,
@@ -163,22 +193,27 @@ select
   a.name,
   a.type,
   a.currency,
-  a.opening_balance
-    + coalesce(sum(case when t.type = 'receita' then t.amount
-                         when t.type = 'despesa' then -t.amount
-                         when t.type = 'transferencia' and t.account_id = a.id then -t.amount
-                         else 0 end), 0)
+  coalesce(a.reconciled_balance, a.opening_balance)
+    + coalesce(sum(case
+                     when t.occurred_on::timestamptz <= coalesce(a.reconciled_at, '-infinity'::timestamptz) then 0
+                     when t.type = 'receita' then t.amount
+                     when t.type = 'despesa' then -t.amount
+                     when t.type = 'transferencia' and t.account_id = a.id then -t.amount
+                     else 0 end), 0)
     + coalesce((
         select sum(t2.amount) from public.transactions t2
         where t2.type = 'transferencia' and t2.transfer_account_id = a.id
+          and t2.occurred_on::timestamptz > coalesce(a.reconciled_at, '-infinity'::timestamptz)
       ), 0)
     + coalesce((
         select sum(-at.total_value) from public.asset_transactions at
         where at.account_id = a.id and at.operation in ('compra','comissao')
+          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
       ), 0)
     + coalesce((
         select sum(at.total_value) from public.asset_transactions at
         where at.account_id = a.id and at.operation in ('venda','dividendo')
+          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
       ), 0)
   as current_balance
 from public.accounts a
@@ -221,6 +256,27 @@ begin
       updated_at = now()
   from public.account_balances v
   where v.account_id = a.id and a.id = p_account_id;
+end;
+$$;
+
+-- Fixa o saldo de uma conta a um valor conhecido num determinado instante
+-- (ex: o saldo que a DEGIRO reportou na última linha de um extrato
+-- importado). Só avança o ponto de reconciliação para a frente no tempo —
+-- reimportar um ficheiro mais antigo nunca faz a conta "recuar".
+create or replace function public.reconcile_account_balance(
+  p_account_id uuid,
+  p_balance numeric,
+  p_at timestamptz
+)
+returns void language plpgsql as $$
+begin
+  update public.accounts
+  set reconciled_balance = p_balance,
+      reconciled_at = p_at
+  where id = p_account_id
+    and (reconciled_at is null or p_at > reconciled_at);
+
+  perform public.refresh_account_balance(p_account_id);
 end;
 $$;
 
@@ -281,38 +337,61 @@ alter table public.assets enable row level security;
 alter table public.asset_quotes enable row level security;
 
 -- accounts
+drop policy if exists "accounts_select_own" on public.accounts;
 create policy "accounts_select_own" on public.accounts for select using (auth.uid() = user_id);
+drop policy if exists "accounts_insert_own" on public.accounts;
 create policy "accounts_insert_own" on public.accounts for insert with check (auth.uid() = user_id);
+drop policy if exists "accounts_update_own" on public.accounts;
 create policy "accounts_update_own" on public.accounts for update using (auth.uid() = user_id);
+drop policy if exists "accounts_delete_own" on public.accounts;
 create policy "accounts_delete_own" on public.accounts for delete using (auth.uid() = user_id);
 
 -- categories
+drop policy if exists "categories_select_own" on public.categories;
 create policy "categories_select_own" on public.categories for select using (auth.uid() = user_id);
+drop policy if exists "categories_insert_own" on public.categories;
 create policy "categories_insert_own" on public.categories for insert with check (auth.uid() = user_id);
+drop policy if exists "categories_update_own" on public.categories;
 create policy "categories_update_own" on public.categories for update using (auth.uid() = user_id);
+drop policy if exists "categories_delete_own" on public.categories;
 create policy "categories_delete_own" on public.categories for delete using (auth.uid() = user_id);
 
 -- transactions
+drop policy if exists "transactions_select_own" on public.transactions;
 create policy "transactions_select_own" on public.transactions for select using (auth.uid() = user_id);
+drop policy if exists "transactions_insert_own" on public.transactions;
 create policy "transactions_insert_own" on public.transactions for insert with check (auth.uid() = user_id);
+drop policy if exists "transactions_update_own" on public.transactions;
 create policy "transactions_update_own" on public.transactions for update using (auth.uid() = user_id);
+drop policy if exists "transactions_delete_own" on public.transactions;
 create policy "transactions_delete_own" on public.transactions for delete using (auth.uid() = user_id);
 
 -- asset_transactions
+drop policy if exists "asset_tx_select_own" on public.asset_transactions;
 create policy "asset_tx_select_own" on public.asset_transactions for select using (auth.uid() = user_id);
+drop policy if exists "asset_tx_insert_own" on public.asset_transactions;
 create policy "asset_tx_insert_own" on public.asset_transactions for insert with check (auth.uid() = user_id);
+drop policy if exists "asset_tx_update_own" on public.asset_transactions;
 create policy "asset_tx_update_own" on public.asset_transactions for update using (auth.uid() = user_id);
+drop policy if exists "asset_tx_delete_own" on public.asset_transactions;
 create policy "asset_tx_delete_own" on public.asset_transactions for delete using (auth.uid() = user_id);
 
 -- csv_imports
+drop policy if exists "csv_imports_select_own" on public.csv_imports;
 create policy "csv_imports_select_own" on public.csv_imports for select using (auth.uid() = user_id);
+drop policy if exists "csv_imports_insert_own" on public.csv_imports;
 create policy "csv_imports_insert_own" on public.csv_imports for insert with check (auth.uid() = user_id);
 
 -- assets & quotes: catálogo partilhado, leitura para todos os utilizadores autenticados
+drop policy if exists "assets_select_all_authenticated" on public.assets;
 create policy "assets_select_all_authenticated" on public.assets for select using (auth.role() = 'authenticated');
+drop policy if exists "assets_insert_authenticated" on public.assets;
 create policy "assets_insert_authenticated" on public.assets for insert with check (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_select_all_authenticated" on public.asset_quotes;
 create policy "asset_quotes_select_all_authenticated" on public.asset_quotes for select using (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_upsert_authenticated" on public.asset_quotes;
 create policy "asset_quotes_upsert_authenticated" on public.asset_quotes for insert with check (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_update_authenticated" on public.asset_quotes;
 create policy "asset_quotes_update_authenticated" on public.asset_quotes for update using (auth.role() = 'authenticated');
 
 -- =========================================================================
@@ -323,17 +402,62 @@ create or replace function public.seed_default_categories(p_user_id uuid)
 returns void language plpgsql as $$
 begin
   insert into public.categories (user_id, name, kind, color, is_default) values
-    (p_user_id, 'Salário',        'receita', '#3DDC97', true),
-    (p_user_id, 'Investimentos',  'receita', '#4C9AFF', true),
-    (p_user_id, 'Outros Rendimentos', 'receita', '#8B93A1', true),
-    (p_user_id, 'Alimentação',    'despesa', '#E5484D', true),
-    (p_user_id, 'Transportes',    'despesa', '#D9A441', true),
-    (p_user_id, 'Habitação',      'despesa', '#9B7EDE', true),
-    (p_user_id, 'Saúde',          'despesa', '#F2789F', true),
-    (p_user_id, 'Lazer',          'despesa', '#5EC8D8', true),
-    (p_user_id, 'Compras',        'despesa', '#F2B84B', true),
-    (p_user_id, 'Subscrições',    'despesa', '#7C8CF8', true),
-    (p_user_id, 'Outros',         'despesa', '#8B93A1', true)
+    -- Receitas
+    (p_user_id, 'Salário',             'receita', '#3DDC97', true),
+    (p_user_id, 'Freelance / Extra',   'receita', '#2FB380', true),
+    (p_user_id, 'Dividendos',          'receita', '#4C9AFF', true),
+    (p_user_id, 'Reembolsos',          'receita', '#63C7B2', true),
+    (p_user_id, 'Presentes Recebidos', 'receita', '#8FD9C4', true),
+    (p_user_id, 'Outros Rendimentos',  'receita', '#8B93A1', true),
+
+    -- Casa e contas fixas
+    (p_user_id, 'Renda / Prestação Casa', 'despesa', '#9B7EDE', true),
+    (p_user_id, 'Condomínio',             'despesa', '#A98CE0', true),
+    (p_user_id, 'Eletricidade',           'despesa', '#D9A441', true),
+    (p_user_id, 'Água',                   'despesa', '#4FB6D9', true),
+    (p_user_id, 'Gás',                    'despesa', '#E08A3C', true),
+    (p_user_id, 'Internet / TV',          'despesa', '#7C8CF8', true),
+    (p_user_id, 'Telemóvel',              'despesa', '#6E7BE0', true),
+    (p_user_id, 'Manutenção da Casa',     'despesa', '#B69A78', true),
+
+    -- Alimentação
+    (p_user_id, 'Supermercado',        'despesa', '#E5484D', true),
+    (p_user_id, 'Restaurantes',        'despesa', '#F0685E', true),
+    (p_user_id, 'Cafés / Snacks',      'despesa', '#F58F86', true),
+
+    -- Transportes
+    (p_user_id, 'Combustível',         'despesa', '#D9A441', true),
+    (p_user_id, 'Transportes Públicos','despesa', '#C98F2E', true),
+    (p_user_id, 'Manutenção do Carro', 'despesa', '#B87F1E', true),
+    (p_user_id, 'Portagens / Parque',  'despesa', '#DDB05A', true),
+    (p_user_id, 'Seguro Automóvel',    'despesa', '#C79A4A', true),
+
+    -- Saúde e bem-estar
+    (p_user_id, 'Farmácia',            'despesa', '#F2789F', true),
+    (p_user_id, 'Médico / Consultas',  'despesa', '#EE5A88', true),
+    (p_user_id, 'Ginásio / Desporto',  'despesa', '#F79CB7', true),
+    (p_user_id, 'Seguro de Saúde',     'despesa', '#E56E97', true),
+
+    -- Educação e desenvolvimento
+    (p_user_id, 'Educação / Cursos',   'despesa', '#5B8DEF', true),
+    (p_user_id, 'Livros',              'despesa', '#7FA6F5', true),
+
+    -- Lazer e estilo de vida
+    (p_user_id, 'Lazer / Entretenimento', 'despesa', '#5EC8D8', true),
+    (p_user_id, 'Viagens / Férias',       'despesa', '#4AB0C2', true),
+    (p_user_id, 'Subscrições (Streaming, Apps)', 'despesa', '#7C8CF8', true),
+    (p_user_id, 'Roupa / Calçado',        'despesa', '#F2B84B', true),
+    (p_user_id, 'Compras Diversas',       'despesa', '#F0A82E', true),
+    (p_user_id, 'Presentes Dados',        'despesa', '#F5C97A', true),
+    (p_user_id, 'Animais de Estimação',   'despesa', '#8FBF6B', true),
+
+    -- Finanças e obrigações
+    (p_user_id, 'Impostos',            'despesa', '#B0525C', true),
+    (p_user_id, 'Comissões Bancárias', 'despesa', '#9C6B6F', true),
+    (p_user_id, 'Seguros (Outros)',    'despesa', '#A87A82', true),
+    (p_user_id, 'Poupança / Investimento', 'despesa', '#3DDC97', true),
+
+    (p_user_id, 'Outros',              'despesa', '#8B93A1', true)
   on conflict (user_id, name, kind) do nothing;
 end;
 $$;

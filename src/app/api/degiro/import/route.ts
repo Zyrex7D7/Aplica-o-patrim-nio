@@ -148,6 +148,25 @@ export async function POST(req: NextRequest) {
     rows_failed: parsed.skipped,
   });
 
+  // --- 3. Reconcilia o saldo da conta com o valor que a própria DEGIRO
+  //         reportou (coluna "Saldo") na linha mais recente do ficheiro.
+  //         Isto garante que depósitos, levantamentos, cash sweeps e juros
+  //         — que não modelamos individualmente — continuam refletidos no
+  //         saldo livre da conta, sem termos de os tratar um a um.
+  let reconciledBalance: { balance: number; at: string } | null = null;
+  if (parsed.latestBalance) {
+    const { error: reconcileError } = await supabase.rpc("reconcile_account_balance", {
+      p_account_id: accountId,
+      p_balance: parsed.latestBalance.balance,
+      p_at: parsed.latestBalance.occurredAt,
+    });
+    if (reconcileError) {
+      console.error("Falha ao reconciliar saldo da conta:", reconcileError.message);
+    } else {
+      reconciledBalance = { balance: parsed.latestBalance.balance, at: parsed.latestBalance.occurredAt };
+    }
+  }
+
   return NextResponse.json({
     alreadyImported: false,
     format: parsed.format,
@@ -156,5 +175,6 @@ export async function POST(req: NextRequest) {
     rowsDuplicated,
     rowsSkipped: parsed.skipped,
     warnings: parsed.warnings,
+    reconciledBalance,
   });
 }

@@ -16,6 +16,7 @@ interface ImportResult {
   rowsSkipped?: number;
   warnings?: string[];
   error?: string;
+  reconciledBalance?: { balance: number; at: string } | null;
 }
 
 export function DegiroUpload({ brokerAccounts }: { brokerAccounts: Account[] }) {
@@ -134,6 +135,16 @@ export function DegiroUpload({ brokerAccounts }: { brokerAccounts: Account[] }) 
                 <li key={i}>{w}</li>
               ))}
             </ul>
+          )}
+          {result.reconciledBalance && (
+            <p className="mt-2 text-gain">
+              Saldo da conta atualizado para {result.reconciledBalance.balance.toLocaleString("pt-PT", {
+                style: "currency",
+                currency: "EUR",
+              })}{" "}
+              (conforme reportado pela DEGIRO em{" "}
+              {new Date(result.reconciledBalance.at).toLocaleDateString("pt-PT")}).
+            </p>
           )}
         </div>
       )}
