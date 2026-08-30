@@ -30,7 +30,7 @@ export default async function ContasPage() {
   const total = list.reduce((sum, a) => sum + Number(a.current_balance), 0);
 
   return (
-    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
           Liquidez

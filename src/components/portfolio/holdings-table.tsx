@@ -25,8 +25,10 @@ export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
   const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div>
+      <p className="sm:hidden text-xs text-text-faint mb-2">← Desliza para o lado para ver mais →</p>
+      <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
+        <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
             <th className="py-2 pr-4 font-medium">Ativo</th>
@@ -82,6 +84,7 @@ export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

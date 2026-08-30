@@ -64,7 +64,7 @@ export default async function RelatoriosPage({
   const incomeByCategory = groupByCategory(income, categoryById);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>

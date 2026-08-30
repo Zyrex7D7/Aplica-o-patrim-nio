@@ -47,7 +47,7 @@ export default async function PortfolioPage() {
     }));
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
         <h1 className="font-display text-3xl text-text">Portefólio</h1>
@@ -57,7 +57,7 @@ export default async function PortfolioPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
         <StatCard label="Capital investido" value={breakdown.portfolioCost} />
         <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
         <StatCard

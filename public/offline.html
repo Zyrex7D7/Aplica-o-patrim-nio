@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Livro — Sem ligação</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: #0b0f14;
+        color: #edeff2;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      h1 {
+        font-family: Georgia, serif;
+        font-style: italic;
+        font-size: 28px;
+        margin: 0;
+      }
+      p {
+        color: #8a93a3;
+        font-size: 14px;
+        max-width: 320px;
+        margin: 0;
+      }
+      button {
+        margin-top: 12px;
+        background: #d9a441;
+        color: #0b0f14;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Livro</h1>
+    <p>Sem ligação à internet neste momento. Assim que voltares a ter rede, os teus dados continuam guardados em segurança na Supabase.</p>
+    <button onclick="location.reload()">Tentar outra vez</button>
+  </body>
+</html>

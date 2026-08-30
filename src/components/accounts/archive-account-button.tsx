@@ -13,12 +13,12 @@ export function ArchiveAccountButton({ accountId }: { accountId: string }) {
       return;
     }
     startTransition(async () => {
-      const result = await archiveAccount(accountId);
-      if (result.error) {
-        toast.error(result.error);
-        return;
+      try {
+        await archiveAccount(accountId);
+        toast.success("Conta arquivada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao arquivar conta.");
       }
-      toast.success("Conta arquivada.");
     });
   }
 

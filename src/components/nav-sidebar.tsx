@@ -15,7 +15,6 @@ const ITEMS = [
 
 export function NavSidebar() {
   const pathname = usePathname();
-  if (pathname === "/login") return null;
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">

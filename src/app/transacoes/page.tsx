@@ -28,7 +28,7 @@ export default async function TransacoesPage() {
   const transactionsList: Transaction[] = transactions ?? [];
 
   return (
-    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
         <h1 className="font-display text-3xl text-text">Movimentos</h1>

@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-10">
         <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
           Património Global
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-10">
         <StatCard label="Contas Bancárias" value={breakdown.cashInBanks} />
         <StatCard label="Poupança" value={breakdown.cashInSavings} />
         <StatCard label="Corretoras (saldo livre)" value={breakdown.cashInBrokers} />
