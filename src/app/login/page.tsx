@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -34,7 +35,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <p className="font-display italic text-3xl text-text mb-1">Livro</p>
+        <div className="flex items-center gap-3 mb-1">
+          <Image src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-lg" />
+          <p className="font-display italic text-3xl text-text">Meu Capital</p>
+        </div>
         <p className="text-sm text-text-muted mb-8">
           O teu gestor de património e finanças pessoais.
         </p>

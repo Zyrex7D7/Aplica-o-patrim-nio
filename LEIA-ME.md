@@ -1,62 +1,46 @@
-# Como aplicar este pack (Fase 2: histórico, recorrências, orçamentos, P&L realizado)
+# Como aplicar o rebranding para "Meu Capital"
 
-## 1. Pré-requisito: corre o SQL
-
-Se ainda não correste o `002_melhorias.sql` que te mandei antes, corre-o agora no
-SQL Editor da Supabase — este pack depende das tabelas/funções/views que ele cria
-(`net_worth_snapshots`, `recurring_transactions`, `budgets`, `budget_status`,
-`get_realized_pnl`, etc).
-
-## 2. Copia os ficheiros
-
-Caminhos relativos à raiz do projeto.
+## 1. Copia os ficheiros
 
 | Ficheiro | Estado |
 |---|---|
-| `src/types/database.ts` | substituir |
-| `src/lib/data/net-worth-history.ts` | novo |
-| `src/components/dashboard/net-worth-history-chart.tsx` | novo |
-| `src/app/dashboard/page.tsx` | substituir |
-| `src/app/recorrentes/actions.ts` | novo |
-| `src/app/recorrentes/page.tsx` | novo |
-| `src/components/recurring/recurring-form.tsx` | novo |
-| `src/components/recurring/recurring-list.tsx` | novo |
-| `src/components/nav-sidebar.tsx` | substituir (adiciona "Recorrências" ao menu) |
-| `src/app/transacoes/page.tsx` | substituir (aplica recorrências vencidas + link) |
-| `src/app/relatorios/actions.ts` | novo |
-| `src/app/relatorios/page.tsx` | substituir (adiciona secção de Orçamentos) |
-| `src/components/reports/budget-form.tsx` | novo |
-| `src/components/reports/budget-list.tsx` | novo |
-| `src/app/portfolio/page.tsx` | substituir (adiciona Lucro Realizado) |
+| `public/icons/icon-192.png` | novo/substituir |
+| `public/icons/icon-512.png` | novo/substituir |
+| `public/icons/icon-512-maskable.png` | novo/substituir |
+| `src/app/icon.png` | novo/substituir (favicon automático do Next) |
+| `src/app/apple-icon.png` | novo/substituir (ícone do ecrã principal no iPhone) |
+| `src/app/manifest.ts` | substituir |
+| `src/app/layout.tsx` | substituir |
+| `src/app/login/page.tsx` | substituir |
+| `src/components/nav-sidebar.tsx` | substituir |
 
-Nota: `src/types/database.ts` já vem com os campos todos do pack anterior — não
-precisas de reaplicar o de antes por cima, este já inclui tudo.
+Se ainda não tinhas aplicado os packs anteriores (PWA base + Fase 2), aplica-os
+primeiro — este pack assume que `manifest.ts`, `layout.tsx` e `nav-sidebar.tsx`
+já existem nesses caminhos.
 
-## 3. O que ficou por fazer (a propósito, não por esquecimento)
+## 2. O que mudou
 
-- **Categorização automática por regras** (`category_rules` / `suggest_category`):
-  a tabela e a função já existem no SQL, mas não construí a UI (ex: sugestão
-  automática de categoria à medida que escreves a descrição num movimento).
-  Diz se queres que avance com isso a seguir.
-- Não adicionei "Recorrências" à barra de navegação do telemóvel (fica só no
-  menu lateral do desktop) para não sobrecarregar a barra de 5 ícones — no
-  telemóvel acede-se pelo link "Ver recorrências" no topo da página de
-  Movimentos.
-- A tabela de posições do portefólio continua sem versão em cartões para
-  mobile (mencionado na resposta anterior) — ainda não pedida explicitamente.
+- **Nome da app**: "Livro" → "Meu Capital", em todo o lado onde aparecia
+  (manifest/PWA, título do separador do browser, ecrã de login, barra
+  lateral).
+- **Logo**: recortei o teu logo para um quadrado limpo e gerei os 4 formatos
+  que a plataforma pede — favicon, ícone da Apple (180×180), ícone normal da
+  PWA (192/512) e uma versão "maskable" (512, com mais margem à volta) para
+  não ficar cortado quando o Android o mostra dentro de um círculo/squircle.
+  Aparece agora na barra lateral (desktop) e no ecrã de login.
+- Não mudei o nome do pacote no `package.json` (`patrimonio-app`) nem o nome
+  do repositório — é só cosmético, mas diz se queres que troque também.
 
-## 4. Testa
+## 3. Testa
 
 ```bash
 npm run dev
 ```
 
-- Abre o Dashboard — deve aparecer "Evolução do Património" (com "ainda não há
-  histórico" no primeiro dia; volta amanhã para veres um segundo ponto).
-- Cria uma recorrência em `/recorrentes` com data de início no passado — ao
-  recarregar `/transacoes` ou `/recorrentes`, o movimento deve aparecer criado
-  automaticamente.
-- Em `/relatorios`, define um orçamento para uma categoria de despesa e
-  confirma que a barra de progresso reflete os movimentos já registados.
-- Em `/portfolio`, confirma que "Lucro Realizado" aparece (fica a 0,00 € se
-  nunca tiveres vendido nada).
+- O separador do browser deve mostrar "Meu Capital — Património & Finanças
+  Pessoais" e o ícone novo.
+- Login e barra lateral devem mostrar o novo nome e logo.
+- Depois de fazeres deploy, tenta instalar a PWA outra vez (Android: prompt
+  de instalar; iPhone: Partilhar → Adicionar ao ecrã principal) — o ícone e o
+  nome no ecrã principal devem já ser os novos. Pode ser preciso desinstalar
+  a versão antiga primeiro se já a tinhas instalado com o nome "Livro".

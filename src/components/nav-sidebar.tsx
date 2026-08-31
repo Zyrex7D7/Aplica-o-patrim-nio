@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, Wallet, ArrowLeftRight, Repeat, PieChart, LineChart } from "lucide-react";
 import { cx } from "@/lib/format";
@@ -20,11 +21,22 @@ export function NavSidebar() {
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">
-      <div className="px-2 mb-8">
-        <p className="font-display text-xl italic tracking-tight text-text">Livro</p>
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
-          Património &amp; Finanças
-        </p>
+      <div className="flex items-center gap-2.5 px-2 mb-8">
+        <Image
+          src="/icons/icon-192.png"
+          alt=""
+          width={28}
+          height={28}
+          className="rounded-md shrink-0"
+        />
+        <div>
+          <p className="font-display text-lg italic leading-tight tracking-tight text-text">
+            Meu Capital
+          </p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
+            Património &amp; Finanças
+          </p>
+        </div>
       </div>
 
       <nav className="flex flex-col gap-1">
