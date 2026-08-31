@@ -46,5 +46,13 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // Ficheiros de PWA (manifest, service worker, página offline) têm de
+  // continuar acessíveis SEM sessão — é assim que o Chrome verifica se o
+  // site é instalável, e é assim que um service worker consegue mostrar a
+  // página offline mesmo com a sessão expirada. Sem esta exclusão, o
+  // middleware redirecionava-os para /login (HTML em vez de JSON/JS),
+  // partindo a instalação da app.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|sw\\.js|offline\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)$).*)",
+  ],
 };

@@ -167,6 +167,7 @@ test-fixtures/
   degiro-transacoes.csv
   run-test.ts
 .gitignore
+003_correcoes_build.sql
 AGENTS.md
 CLAUDE.md
 eslint.config.mjs
@@ -191,60 +192,6 @@ This section contains the contents of the repository's files.
 
 <file path="public/next.svg">
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
-</file>
-
-<file path="public/offline.html">
-<!DOCTYPE html>
-<html lang="pt-PT">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Livro — Sem ligação</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        background: #0b0f14;
-        color: #edeff2;
-        font-family: ui-sans-serif, system-ui, sans-serif;
-        text-align: center;
-        padding: 24px;
-      }
-      h1 {
-        font-family: Georgia, serif;
-        font-style: italic;
-        font-size: 28px;
-        margin: 0;
-      }
-      p {
-        color: #8a93a3;
-        font-size: 14px;
-        max-width: 320px;
-        margin: 0;
-      }
-      button {
-        margin-top: 12px;
-        background: #d9a441;
-        color: #0b0f14;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 20px;
-        font-size: 14px;
-        font-weight: 500;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Livro</h1>
-    <p>Sem ligação à internet neste momento. Assim que voltares a ter rede, os teus dados continuam guardados em segurança na Supabase.</p>
-    <button onclick="location.reload()">Tentar outra vez</button>
-  </body>
-</html>
 </file>
 
 <file path="public/vercel.svg">
@@ -2361,6 +2308,61 @@ yarn-error.log*
 next-env.d.ts
 </file>
 
+<file path="003_correcoes_build.sql">
+-- =========================================================================
+-- Correção do build: campos que o front-end já espera
+-- (exclude_from_reports, total_fees, first_purchase_at)
+-- =========================================================================
+-- Idempotente. Corre no SQL Editor da Supabase, depois de schema.sql e
+-- 002_melhorias.sql.
+-- =========================================================================
+
+-- -------------------------------------------------------------------------
+-- 1. Categorias "ajuste" — ficam de fora dos totais de receitas/despesas
+--    nos relatórios e no agrupamento mensal de transacoes/page.tsx (ex:
+--    correções de saldo, movimentos internos que não são gasto real).
+-- -------------------------------------------------------------------------
+alter table public.categories
+  add column if not exists exclude_from_reports boolean not null default false;
+
+-- -------------------------------------------------------------------------
+-- 2. portfolio_positions — acrescenta total_fees (comissões pagas nesse
+--    ativo, embutidas nas compras/vendas OU como linha avulsa tipo
+--    "custos de conectividade") e first_purchase_at (data da 1ª compra,
+--    para a coluna "Desde" da tabela de posições).
+-- -------------------------------------------------------------------------
+-- "create or replace view" recusa-se a mudar a estrutura de colunas de uma
+-- view já existente com um formato diferente — apaga-se e recria-se do
+-- zero, o que é seguro (nada tem uma foreign key para uma view).
+drop view if exists public.portfolio_positions;
+
+create view public.portfolio_positions as
+select
+  at.user_id,
+  at.asset_id,
+  ass.name,
+  ass.symbol,
+  ass.isin,
+  ass.currency,
+  sum(case when at.operation = 'compra' then at.quantity
+           when at.operation = 'venda' then -at.quantity
+           else 0 end) as quantity_held,
+  sum(case when at.operation in ('compra', 'venda') then -at.total_value
+           else 0 end) as net_invested,
+  sum(case when at.operation = 'dividendo' then at.total_value else 0 end) as total_dividends,
+  -- Soma as comissões já embutidas nas linhas de compra/venda (coluna
+  -- "fees") com as linhas de comissão avulsa (operation = 'comissao',
+  -- típicas do extrato "Estado de Conta" — custos de conectividade, etc.).
+  coalesce(sum(coalesce(at.fees, 0)), 0)
+    + coalesce(sum(case when at.operation = 'comissao' then abs(at.total_value) else 0 end), 0)
+    as total_fees,
+  min(case when at.operation = 'compra' then coalesce(at.occurred_at, at.occurred_on::timestamptz) end)
+    as first_purchase_at
+from public.asset_transactions at
+join public.assets ass on ass.id = at.asset_id
+group by at.user_id, at.asset_id, ass.name, ass.symbol, ass.isin, ass.currency;
+</file>
+
 <file path="AGENTS.md">
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -2443,6 +2445,76 @@ export default config;
   ],
   "exclude": ["node_modules"]
 }
+</file>
+
+<file path="public/offline.html">
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sem ligação — Meu Capital</title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        background: #0B0F14;
+        color: #EDEFF2;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Inter", sans-serif;
+      }
+      .wrap {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+      }
+      img {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0 0 8px;
+      }
+      p {
+        font-size: 14px;
+        color: #8A93A3;
+        max-width: 320px;
+        line-height: 1.5;
+        margin: 0 0 24px;
+      }
+      button {
+        border: 1px solid #232B36;
+        background: #1A212B;
+        color: #EDEFF2;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      button:active {
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>Sem ligação à internet</h1>
+      <p>
+        O Meu Capital precisa de ligação para carregar os teus dados financeiros
+        em segurança. Verifica a tua rede e tenta outra vez.
+      </p>
+      <button onclick="location.reload()">Tentar novamente</button>
+    </div>
+  </body>
+</html>
 </file>
 
 <file path="public/sw.js">
@@ -4092,55 +4164,6 @@ export async function hashFileContent(text: string): Promise<string> {
 }
 </file>
 
-<file path="LEIA-ME.md">
-# Como aplicar o rebranding para "Meu Capital"
-
-## 1. Copia os ficheiros
-
-| Ficheiro | Estado |
-|---|---|
-| `public/icons/icon-192.png` | novo/substituir |
-| `public/icons/icon-512.png` | novo/substituir |
-| `public/icons/icon-512-maskable.png` | novo/substituir |
-| `src/app/icon.png` | novo/substituir (favicon automático do Next) |
-| `src/app/apple-icon.png` | novo/substituir (ícone do ecrã principal no iPhone) |
-| `src/app/manifest.ts` | substituir |
-| `src/app/layout.tsx` | substituir |
-| `src/app/login/page.tsx` | substituir |
-| `src/components/nav-sidebar.tsx` | substituir |
-
-Se ainda não tinhas aplicado os packs anteriores (PWA base + Fase 2), aplica-os
-primeiro — este pack assume que `manifest.ts`, `layout.tsx` e `nav-sidebar.tsx`
-já existem nesses caminhos.
-
-## 2. O que mudou
-
-- **Nome da app**: "Livro" → "Meu Capital", em todo o lado onde aparecia
-  (manifest/PWA, título do separador do browser, ecrã de login, barra
-  lateral).
-- **Logo**: recortei o teu logo para um quadrado limpo e gerei os 4 formatos
-  que a plataforma pede — favicon, ícone da Apple (180×180), ícone normal da
-  PWA (192/512) e uma versão "maskable" (512, com mais margem à volta) para
-  não ficar cortado quando o Android o mostra dentro de um círculo/squircle.
-  Aparece agora na barra lateral (desktop) e no ecrã de login.
-- Não mudei o nome do pacote no `package.json` (`patrimonio-app`) nem o nome
-  do repositório — é só cosmético, mas diz se queres que troque também.
-
-## 3. Testa
-
-```bash
-npm run dev
-```
-
-- O separador do browser deve mostrar "Meu Capital — Património & Finanças
-  Pessoais" e o ícone novo.
-- Login e barra lateral devem mostrar o novo nome e logo.
-- Depois de fazeres deploy, tenta instalar a PWA outra vez (Android: prompt
-  de instalar; iPhone: Partilhar → Adicionar ao ecrã principal) — o ícone e o
-  nome no ecrã principal devem já ser os novos. Pode ser preciso desinstalar
-  a versão antiga primeiro se já a tinhas instalado com o nome "Livro".
-</file>
-
 <file path="src/app/layout.tsx">
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
@@ -4366,178 +4389,49 @@ export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
 }
 </file>
 
-<file path="src/types/database.ts">
-// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql.
-// Para gerar automaticamente a partir do teu projeto real, corre:
-//   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
+<file path="LEIA-ME.md">
+# Corrigir o deploy que falhou
 
-export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
-export type CategoryKind = "receita" | "despesa";
-export type TransactionType = "receita" | "despesa" | "transferencia";
-export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
-export type RecurrenceFrequency = "diaria" | "semanal" | "mensal" | "anual";
+O `npm run build` corre o `tsc` a sério (o `npm run dev` não) — apanhou 2
+sítios onde o front-end já esperava campos que a base de dados e os tipos
+ainda não tinham. Não é nada partido pelo que te mandei antes; é código teu
+(ou de outra sessão) que ficou um passo à frente do schema.
 
-export interface Account {
-  id: string;
-  user_id: string;
-  name: string;
-  type: AccountType;
-  currency: string;
-  institution: string | null;
-  opening_balance: number;
-  current_balance: number;
-  is_archived: boolean;
-  created_at: string;
-  updated_at: string;
-}
+## 1. Corre o SQL
 
-export interface Category {
-  id: string;
-  user_id: string;
-  name: string;
-  kind: CategoryKind;
-  color: string | null;
-  icon: string | null;
-  is_default: boolean;
-  created_at: string;
-}
+No SQL Editor da Supabase, corre `003_correcoes_build.sql` (depois do
+`schema.sql` e do `002_melhorias.sql`, se ainda não os tiveres corrido).
 
-export interface Transaction {
-  id: string;
-  user_id: string;
-  type: TransactionType;
-  amount: number;
-  occurred_on: string;
-  account_id: string;
-  transfer_account_id: string | null;
-  category_id: string | null;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-}
+Isto acrescenta:
+- `categories.exclude_from_reports` (boolean, default `false`) — para a
+  badge "Ajuste" que já tens em `transaction-list.tsx`.
+- `total_fees` e `first_purchase_at` na view `portfolio_positions` — para as
+  colunas que já tens em `holdings-table.tsx`.
 
-export interface Asset {
-  id: string;
-  isin: string | null;
-  symbol: string | null;
-  name: string;
-  currency: string;
-  created_at: string;
-}
+## 2. Substitui o ficheiro de tipos
 
-export interface AssetTransaction {
-  id: string;
-  user_id: string;
-  account_id: string;
-  asset_id: string;
-  operation: AssetOperation;
-  occurred_on: string;
-  occurred_at: string | null;
-  quantity: number | null;
-  price: number | null;
-  local_value: number | null;
-  fees: number | null;
-  total_value: number;
-  currency: string | null;
-  exchange_rate: number | null;
-  description: string | null;
-  order_id: string | null;
-  source_hash: string;
-  source: string;
-  raw_row: Record<string, string> | null;
-  created_at: string;
-}
+`src/types/database.ts` — vem com os campos novos adicionados aos tipos
+`Category` e `PortfolioPosition` (mais tudo o que já lá estava dos packs
+anteriores). Isto sozinho já resolve os 3 erros do build.
 
-export interface AssetQuote {
-  asset_id: string;
-  price: number;
-  currency: string;
-  fetched_at: string;
-}
+## 3. Volta a fazer deploy
 
-export interface CsvImport {
-  id: string;
-  user_id: string;
-  account_id: string | null;
-  file_name: string;
-  file_hash: string;
-  rows_total: number;
-  rows_inserted: number;
-  rows_duplicated: number;
-  rows_failed: number;
-  created_at: string;
-}
+```bash
+npm run build
+```
 
-export interface PortfolioPosition {
-  user_id: string;
-  asset_id: string;
-  name: string;
-  symbol: string | null;
-  isin: string | null;
-  currency: string;
-  quantity_held: number;
-  net_invested: number;
-  total_dividends: number;
-}
+localmente primeiro para confirmares que compila, depois `git push` /
+redeploy no Vercel.
 
-export interface NetWorthSnapshot {
-  id: string;
-  user_id: string;
-  snapshot_date: string;
-  total_net_worth: number;
-  cash_in_banks: number;
-  cash_in_savings: number;
-  cash_in_brokers: number;
-  physical_cash: number;
-  portfolio_value: number;
-  portfolio_cost: number;
-  created_at: string;
-}
+## Nota — a badge "Ajuste" nunca vai aparecer ainda
 
-export interface RecurringTransaction {
-  id: string;
-  user_id: string;
-  type: TransactionType;
-  amount: number;
-  account_id: string;
-  transfer_account_id: string | null;
-  category_id: string | null;
-  description: string | null;
-  frequency: RecurrenceFrequency;
-  interval_count: number;
-  start_date: string;
-  end_date: string | null;
-  next_occurrence: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface Budget {
-  id: string;
-  user_id: string;
-  category_id: string;
-  monthly_limit: number;
-  created_at: string;
-}
-
-export interface BudgetStatus {
-  user_id: string;
-  category_id: string;
-  category_name: string;
-  category_color: string | null;
-  monthly_limit: number;
-  spent_this_month: number;
-}
-
-export interface RealizedPnlRow {
-  asset_id: string;
-  realized_pnl: number;
-}
-
-// Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
-// Substitui por `supabase gen types` quando ligares a um projeto real.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Database = any;
+Adicionei a coluna `exclude_from_reports`, mas não existe nenhum sítio na UI
+para a ligares numa categoria (não vi um formulário de edição de categorias
+no que me mandaste — só o "Nova categoria" rápido em `category-quick-add.tsx`).
+Por agora todas as categorias ficam com `exclude_from_reports = false` por
+omissão, por isso o build passa e nada muda visualmente. Se quiseres, faço a
+seguir um pequeno toggle na listagem/edição de categorias para conseguires
+marcar isso.
 </file>
 
 <file path="README.md">
@@ -4847,6 +4741,187 @@ export function NavSidebar() {
     </aside>
   );
 }
+</file>
+
+<file path="src/types/database.ts">
+// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql +
+// 003_correcoes_build.sql.
+// Para gerar automaticamente a partir do teu projeto real, corre:
+//   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
+
+export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
+export type CategoryKind = "receita" | "despesa";
+export type TransactionType = "receita" | "despesa" | "transferencia";
+export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
+export type RecurrenceFrequency = "diaria" | "semanal" | "mensal" | "anual";
+
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  institution: string | null;
+  opening_balance: number;
+  current_balance: number;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Category {
+  id: string;
+  user_id: string;
+  name: string;
+  kind: CategoryKind;
+  color: string | null;
+  icon: string | null;
+  is_default: boolean;
+  /** Categorias "ajuste" — ficam de fora dos totais de receitas/despesas nos relatórios. */
+  exclude_from_reports: boolean;
+  created_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  occurred_on: string;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Asset {
+  id: string;
+  isin: string | null;
+  symbol: string | null;
+  name: string;
+  currency: string;
+  created_at: string;
+}
+
+export interface AssetTransaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  asset_id: string;
+  operation: AssetOperation;
+  occurred_on: string;
+  occurred_at: string | null;
+  quantity: number | null;
+  price: number | null;
+  local_value: number | null;
+  fees: number | null;
+  total_value: number;
+  currency: string | null;
+  exchange_rate: number | null;
+  description: string | null;
+  order_id: string | null;
+  source_hash: string;
+  source: string;
+  raw_row: Record<string, string> | null;
+  created_at: string;
+}
+
+export interface AssetQuote {
+  asset_id: string;
+  price: number;
+  currency: string;
+  fetched_at: string;
+}
+
+export interface CsvImport {
+  id: string;
+  user_id: string;
+  account_id: string | null;
+  file_name: string;
+  file_hash: string;
+  rows_total: number;
+  rows_inserted: number;
+  rows_duplicated: number;
+  rows_failed: number;
+  created_at: string;
+}
+
+export interface PortfolioPosition {
+  user_id: string;
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  isin: string | null;
+  currency: string;
+  quantity_held: number;
+  net_invested: number;
+  total_dividends: number;
+  /** Comissões pagas neste ativo (embutidas nas compras/vendas + linhas avulsas). */
+  total_fees: number;
+  /** Data da primeira compra deste ativo, ou null se nunca houve uma. */
+  first_purchase_at: string | null;
+}
+
+export interface NetWorthSnapshot {
+  id: string;
+  user_id: string;
+  snapshot_date: string;
+  total_net_worth: number;
+  cash_in_banks: number;
+  cash_in_savings: number;
+  cash_in_brokers: number;
+  physical_cash: number;
+  portfolio_value: number;
+  portfolio_cost: number;
+  created_at: string;
+}
+
+export interface RecurringTransaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  frequency: RecurrenceFrequency;
+  interval_count: number;
+  start_date: string;
+  end_date: string | null;
+  next_occurrence: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Budget {
+  id: string;
+  user_id: string;
+  category_id: string;
+  monthly_limit: number;
+  created_at: string;
+}
+
+export interface BudgetStatus {
+  user_id: string;
+  category_id: string;
+  category_name: string;
+  category_color: string | null;
+  monthly_limit: number;
+  spent_this_month: number;
+}
+
+export interface RealizedPnlRow {
+  asset_id: string;
+  realized_pnl: number;
+}
+
+// Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
+// Substitui por `supabase gen types` quando ligares a um projeto real.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Database = any;
 </file>
 
 <file path="supabase/schema.sql">
