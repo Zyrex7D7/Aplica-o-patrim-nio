@@ -1,51 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-PT">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Livro — Sem ligação</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sem ligação — Meu Capital</title>
     <style>
-      body {
+      html, body {
+        height: 100%;
         margin: 0;
-        min-height: 100vh;
+        background: #0B0F14;
+        color: #EDEFF2;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Inter", sans-serif;
+      }
+      .wrap {
+        min-height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        background: #0b0f14;
-        color: #edeff2;
-        font-family: ui-sans-serif, system-ui, sans-serif;
         text-align: center;
         padding: 24px;
       }
+      img {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+      }
       h1 {
-        font-family: Georgia, serif;
-        font-style: italic;
-        font-size: 28px;
-        margin: 0;
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0 0 8px;
       }
       p {
-        color: #8a93a3;
         font-size: 14px;
+        color: #8A93A3;
         max-width: 320px;
-        margin: 0;
+        line-height: 1.5;
+        margin: 0 0 24px;
       }
       button {
-        margin-top: 12px;
-        background: #d9a441;
-        color: #0b0f14;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 20px;
+        border: 1px solid #232B36;
+        background: #1A212B;
+        color: #EDEFF2;
+        border-radius: 8px;
+        padding: 10px 18px;
         font-size: 14px;
-        font-weight: 500;
+        cursor: pointer;
+      }
+      button:active {
+        opacity: 0.8;
       }
     </style>
   </head>
   <body>
-    <h1>Livro</h1>
-    <p>Sem ligação à internet neste momento. Assim que voltares a ter rede, os teus dados continuam guardados em segurança na Supabase.</p>
-    <button onclick="location.reload()">Tentar outra vez</button>
+    <div class="wrap">
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>Sem ligação à internet</h1>
+      <p>
+        O Meu Capital precisa de ligação para carregar os teus dados financeiros
+        em segurança. Verifica a tua rede e tenta outra vez.
+      </p>
+      <button onclick="location.reload()">Tentar novamente</button>
+    </div>
   </body>
 </html>
