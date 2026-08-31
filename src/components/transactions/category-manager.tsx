@@ -101,6 +101,15 @@ function CategoryRow({ category }: { category: Category }) {
             />
             Excluir dos Relatórios (categorias de ajuste)
           </label>
+          <label className="flex items-center gap-2 text-[11px] text-text-muted">
+            <input
+              type="checkbox"
+              name="is_fee"
+              defaultChecked={category.is_fee}
+              className="accent-gold"
+            />
+            É uma comissão/taxa (conta para o resumo de Comissões e Taxas)
+          </label>
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -135,6 +144,11 @@ function CategoryRow({ category }: { category: Category }) {
         {category.exclude_from_reports && (
           <span className="text-[10px] uppercase tracking-wide text-text-faint border border-line-soft rounded px-1.5 py-0.5 shrink-0">
             Ajuste
+          </span>
+        )}
+        {category.is_fee && (
+          <span className="text-[10px] uppercase tracking-wide text-loss border border-loss/40 rounded px-1.5 py-0.5 shrink-0">
+            Taxa
           </span>
         )}
       </span>

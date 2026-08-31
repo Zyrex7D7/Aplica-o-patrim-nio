@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createTransaction } from "@/app/transacoes/actions";
+import { createClient } from "@/lib/supabase/client";
 import type { Account, Category } from "@/types/database";
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -16,9 +17,25 @@ export function TransactionForm({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [type, setType] = useState<"receita" | "despesa" | "transferencia">("despesa");
+  const [suggestedCategoryId, setSuggestedCategoryId] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
   const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
+
+  // Sempre que o utilizador sai do campo de descrição, pergunta à base de
+  // dados (função `suggest_category`, criada em 004_regras_categorizacao_e_taxas.sql)
+  // se alguma regra corresponde ao texto, e pré-seleciona essa categoria.
+  // O utilizador pode sempre mudar antes de guardar — isto é só um atalho.
+  async function handleDescriptionBlur(description: string) {
+    const text = description.trim();
+    if (!text) return;
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("suggest_category", { p_description: text });
+    if (!error && data) {
+      const suggested = filteredCategories.find((c) => c.id === data);
+      if (suggested) setSuggestedCategoryId(data as string);
+    }
+  }
 
   async function action(formData: FormData) {
     startTransition(async () => {
@@ -26,6 +43,7 @@ export function TransactionForm({
         await createTransaction(formData);
         formRef.current?.reset();
         setType("despesa");
+        setSuggestedCategoryId("");
         toast.success("Movimento registado.");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Erro ao registar movimento.");
@@ -50,7 +68,10 @@ export function TransactionForm({
               name="type"
               value={t}
               checked={type === t}
-              onChange={() => setType(t)}
+              onChange={() => {
+                setType(t);
+                setSuggestedCategoryId("");
+              }}
               className="hidden"
             />
             {t === "transferencia" ? "Transferência" : t}
@@ -102,6 +123,8 @@ export function TransactionForm({
         ) : (
           <select
             name="category_id"
+            value={suggestedCategoryId}
+            onChange={(e) => setSuggestedCategoryId(e.target.value)}
             className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
           >
             <option value="">Categoria (opcional)</option>
@@ -117,7 +140,8 @@ export function TransactionForm({
       <div className="flex gap-3">
         <input
           name="description"
-          placeholder="Descrição (opcional)"
+          placeholder="Descrição (opcional) — ex: Continente, Netflix..."
+          onBlur={(e) => handleDescriptionBlur(e.target.value)}
           className="flex-1 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
         />
         <button
@@ -128,6 +152,11 @@ export function TransactionForm({
           {isPending ? "A guardar..." : "Registar"}
         </button>
       </div>
+      {suggestedCategoryId && (
+        <p className="text-[11px] text-text-faint -mt-1">
+          Categoria sugerida automaticamente com base numa regra tua — muda-a se não for a certa.
+        </p>
+      )}
     </form>
   );
 }

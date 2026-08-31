@@ -1,5 +1,5 @@
 // Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql +
-// 003_correcoes_build.sql.
+// 003_correcoes_build.sql + 004_regras_categorizacao_e_taxas.sql.
 // Para gerar automaticamente a partir do teu projeto real, corre:
 //   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
 
@@ -33,6 +33,8 @@ export interface Category {
   is_default: boolean;
   /** Categorias "ajuste" — ficam de fora dos totais de receitas/despesas nos relatórios. */
   exclude_from_reports: boolean;
+  /** Marca esta categoria como representando uma comissão/taxa (ex: "Comissões Bancárias"). */
+  is_fee: boolean;
   created_at: string;
 }
 
@@ -170,6 +172,29 @@ export interface BudgetStatus {
 export interface RealizedPnlRow {
   asset_id: string;
   realized_pnl: number;
+}
+
+/** Regra de categorização automática: se `keyword` aparecer na descrição, sugere `category_id`. */
+export interface CategoryRule {
+  id: string;
+  user_id: string;
+  keyword: string;
+  category_id: string;
+  priority: number;
+  created_at: string;
+}
+
+export interface FeesSummary {
+  banking_fees: number;
+  investment_fees: number;
+  total_fees: number;
+}
+
+export interface FeeTransactionRow {
+  occurred_on: string;
+  source: "Bancária" | "Investimento" | "Investimento (embutida)";
+  description: string;
+  amount: number;
 }
 
 // Tipo mínimo compatível com o genérico esperado por @supabase/ssr.

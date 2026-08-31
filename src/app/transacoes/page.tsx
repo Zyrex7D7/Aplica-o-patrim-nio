@@ -4,8 +4,9 @@ import { TransactionList } from "@/components/transactions/transaction-list";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
 import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
 import { CategoryManager } from "@/components/transactions/category-manager";
+import { CategoryRulesManager } from "@/components/transactions/category-rules-manager";
 import { Card, CardLabel } from "@/components/ui/card";
-import type { Account, Category, Transaction } from "@/types/database";
+import type { Account, Category, CategoryRule, Transaction } from "@/types/database";
 
 export default async function TransacoesPage({
   searchParams,
@@ -40,14 +41,16 @@ export default async function TransacoesPage({
   if (category) query = query.eq("category_id", category);
   if (q) query = query.ilike("description", `%${q}%`);
 
-  const [{ data: accounts }, { data: categories }, { data: transactions }] = await Promise.all([
+  const [{ data: accounts }, { data: categories }, { data: rules }, { data: transactions }] = await Promise.all([
     supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
     supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
+    supabase.from("category_rules").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
     query,
   ]);
 
   const accountsList: Account[] = accounts ?? [];
   const categoriesList: Category[] = categories ?? [];
+  const rulesList: CategoryRule[] = rules ?? [];
   const transactionsList: Transaction[] = transactions ?? [];
 
   return (
@@ -92,6 +95,7 @@ export default async function TransacoesPage({
       <Card className="mb-8">
         <CardLabel className="mb-3">Categorias</CardLabel>
         <CategoryManager categories={categoriesList} />
+        <CategoryRulesManager rules={rulesList} categories={categoriesList} />
       </Card>
 
       <Card>

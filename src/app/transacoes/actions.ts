@@ -142,12 +142,13 @@ export async function updateCategory(
   const name = String(formData.get("name") ?? "").trim();
   const color = String(formData.get("color") ?? "#8B93A1");
   const excludeFromReports = formData.get("exclude_from_reports") === "on";
+  const isFee = formData.get("is_fee") === "on";
 
   if (!name) return { error: "O nome da categoria é obrigatório." };
 
   const { error } = await supabase
     .from("categories")
-    .update({ name, color, exclude_from_reports: excludeFromReports })
+    .update({ name, color, exclude_from_reports: excludeFromReports, is_fee: isFee })
     .eq("id", categoryId)
     .eq("user_id", user.id);
 
@@ -175,5 +176,51 @@ export async function deleteCategory(categoryId: string): Promise<{ error?: stri
   revalidatePath("/transacoes");
   revalidatePath("/relatorios");
   revalidatePath("/recorrentes");
+  return {};
+}
+
+/**
+ * Cria uma regra de categorização automática: sempre que "keyword" aparecer
+ * na descrição de um movimento, a categoria é sugerida automaticamente
+ * (ver função SQL `suggest_category`, chamada a partir do formulário).
+ */
+export async function createCategoryRule(formData: FormData): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const keyword = String(formData.get("keyword") ?? "").trim();
+  const categoryId = String(formData.get("category_id") ?? "");
+
+  if (!keyword) return { error: "Escreve uma palavra-chave (ex: 'continente', 'netflix')." };
+  if (!categoryId) return { error: "Escolhe a categoria a sugerir." };
+
+  const { error } = await supabase.from("category_rules").insert({
+    user_id: user.id,
+    keyword: keyword.toLowerCase(),
+    category_id: categoryId,
+  });
+
+  if (error) {
+    return {
+      error: error.code === "23505" ? "Já existe uma regra com essa palavra-chave." : error.message,
+    };
+  }
+  revalidatePath("/transacoes");
+  return {};
+}
+
+export async function deleteCategoryRule(ruleId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase.from("category_rules").delete().eq("id", ruleId).eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/transacoes");
   return {};
 }
