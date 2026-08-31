@@ -1,42 +1,38 @@
-# Corrigir o deploy que falhou
+# Menu lateral no telemóvel (hambúrguer)
 
-O `npm run build` corre o `tsc` a sério (o `npm run dev` não) — apanhou 2
-sítios onde o front-end já esperava campos que a base de dados e os tipos
-ainda não tinham. Não é nada partido pelo que te mandei antes; é código teu
-(ou de outra sessão) que ficou um passo à frente do schema.
+## Ficheiros
 
-## 1. Corre o SQL
+| Ficheiro | Estado |
+|---|---|
+| `src/lib/nav-items.ts` | novo — lista única de secções, usada por todos os menus |
+| `src/components/mobile-header.tsx` | novo — cabeçalho fixo no topo (mobile) + painel lateral |
+| `src/components/mobile-nav.tsx` | substituir — passa a usar a lista partilhada |
+| `src/components/nav-sidebar.tsx` | substituir — passa a usar a lista partilhada |
+| `src/app/layout.tsx` | substituir — liga o `MobileHeader` e ajusta o espaçamento |
 
-No SQL Editor da Supabase, corre `003_correcoes_build.sql` (depois do
-`schema.sql` e do `002_melhorias.sql`, se ainda não os tiveres corrido).
+## O que muda
 
-Isto acrescenta:
-- `categories.exclude_from_reports` (boolean, default `false`) — para a
-  badge "Ajuste" que já tens em `transaction-list.tsx`.
-- `total_fees` e `first_purchase_at` na view `portfolio_positions` — para as
-  colunas que já tens em `holdings-table.tsx`.
+- **Novo cabeçalho fixo no topo**, só em ecrãs pequenos (`md:hidden`): logo +
+  nome à esquerda, ícone de hambúrguer à direita.
+- Tocar no hambúrguer abre um **painel lateral** com as 6 secções (incluindo
+  "Recorrências", que não cabia na barra de baixo): Património, Contas,
+  Movimentos, Recorrências, Relatórios, Portefólio.
+- O painel fecha ao tocar fora dele, no X, ou automaticamente ao navegares
+  para outra secção.
+- A barra de baixo (5 ícones) continua igual — serve para os atalhos mais
+  usados; o menu lateral é que dá acesso a tudo.
+- `src/lib/nav-items.ts` passa a ser a única lista de secções — já não há
+  risco de um menu ter uma secção e outro não (foi o que aconteceu com
+  "Recorrências" da última vez).
 
-## 2. Substitui o ficheiro de tipos
-
-`src/types/database.ts` — vem com os campos novos adicionados aos tipos
-`Category` e `PortfolioPosition` (mais tudo o que já lá estava dos packs
-anteriores). Isto sozinho já resolve os 3 erros do build.
-
-## 3. Volta a fazer deploy
+## Testa
 
 ```bash
-npm run build
+npm run dev
 ```
-
-localmente primeiro para confirmares que compila, depois `git push` /
-redeploy no Vercel.
-
-## Nota — a badge "Ajuste" nunca vai aparecer ainda
-
-Adicionei a coluna `exclude_from_reports`, mas não existe nenhum sítio na UI
-para a ligares numa categoria (não vi um formulário de edição de categorias
-no que me mandaste — só o "Nova categoria" rápido em `category-quick-add.tsx`).
-Por agora todas as categorias ficam com `exclude_from_reports = false` por
-omissão, por isso o build passa e nada muda visualmente. Se quiseres, faço a
-seguir um pequeno toggle na listagem/edição de categorias para conseguires
-marcar isso.
+Reduz a largura da janela (ou usa o modo mobile das DevTools) e confirma:
+- O cabeçalho novo aparece no topo, o conteúdo da página não fica escondido
+  atrás dele nem da barra de baixo.
+- O hambúrguer abre o painel com as 6 secções, e "Recorrências" já lá está.
+- No desktop (ecrã largo) nada disto aparece — mantém-se a barra lateral
+  normal.

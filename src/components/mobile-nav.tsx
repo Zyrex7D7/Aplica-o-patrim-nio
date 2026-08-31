@@ -2,16 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, ArrowLeftRight, PieChart, LineChart } from "lucide-react";
 import { cx } from "@/lib/format";
-
-const ITEMS = [
-  { href: "/dashboard", label: "Património", icon: LayoutGrid },
-  { href: "/contas", label: "Contas", icon: Wallet },
-  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
-  { href: "/relatorios", label: "Relatórios", icon: PieChart },
-  { href: "/portfolio", label: "Portefólio", icon: LineChart },
-];
+import { BOTTOM_NAV_ITEMS } from "@/lib/nav-items";
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -23,7 +15,7 @@ export function MobileNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="grid grid-cols-5">
-        {ITEMS.map((item) => {
+        {BOTTOM_NAV_ITEMS.map((item) => {
           const active = pathname?.startsWith(item.href);
           const Icon = item.icon;
           return (

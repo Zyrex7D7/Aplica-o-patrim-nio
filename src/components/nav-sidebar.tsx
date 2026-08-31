@@ -3,17 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, ArrowLeftRight, Repeat, PieChart, LineChart } from "lucide-react";
 import { cx } from "@/lib/format";
-
-const ITEMS = [
-  { href: "/dashboard", label: "Património", icon: LayoutGrid },
-  { href: "/contas", label: "Contas", icon: Wallet },
-  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
-  { href: "/recorrentes", label: "Recorrências", icon: Repeat },
-  { href: "/relatorios", label: "Relatórios", icon: PieChart },
-  { href: "/portfolio", label: "Portefólio", icon: LineChart },
-];
+import { NAV_ITEMS } from "@/lib/nav-items";
 
 export function NavSidebar() {
   const pathname = usePathname();
@@ -40,7 +31,7 @@ export function NavSidebar() {
       </div>
 
       <nav className="flex flex-col gap-1">
-        {ITEMS.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const active = pathname?.startsWith(item.href);
           const Icon = item.icon;
           return (
