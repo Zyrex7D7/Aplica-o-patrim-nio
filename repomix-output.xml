@@ -41,9 +41,32 @@ The content is organized as follows:
 
 <directory_structure>
 public/
+  icons/
+    icon-128.png
+    icon-144.png
+    icon-152.png
+    icon-16.png
+    icon-180.png
+    icon-192.png
+    icon-256.png
+    icon-32.png
+    icon-384.png
+    icon-48.png
+    icon-512-maskable.png
+    icon-512.png
+    icon-72.png
+    icon-96.png
+    maskable-192.png
+    maskable-512.png
+  apple-touch-icon.png
+  favicon-16.png
+  favicon-32.png
+  favicon.ico
   file.svg
   globe.svg
   next.svg
+  offline.html
+  sw.js
   vercel.svg
   window.svg
 scripts/
@@ -69,14 +92,21 @@ src/
       page.tsx
     portfolio/
       page.tsx
+    recorrentes/
+      actions.ts
+      page.tsx
     relatorios/
+      actions.ts
       page.tsx
     transacoes/
       actions.ts
       page.tsx
+    apple-icon.png
     favicon.ico
     globals.css
+    icon.png
     layout.tsx
+    manifest.ts
     page.tsx
   components/
     accounts/
@@ -86,13 +116,19 @@ src/
       donut-chart.tsx
     dashboard/
       net-worth-charts.tsx
+      net-worth-history-chart.tsx
       stat-card.tsx
     portfolio/
       degiro-upload.tsx
       holdings-table.tsx
       performance-highlights.tsx
       refresh-quotes-button.tsx
+    recurring/
+      recurring-form.tsx
+      recurring-list.tsx
     reports/
+      budget-form.tsx
+      budget-list.tsx
       category-breakdown-chart.tsx
       period-filter.tsx
     transactions/
@@ -101,9 +137,14 @@ src/
       transaction-list.tsx
     ui/
       card.tsx
+    bottom-nav.tsx
+    mobile-nav.tsx
     nav-sidebar.tsx
+    register-sw.tsx
+    service-worker-register.tsx
   lib/
     data/
+      net-worth-history.ts
       net-worth.ts
     degiro/
       format.ts
@@ -129,6 +170,7 @@ test-fixtures/
 AGENTS.md
 CLAUDE.md
 eslint.config.mjs
+LEIA-ME.md
 next.config.ts
 package.json
 postcss.config.mjs
@@ -149,6 +191,60 @@ This section contains the contents of the repository's files.
 
 <file path="public/next.svg">
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/offline.html">
+<!DOCTYPE html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Livro — Sem ligação</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: #0b0f14;
+        color: #edeff2;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      h1 {
+        font-family: Georgia, serif;
+        font-style: italic;
+        font-size: 28px;
+        margin: 0;
+      }
+      p {
+        color: #8a93a3;
+        font-size: 14px;
+        max-width: 320px;
+        margin: 0;
+      }
+      button {
+        margin-top: 12px;
+        background: #d9a441;
+        color: #0b0f14;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Livro</h1>
+    <p>Sem ligação à internet neste momento. Assim que voltares a ter rede, os teus dados continuam guardados em segurança na Supabase.</p>
+    <button onclick="location.reload()">Tentar outra vez</button>
+  </body>
+</html>
 </file>
 
 <file path="public/vercel.svg">
@@ -386,49 +482,189 @@ export async function GET(request: NextRequest) {
 }
 </file>
 
-<file path="src/app/contas/actions.ts">
+<file path="src/app/recorrentes/actions.ts">
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { AccountType } from "@/types/database";
+import type { TransactionType, RecurrenceFrequency } from "@/types/database";
 
-export async function createAccount(formData: FormData) {
+function parseAmount(raw: FormDataEntryValue | null): number {
+  return Number(String(raw ?? "0").replace(",", "."));
+}
+
+export async function createRecurringTransaction(formData: FormData): Promise<{ error?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado.");
+  if (!user) return { error: "Não autenticado." };
 
-  const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "banco") as AccountType;
-  const institution = String(formData.get("institution") ?? "").trim() || null;
-  const openingBalance = Number(String(formData.get("opening_balance") ?? "0").replace(",", "."));
-  const currency = String(formData.get("currency") ?? "EUR");
+  const type = String(formData.get("type") ?? "despesa") as TransactionType;
+  const amount = parseAmount(formData.get("amount"));
+  const accountId = String(formData.get("account_id") ?? "");
+  const transferAccountId = String(formData.get("transfer_account_id") ?? "") || null;
+  const categoryId = String(formData.get("category_id") ?? "") || null;
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const frequency = String(formData.get("frequency") ?? "mensal") as RecurrenceFrequency;
+  const intervalCount = Number(formData.get("interval_count") ?? "1");
+  const startDate = String(formData.get("start_date") ?? "");
+  const endDate = String(formData.get("end_date") ?? "") || null;
 
-  if (!name) throw new Error("O nome da conta é obrigatório.");
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "O valor tem de ser maior que zero." };
+  if (!accountId) return { error: "Escolhe a conta." };
+  if (!startDate) return { error: "A data de início é obrigatória." };
+  if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
+    return { error: "Escolhe uma conta de destino diferente da conta de origem." };
+  }
 
-  const { error } = await supabase.from("accounts").insert({
+  const { error } = await supabase.from("recurring_transactions").insert({
     user_id: user.id,
-    name,
     type,
-    institution,
-    opening_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
-    current_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
-    currency,
+    amount,
+    account_id: accountId,
+    transfer_account_id: type === "transferencia" ? transferAccountId : null,
+    category_id: type === "transferencia" ? null : categoryId,
+    description,
+    frequency,
+    interval_count: Number.isFinite(intervalCount) && intervalCount > 0 ? intervalCount : 1,
+    start_date: startDate,
+    end_date: endDate,
+    next_occurrence: startDate,
   });
 
-  if (error) throw new Error(error.message);
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
+  if (error) return { error: error.message };
+  revalidatePath("/recorrentes");
+  return {};
 }
 
-export async function archiveAccount(accountId: string) {
+export async function toggleRecurringActive(id: string, isActive: boolean): Promise<{ error?: string }> {
   const supabase = await createClient();
-  const { error } = await supabase.from("accounts").update({ is_archived: true }).eq("id", accountId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
+  const { error } = await supabase.from("recurring_transactions").update({ is_active: isActive }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/recorrentes");
+  return {};
+}
+
+export async function deleteRecurringTransaction(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("recurring_transactions").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/recorrentes");
+  return {};
+}
+</file>
+
+<file path="src/app/recorrentes/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { RecurringForm } from "@/components/recurring/recurring-form";
+import { RecurringList } from "@/components/recurring/recurring-list";
+import type { Account, Category, RecurringTransaction } from "@/types/database";
+
+export default async function RecorrentesPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Garante que qualquer recorrência vencida já gerou os movimentos
+  // correspondentes antes de mostrarmos a lista.
+  await supabase.rpc("apply_due_recurring_transactions", { p_user_id: user!.id });
+
+  const [{ data: accounts }, { data: categories }, { data: recurring }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
+    supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
+    supabase
+      .from("recurring_transactions")
+      .select("*")
+      .eq("user_id", user!.id)
+      .order("next_occurrence", { ascending: true }),
+  ]);
+
+  const accountsList: Account[] = accounts ?? [];
+  const categoriesList: Category[] = categories ?? [];
+  const recurringList: RecurringTransaction[] = recurring ?? [];
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
+        <h1 className="font-display text-3xl text-text">Recorrências</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Renda, salário, subscrições — regista uma vez e os movimentos são gerados
+          automaticamente em cada período, sem teres de repetir o registo manualmente.
+        </p>
+      </header>
+
+      {accountsList.length === 0 ? (
+        <Card className="mb-8">
+          <p className="text-sm text-text-muted">
+            Precisas de pelo menos uma conta antes de criares uma recorrência.{" "}
+            <a href="/contas" className="text-gold underline underline-offset-2">
+              Cria uma conta
+            </a>
+            .
+          </p>
+        </Card>
+      ) : (
+        <Card className="mb-8">
+          <CardLabel className="mb-3">Nova Recorrência</CardLabel>
+          <RecurringForm accounts={accountsList} categories={categoriesList} />
+        </Card>
+      )}
+
+      <Card>
+        <CardLabel className="mb-3">As Tuas Recorrências</CardLabel>
+        <RecurringList recurring={recurringList} accounts={accountsList} categories={categoriesList} />
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/relatorios/actions.ts">
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+export async function upsertBudget(formData: FormData): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const categoryId = String(formData.get("category_id") ?? "");
+  const monthlyLimit = Number(String(formData.get("monthly_limit") ?? "0").replace(",", "."));
+
+  if (!categoryId) return { error: "Escolhe uma categoria." };
+  if (!Number.isFinite(monthlyLimit) || monthlyLimit <= 0) return { error: "O limite tem de ser maior que zero." };
+
+  const { error } = await supabase
+    .from("budgets")
+    .upsert(
+      { user_id: user.id, category_id: categoryId, monthly_limit: monthlyLimit },
+      { onConflict: "user_id,category_id" }
+    );
+
+  if (error) return { error: error.message };
+  revalidatePath("/relatorios");
+  return {};
+}
+
+export async function deleteBudget(categoryId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase.from("budgets").delete().eq("category_id", categoryId).eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/relatorios");
+  return {};
 }
 </file>
 
@@ -518,244 +754,11 @@ export async function createCategory(formData: FormData) {
 }
 </file>
 
-<file path="src/app/transacoes/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { TransactionForm } from "@/components/transactions/transaction-form";
-import { TransactionList } from "@/components/transactions/transaction-list";
-import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
-import { Card, CardLabel } from "@/components/ui/card";
-import type { Account, Category, Transaction } from "@/types/database";
-
-export default async function TransacoesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [{ data: accounts }, { data: categories }, { data: transactions }] = await Promise.all([
-    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
-    supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
-    supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user!.id)
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(100),
-  ]);
-
-  const accountsList: Account[] = accounts ?? [];
-  const categoriesList: Category[] = categories ?? [];
-  const transactionsList: Transaction[] = transactions ?? [];
-
-  return (
-    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
-        <h1 className="font-display text-3xl text-text">Movimentos</h1>
-        <p className="text-sm text-text-muted mt-2">
-          Regista receitas, despesas e transferências entre contas. Os saldos das contas
-          envolvidas atualizam-se de imediato.
-        </p>
-      </header>
-
-      {accountsList.length === 0 ? (
-        <Card className="mb-8">
-          <p className="text-sm text-text-muted">
-            Precisas de pelo menos uma conta antes de registares movimentos.{" "}
-            <a href="/contas" className="text-gold underline underline-offset-2">
-              Cria uma conta
-            </a>
-            .
-          </p>
-        </Card>
-      ) : (
-        <Card className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <CardLabel>Novo Movimento</CardLabel>
-            <CategoryQuickAdd />
-          </div>
-          <TransactionForm accounts={accountsList} categories={categoriesList} />
-        </Card>
-      )}
-
-      <Card>
-        <CardLabel className="mb-3">Últimos 100 Movimentos</CardLabel>
-        <TransactionList transactions={transactionsList} accounts={accountsList} categories={categoriesList} />
-      </Card>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/globals.css">
-@import "tailwindcss";
-
-@import "@fontsource/fraunces/400.css";
-@import "@fontsource/fraunces/500.css";
-@import "@fontsource/fraunces/600.css";
-@import "@fontsource/fraunces/600-italic.css";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
-
-/*
- * =========================================================================
- * TOKENS DE DESIGN — "Livro-Razão" (Ledger)
- * =========================================================================
- * Paleta de tinta escura inspirada em extratos bancários e livros-razão
- * contabilísticos: fundo quase-preto, réguas finas em vez de sombras,
- * números tabulares em mono, e um único acento dourado ("património")
- * que se distingue do verde (ganho) e vermelho (perda).
- */
-:root {
-  --color-ink:          #0B0F14;
-  --color-surface:      #12171F;
-  --color-surface-alt:  #1A212B;
-  --color-line:         #232B36;
-  --color-line-soft:    #1A212B;
-  --color-text:         #EDEFF2;
-  --color-text-muted:   #8A93A3;
-  --color-text-faint:   #57616F;
-  --color-gold:         #D9A441;
-  --color-gold-soft:    #3A2F1B;
-  --color-gain:         #35D28A;
-  --color-gain-soft:    #123023;
-  --color-loss:         #E5636A;
-  --color-loss-soft:    #331A1D;
-  --color-info:         #6C9BD1;
-
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
-}
-
-@theme inline {
-  --color-ink: var(--color-ink);
-  --color-surface: var(--color-surface);
-  --color-surface-alt: var(--color-surface-alt);
-  --color-line: var(--color-line);
-  --color-text: var(--color-text);
-  --color-text-muted: var(--color-text-muted);
-  --color-text-faint: var(--color-text-faint);
-  --color-gold: var(--color-gold);
-  --color-gold-soft: var(--color-gold-soft);
-  --color-gain: var(--color-gain);
-  --color-gain-soft: var(--color-gain-soft);
-  --color-loss: var(--color-loss);
-  --color-loss-soft: var(--color-loss-soft);
-  --color-info: var(--color-info);
-
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
-}
-
-body {
-  background: var(--color-ink);
-  color: var(--color-text);
-  font-family: var(--font-body);
-}
-
-.tabular {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.ledger-rule {
-  border-top: 1px solid var(--color-line);
-}
-
-::selection {
-  background: var(--color-gold);
-  color: var(--color-ink);
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-gold);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-</file>
-
-<file path="src/app/layout.tsx">
-import type { Metadata } from "next";
-import "./globals.css";
-import { NavSidebar } from "@/components/nav-sidebar";
-import { Toaster } from "sonner";
-
-export const metadata: Metadata = {
-  title: "Livro — Património & Finanças Pessoais",
-  description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="pt-PT" className="h-full antialiased">
-      <body className="min-h-full bg-ink text-text font-sans">
-        <div className="flex min-h-screen">
-          <NavSidebar />
-          <main className="flex-1 min-w-0">{children}</main>
-        </div>
-        <Toaster theme="dark" position="top-right" richColors />
-      </body>
-    </html>
-  );
-}
-</file>
-
 <file path="src/app/page.tsx">
 import { redirect } from "next/navigation";
 
 export default function RootPage() {
   redirect("/login");
-}
-</file>
-
-<file path="src/components/accounts/archive-account-button.tsx">
-"use client";
-
-import { useTransition } from "react";
-import { Archive } from "lucide-react";
-import { toast } from "sonner";
-import { archiveAccount } from "@/app/contas/actions";
-
-export function ArchiveAccountButton({ accountId }: { accountId: string }) {
-  const [isPending, startTransition] = useTransition();
-
-  function handleClick() {
-    if (!confirm("Arquivar esta conta? Deixa de aparecer no dashboard, mas o histórico mantém-se.")) {
-      return;
-    }
-    startTransition(async () => {
-      try {
-        await archiveAccount(accountId);
-        toast.success("Conta arquivada.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao arquivar conta.");
-      }
-    });
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={isPending}
-      title="Arquivar conta"
-      className="text-text-faint hover:text-loss transition-colors disabled:opacity-50"
-    >
-      <Archive size={15} strokeWidth={1.75} />
-    </button>
-  );
 }
 </file>
 
@@ -936,31 +939,66 @@ export function NetWorthPie({ slices }: { slices: Slice[] }) {
 }
 </file>
 
-<file path="src/components/dashboard/stat-card.tsx">
-import { Card, CardLabel } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/format";
-import { cx } from "@/lib/format";
+<file path="src/components/dashboard/net-worth-history-chart.tsx">
+"use client";
 
-export function StatCard({
-  label,
-  value,
-  tone = "default",
-  hint,
-}: {
-  label: string;
-  value: number;
-  tone?: "default" | "gain" | "loss" | "gold";
-  hint?: string;
-}) {
-  const toneClass =
-    tone === "gain" ? "text-gain" : tone === "loss" ? "text-loss" : tone === "gold" ? "text-gold" : "text-text";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { NetWorthSnapshot } from "@/types/database";
+
+export function NetWorthHistoryChart({ snapshots }: { snapshots: NetWorthSnapshot[] }) {
+  if (snapshots.length < 2) {
+    return (
+      <div className="h-56 flex items-center justify-center text-sm text-text-faint text-center px-4">
+        Ainda não há histórico suficiente. Volta amanhã para veres a evolução do património.
+      </div>
+    );
+  }
+
+  const data = snapshots.map((s) => ({
+    date: s.snapshot_date,
+    total: Number(s.total_net_worth),
+  }));
+
+  const first = data[0].total;
+  const last = data[data.length - 1].total;
+  const changePct = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
 
   return (
-    <Card>
-      <CardLabel>{label}</CardLabel>
-      <p className={cx("tabular text-2xl mt-2 font-medium", toneClass)}>{formatCurrency(value)}</p>
-      {hint && <p className="text-xs text-text-faint mt-1">{hint}</p>}
-    </Card>
+    <div>
+      <div className="flex items-baseline gap-2 mb-4">
+        <span className={`tabular text-sm ${changePct >= 0 ? "text-gain" : "text-loss"}`}>
+          {changePct >= 0 ? "+" : ""}
+          {changePct.toFixed(1)}%
+        </span>
+        <span className="text-xs text-text-faint">desde {formatDate(data[0].date)}</span>
+      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line-soft)" vertical={false} />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(d) => formatDate(d).replace(/ de \d{4}$/, "")}
+            tick={{ fill: "var(--color-text-faint)", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            minTickGap={40}
+          />
+          <YAxis hide domain={["dataMin - 100", "dataMax + 100"]} />
+          <Tooltip
+            contentStyle={{
+              background: "var(--color-surface-alt)",
+              border: "1px solid var(--color-line)",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+            labelFormatter={(d) => formatDate(String(d))}
+            formatter={(value) => [formatCurrency(Number(value)), "Património"]}
+          />
+          <Line type="monotone" dataKey="total" stroke="var(--color-gold)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 </file>
@@ -1047,6 +1085,417 @@ export function RefreshQuotesButton() {
       <RefreshCw size={13} strokeWidth={1.75} className={isPending ? "animate-spin" : ""} />
       {isPending ? "A atualizar..." : "Atualizar cotações"}
     </button>
+  );
+}
+</file>
+
+<file path="src/components/recurring/recurring-form.tsx">
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { createRecurringTransaction } from "@/app/recorrentes/actions";
+import type { Account, Category } from "@/types/database";
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+export function RecurringForm({
+  accounts,
+  categories,
+}: {
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [type, setType] = useState<"receita" | "despesa" | "transferencia">("despesa");
+  const [isPending, startTransition] = useTransition();
+
+  const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
+
+  async function action(formData: FormData) {
+    startTransition(async () => {
+      const result = await createRecurringTransaction(formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      formRef.current?.reset();
+      setType("despesa");
+      toast.success("Recorrência criada.");
+    });
+  }
+
+  return (
+    <form ref={formRef} action={action} className="flex flex-col gap-3">
+      <div className="flex gap-2">
+        {(["despesa", "receita", "transferencia"] as const).map((t) => (
+          <label
+            key={t}
+            className={`flex-1 text-center cursor-pointer rounded-md border px-3 py-2 text-sm capitalize transition-colors ${
+              type === t
+                ? "border-gold text-gold bg-surface-alt"
+                : "border-line text-text-muted hover:text-text"
+            }`}
+          >
+            <input
+              type="radio"
+              name="type"
+              value={t}
+              checked={type === t}
+              onChange={() => setType(t)}
+              className="hidden"
+            />
+            {t === "transferencia" ? "Transferência" : t}
+          </label>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <input
+          name="amount"
+          required
+          placeholder="Valor"
+          inputMode="decimal"
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+        <select
+          name="account_id"
+          required
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+        >
+          <option value="">{type === "transferencia" ? "Conta de origem" : "Conta"}</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
+        {type === "transferencia" ? (
+          <select
+            name="transfer_account_id"
+            required
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          >
+            <option value="">Conta de destino</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <select
+            name="category_id"
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          >
+            <option value="">Categoria (opcional)</option>
+            {filteredCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <input
+          name="description"
+          placeholder="Descrição (opcional)"
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <select
+          name="frequency"
+          defaultValue="mensal"
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+        >
+          <option value="diaria">Diária</option>
+          <option value="semanal">Semanal</option>
+          <option value="mensal">Mensal</option>
+          <option value="anual">Anual</option>
+        </select>
+        <input
+          name="interval_count"
+          type="number"
+          min="1"
+          defaultValue="1"
+          title="A cada quantos períodos (ex: 2 = a cada 2 meses)"
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+        <input
+          name="start_date"
+          type="date"
+          required
+          defaultValue={TODAY}
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+        <input
+          name="end_date"
+          type="date"
+          title="Data de fim (opcional)"
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+        >
+          {isPending ? "A guardar..." : "Criar Recorrência"}
+        </button>
+      </div>
+    </form>
+  );
+}
+</file>
+
+<file path="src/components/recurring/recurring-list.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Trash2, Pause, Play } from "lucide-react";
+import { toast } from "sonner";
+import { toggleRecurringActive, deleteRecurringTransaction } from "@/app/recorrentes/actions";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { Account, Category, RecurringTransaction } from "@/types/database";
+
+const FREQUENCY_LABEL: Record<string, string> = {
+  diaria: "dia(s)",
+  semanal: "semana(s)",
+  mensal: "mês(es)",
+  anual: "ano(s)",
+};
+
+export function RecurringList({
+  recurring,
+  accounts,
+  categories,
+}: {
+  recurring: RecurringTransaction[];
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  if (recurring.length === 0) {
+    return <p className="text-sm text-text-muted py-6 text-center">Ainda não tens recorrências configuradas.</p>;
+  }
+
+  return (
+    <ul className="flex flex-col">
+      {recurring.map((r) => (
+        <RecurringRow
+          key={r.id}
+          row={r}
+          accountName={accountById.get(r.account_id)?.name ?? "—"}
+          categoryName={r.category_id ? categoryById.get(r.category_id)?.name ?? null : null}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function RecurringRow({
+  row,
+  accountName,
+  categoryName,
+}: {
+  row: RecurringTransaction;
+  accountName: string;
+  categoryName: string | null;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleToggle() {
+    startTransition(async () => {
+      const result = await toggleRecurringActive(row.id, !row.is_active);
+      if (result.error) toast.error(result.error);
+      else toast.success(row.is_active ? "Recorrência pausada." : "Recorrência reativada.");
+    });
+  }
+
+  function handleDelete() {
+    if (!confirm("Eliminar esta recorrência? Os movimentos já gerados mantêm-se.")) return;
+    startTransition(async () => {
+      const result = await deleteRecurringTransaction(row.id);
+      if (result.error) toast.error(result.error);
+      else toast.success("Recorrência eliminada.");
+    });
+  }
+
+  const sign = row.type === "receita" ? "+" : row.type === "despesa" ? "-" : "";
+  const toneClass = row.type === "receita" ? "text-gain" : row.type === "despesa" ? "text-loss" : "text-text";
+
+  return (
+    <li
+      className={`flex items-center justify-between gap-3 py-3 border-b border-line-soft last:border-0 ${
+        !row.is_active ? "opacity-50" : ""
+      }`}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-text truncate">
+          {row.description ||
+            categoryName ||
+            (row.type === "transferencia" ? "Transferência" : row.type === "receita" ? "Receita" : "Despesa")}
+        </p>
+        <p className="text-xs text-text-faint mt-0.5">
+          A cada {row.interval_count} {FREQUENCY_LABEL[row.frequency]} · {accountName} · próxima em{" "}
+          {formatDate(row.next_occurrence)}
+        </p>
+      </div>
+      <span className={`tabular text-sm shrink-0 ${toneClass}`}>
+        {sign}
+        {formatCurrency(row.amount)}
+      </span>
+      <button
+        onClick={handleToggle}
+        disabled={isPending}
+        title={row.is_active ? "Pausar" : "Reativar"}
+        className="text-text-faint hover:text-gold transition-colors disabled:opacity-50 shrink-0"
+      >
+        {row.is_active ? <Pause size={14} strokeWidth={1.75} /> : <Play size={14} strokeWidth={1.75} />}
+      </button>
+      <button
+        onClick={handleDelete}
+        disabled={isPending}
+        title="Eliminar"
+        className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
+      >
+        <Trash2 size={14} strokeWidth={1.75} />
+      </button>
+    </li>
+  );
+}
+</file>
+
+<file path="src/components/reports/budget-form.tsx">
+"use client";
+
+import { useRef, useTransition } from "react";
+import { toast } from "sonner";
+import { upsertBudget } from "@/app/relatorios/actions";
+import type { Category } from "@/types/database";
+
+export function BudgetForm({ categories }: { categories: Category[] }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const expenseCategories = categories.filter((c) => c.kind === "despesa");
+
+  async function action(formData: FormData) {
+    startTransition(async () => {
+      const result = await upsertBudget(formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      formRef.current?.reset();
+      toast.success("Orçamento guardado.");
+    });
+  }
+
+  return (
+    <form ref={formRef} action={action} className="flex flex-col sm:flex-row gap-3">
+      <select
+        name="category_id"
+        required
+        className="flex-1 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+      >
+        <option value="">Categoria</option>
+        {expenseCategories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      <input
+        name="monthly_limit"
+        required
+        placeholder="Limite mensal"
+        inputMode="decimal"
+        className="sm:w-40 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+      />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+      >
+        {isPending ? "A guardar..." : "Definir Orçamento"}
+      </button>
+    </form>
+  );
+}
+</file>
+
+<file path="src/components/reports/budget-list.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteBudget } from "@/app/relatorios/actions";
+import { formatCurrency } from "@/lib/format";
+import type { BudgetStatus } from "@/types/database";
+
+export function BudgetList({ statuses }: { statuses: BudgetStatus[] }) {
+  if (statuses.length === 0) {
+    return <p className="text-sm text-text-muted py-6 text-center">Ainda não definiste orçamentos.</p>;
+  }
+
+  return (
+    <ul className="flex flex-col gap-4">
+      {statuses.map((s) => (
+        <BudgetRow key={s.category_id} status={s} />
+      ))}
+    </ul>
+  );
+}
+
+function BudgetRow({ status }: { status: BudgetStatus }) {
+  const [isPending, startTransition] = useTransition();
+  const pct = status.monthly_limit > 0 ? Math.min(100, (status.spent_this_month / status.monthly_limit) * 100) : 0;
+  const over = status.spent_this_month > status.monthly_limit;
+
+  function handleDelete() {
+    if (!confirm(`Remover o orçamento de "${status.category_name}"?`)) return;
+    startTransition(async () => {
+      const result = await deleteBudget(status.category_id);
+      if (result.error) toast.error(result.error);
+      else toast.success("Orçamento removido.");
+    });
+  }
+
+  return (
+    <li>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="flex items-center gap-2 text-sm text-text">
+          <span
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ backgroundColor: status.category_color ?? "#8B93A1" }}
+          />
+          {status.category_name}
+        </span>
+        <span className="flex items-center gap-3">
+          <span className={`tabular text-xs ${over ? "text-loss" : "text-text-muted"}`}>
+            {formatCurrency(status.spent_this_month)} / {formatCurrency(status.monthly_limit)}
+          </span>
+          <button
+            onClick={handleDelete}
+            disabled={isPending}
+            className="text-text-faint hover:text-loss transition-colors disabled:opacity-50"
+          >
+            <Trash2 size={13} strokeWidth={1.75} />
+          </button>
+        </span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-surface-alt overflow-hidden">
+        <div className={`h-full rounded-full ${over ? "bg-loss" : "bg-gold"}`} style={{ width: `${pct}%` }} />
+      </div>
+    </li>
   );
 }
 </file>
@@ -1312,114 +1761,6 @@ export function TransactionForm({
 }
 </file>
 
-<file path="src/components/transactions/transaction-list.tsx">
-"use client";
-
-import { useTransition } from "react";
-import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { deleteTransaction } from "@/app/transacoes/actions";
-import { formatCurrency, formatDate } from "@/lib/format";
-import type { Account, Category, Transaction } from "@/types/database";
-
-interface Row extends Transaction {
-  accountName: string;
-  transferAccountName: string | null;
-  categoryName: string | null;
-  categoryColor: string | null;
-}
-
-export function TransactionList({
-  transactions,
-  accounts,
-  categories,
-}: {
-  transactions: Transaction[];
-  accounts: Account[];
-  categories: Category[];
-}) {
-  const accountById = new Map(accounts.map((a) => [a.id, a]));
-  const categoryById = new Map(categories.map((c) => [c.id, c]));
-
-  const rows: Row[] = transactions.map((t) => ({
-    ...t,
-    accountName: accountById.get(t.account_id)?.name ?? "—",
-    transferAccountName: t.transfer_account_id ? accountById.get(t.transfer_account_id)?.name ?? "—" : null,
-    categoryName: t.category_id ? categoryById.get(t.category_id)?.name ?? null : null,
-    categoryColor: t.category_id ? categoryById.get(t.category_id)?.color ?? null : null,
-  }));
-
-  if (rows.length === 0) {
-    return <p className="text-sm text-text-muted py-6 text-center">Ainda não há movimentos registados.</p>;
-  }
-
-  return (
-    <ul className="flex flex-col">
-      {rows.map((t) => (
-        <TransactionRow key={t.id} row={t} />
-      ))}
-    </ul>
-  );
-}
-
-function TransactionRow({ row }: { row: Row }) {
-  const [isPending, startTransition] = useTransition();
-
-  function handleDelete() {
-    if (!confirm("Eliminar este movimento?")) return;
-    startTransition(async () => {
-      try {
-        await deleteTransaction(row.id);
-        toast.success("Movimento eliminado.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao eliminar movimento.");
-      }
-    });
-  }
-
-  const sign = row.type === "receita" ? "+" : row.type === "despesa" ? "-" : "";
-  const toneClass =
-    row.type === "receita" ? "text-gain" : row.type === "despesa" ? "text-loss" : "text-text";
-
-  return (
-    <li className="flex items-center justify-between gap-3 py-3 border-b border-line-soft last:border-0">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          {row.categoryColor && (
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: row.categoryColor }}
-            />
-          )}
-          <p className="text-sm text-text truncate">
-            {row.description ||
-              row.categoryName ||
-              (row.type === "transferencia" ? "Transferência" : row.type === "receita" ? "Receita" : "Despesa")}
-          </p>
-        </div>
-        <p className="text-xs text-text-faint mt-0.5">
-          {formatDate(row.occurred_on)} · {row.accountName}
-          {row.transferAccountName ? ` → ${row.transferAccountName}` : ""}
-          {row.categoryName ? ` · ${row.categoryName}` : ""}
-        </p>
-      </div>
-      <span className={`tabular text-sm shrink-0 ${toneClass}`}>
-        {sign}
-        {formatCurrency(row.amount)}
-      </span>
-      <button
-        onClick={handleDelete}
-        disabled={isPending}
-        className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
-        title="Eliminar"
-      >
-        <Trash2 size={14} strokeWidth={1.75} />
-      </button>
-    </li>
-  );
-}
-</file>
-
 <file path="src/components/ui/card.tsx">
 import { clsx } from "clsx";
 import type { HTMLAttributes } from "react";
@@ -1449,7 +1790,66 @@ export function CardLabel({ className, ...props }: HTMLAttributes<HTMLParagraphE
 }
 </file>
 
-<file path="src/components/nav-sidebar.tsx">
+<file path="src/components/bottom-nav.tsx">
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutGrid, Wallet, ArrowLeftRight, PieChart, LineChart } from "lucide-react";
+import { cx } from "@/lib/format";
+
+const ITEMS = [
+  { href: "/dashboard", label: "Início", icon: LayoutGrid },
+  { href: "/contas", label: "Contas", icon: Wallet },
+  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
+  { href: "/relatorios", label: "Relatórios", icon: PieChart },
+  { href: "/portfolio", label: "Portefólio", icon: LineChart },
+];
+
+/**
+ * Navegação inferior fixa, só visível em ecrãs pequenos (md:hidden) — no
+ * desktop usa-se a NavSidebar em vez disto. Isto é o que faz a app
+ * parecer uma app nativa no telemóvel em vez de um site.
+ *
+ * `env(safe-area-inset-bottom)` evita que os botões fiquem escondidos
+ * atrás da barra de gestos do iPhone quando a app corre em modo standalone
+ * (adicionada ao ecrã principal).
+ */
+export function BottomNav() {
+  const pathname = usePathname();
+
+  if (pathname === "/login") return null;
+
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-surface/95 backdrop-blur-sm"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="grid grid-cols-5">
+        {ITEMS.map((item) => {
+          const active = pathname?.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cx(
+                "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] transition-colors",
+                active ? "text-gold" : "text-text-faint"
+              )}
+            >
+              <Icon size={20} strokeWidth={active ? 2 : 1.75} />
+              <span className="leading-none">{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+</file>
+
+<file path="src/components/mobile-nav.tsx">
 "use client";
 
 import Link from "next/link";
@@ -1465,19 +1865,16 @@ const ITEMS = [
   { href: "/portfolio", label: "Portefólio", icon: LineChart },
 ];
 
-export function NavSidebar() {
+export function MobileNav() {
   const pathname = usePathname();
+  if (pathname === "/login") return null;
 
   return (
-    <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">
-      <div className="px-2 mb-8">
-        <p className="font-display text-xl italic tracking-tight text-text">Livro</p>
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
-          Património &amp; Finanças
-        </p>
-      </div>
-
-      <nav className="flex flex-col gap-1">
+    <nav
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-surface/95 backdrop-blur"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="grid grid-cols-5">
         {ITEMS.map((item) => {
           const active = pathname?.startsWith(item.href);
           const Icon = item.icon;
@@ -1486,24 +1883,84 @@ export function NavSidebar() {
               key={item.href}
               href={item.href}
               className={cx(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                active
-                  ? "bg-surface-alt text-gold"
-                  : "text-text-muted hover:text-text hover:bg-surface-alt/60"
+                "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] transition-colors",
+                active ? "text-gold" : "text-text-faint"
               )}
             >
-              <Icon size={16} strokeWidth={1.75} />
+              <Icon size={20} strokeWidth={active ? 2 : 1.75} />
               {item.label}
             </Link>
           );
         })}
-      </nav>
-
-      <div className="mt-auto pt-6 ledger-rule text-[11px] text-text-faint leading-relaxed">
-        Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
       </div>
-    </aside>
+    </nav>
   );
+}
+</file>
+
+<file path="src/components/register-sw.tsx">
+"use client";
+
+import { useEffect } from "react";
+
+export function RegisterServiceWorker() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+  return null;
+}
+</file>
+
+<file path="src/components/service-worker-register.tsx">
+"use client";
+
+import { useEffect } from "react";
+
+export function ServiceWorkerRegister() {
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch((err) => {
+        console.error("Falha ao registar o service worker:", err);
+      });
+    });
+  }, []);
+
+  return null;
+}
+</file>
+
+<file path="src/lib/data/net-worth-history.ts">
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { NetWorthSnapshot } from "@/types/database";
+
+/**
+ * Garante que existe um snapshot de património para hoje (a função SQL faz
+ * upsert, por isso é seguro chamar isto sempre que o dashboard carrega) e
+ * devolve os últimos `days` dias de histórico para o gráfico de evolução.
+ */
+export async function getNetWorthHistory(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  userId: string,
+  days = 90
+): Promise<NetWorthSnapshot[]> {
+  await supabase.rpc("capture_net_worth_snapshot", { p_user_id: userId });
+
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const { data } = await supabase
+    .from("net_worth_snapshots")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("snapshot_date", since.toISOString().slice(0, 10))
+    .order("snapshot_date", { ascending: true });
+
+  return data ?? [];
 }
 </file>
 
@@ -1988,6 +2445,43 @@ export default config;
 }
 </file>
 
+<file path="public/sw.js">
+// Service worker mínimo — o objetivo principal é tornar a app instalável
+// ("Adicionar ao ecrã principal") e mostrar algo útil sem rede, e não
+// implementar uma estratégia de cache agressiva: esta app depende de dados
+// em tempo real da Supabase, por isso as páginas em si usam sempre a rede
+// primeiro.
+const CACHE_NAME = "livro-shell-v1";
+const APP_SHELL = ["/offline.html", "/icons/icon-192.png"];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+
+  // Só nos preocupamos com navegação de páginas (HTML); tudo o resto
+  // (JS, CSS, chamadas à API/Supabase) segue sempre direto à rede.
+  if (request.mode !== "navigate") return;
+
+  event.respondWith(
+    fetch(request).catch(() => caches.match("/offline.html").then((r) => r ?? Response.error()))
+  );
+});
+</file>
+
 <file path="src/app/api/degiro/import/route.ts">
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -2171,245 +2665,33 @@ export async function POST(req: NextRequest) {
 }
 </file>
 
-<file path="src/app/contas/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { AccountForm } from "@/components/accounts/account-form";
-import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
+<file path="src/components/dashboard/stat-card.tsx">
 import { Card, CardLabel } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
-import type { Account } from "@/types/database";
+import { cx } from "@/lib/format";
 
-const TYPE_LABEL: Record<Account["type"], string> = {
-  banco: "Banco",
-  poupanca: "Poupança",
-  corretora: "Corretora",
-  numerario: "Numerário",
-};
-
-export default async function ContasPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("user_id", user!.id)
-    .eq("is_archived", false)
-    .order("type")
-    .order("name");
-
-  const list: Account[] = accounts ?? [];
-  const total = list.reduce((sum, a) => sum + Number(a.current_balance), 0);
+export function StatCard({
+  label,
+  value,
+  tone = "default",
+  hint,
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "gain" | "loss" | "gold";
+  hint?: string;
+}) {
+  const toneClass =
+    tone === "gain" ? "text-gain" : tone === "loss" ? "text-loss" : tone === "gold" ? "text-gold" : "text-text";
 
   return (
-    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
-          Liquidez
-        </p>
-        <h1 className="font-display text-3xl text-text">Contas</h1>
-        <p className="text-sm text-text-muted mt-2">
-          Bancos, corretoras e numerário. Os saldos atualizam-se automaticamente com as
-          receitas, despesas e transações de investimento que registares.
-        </p>
-      </header>
-
-      <Card className="mb-8">
-        <CardLabel className="mb-3">Nova Conta</CardLabel>
-        <AccountForm />
-      </Card>
-
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <CardLabel>As Tuas Contas</CardLabel>
-          <span className="tabular text-sm text-text-muted">
-            Total: <span className="text-text font-medium">{formatCurrency(total)}</span>
-          </span>
-        </div>
-
-        {list.length === 0 ? (
-          <p className="text-sm text-text-muted py-6 text-center">
-            Ainda não tens contas. Cria a primeira acima.
-          </p>
-        ) : (
-          <ul className="flex flex-col">
-            {list.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between py-3 border-b border-line-soft last:border-0"
-              >
-                <div>
-                  <p className="text-sm text-text">{a.name}</p>
-                  <p className="text-xs text-text-faint mt-0.5">
-                    {TYPE_LABEL[a.type]}
-                    {a.institution ? ` · ${a.institution}` : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="tabular text-sm text-text">
-                    {formatCurrency(Number(a.current_balance), a.currency)}
-                  </span>
-                  <ArchiveAccountButton accountId={a.id} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/login/page.tsx">
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
-
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-
-    if (error) {
-      toast.error(
-        error.message === "Invalid login credentials"
-          ? "Email ou palavra-passe incorretos."
-          : error.message
-      );
-      return;
-    }
-
-    router.push("/dashboard");
-    router.refresh();
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <p className="font-display italic text-3xl text-text mb-1">Livro</p>
-        <p className="text-sm text-text-muted mb-8">
-          O teu gestor de património e finanças pessoais.
-        </p>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <label className="text-[11px] uppercase tracking-[0.14em] text-text-faint">Email</label>
-          <input
-            type="email"
-            required
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="tu@exemplo.com"
-            className="rounded-md border border-line bg-surface-alt px-3 py-2.5 text-sm text-text outline-none focus:border-gold"
-          />
-
-          <label className="text-[11px] uppercase tracking-[0.14em] text-text-faint mt-2">
-            Palavra-passe
-          </label>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="rounded-md border border-line bg-surface-alt px-3 py-2.5 text-sm text-text outline-none focus:border-gold"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-3 rounded-md bg-gold px-3 py-2.5 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? "A entrar..." : "Entrar"}
-          </button>
-        </form>
-
-        <p className="text-xs text-text-faint mt-6 leading-relaxed">
-          Não há registo público. As contas são criadas pelo administrador com{" "}
-          <code className="text-text-muted">npm run create-user</code>.
-        </p>
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="src/components/accounts/account-form.tsx">
-"use client";
-
-import { useRef, useTransition } from "react";
-import { createAccount } from "@/app/contas/actions";
-import { toast } from "sonner";
-
-export function AccountForm() {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [isPending, startTransition] = useTransition();
-
-  async function action(formData: FormData) {
-    startTransition(async () => {
-      try {
-        await createAccount(formData);
-        formRef.current?.reset();
-        toast.success("Conta criada.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao criar conta.");
-      }
-    });
-  }
-
-  return (
-    <form ref={formRef} action={action} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-      <input
-        name="name"
-        required
-        placeholder="Nome (ex: Santander)"
-        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
-      />
-      <select
-        name="type"
-        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
-      >
-        <option value="banco">Banco</option>
-        <option value="poupanca">Poupança</option>
-        <option value="corretora">Corretora</option>
-        <option value="numerario">Numerário</option>
-      </select>
-      <input
-        name="institution"
-        placeholder="Instituição (opcional)"
-        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
-      />
-      <input
-        name="opening_balance"
-        placeholder="Saldo inicial"
-        inputMode="decimal"
-        defaultValue="0"
-        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
-      />
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-gold px-3 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
-      >
-        {isPending ? "A criar..." : "Adicionar Conta"}
-      </button>
-      <input type="hidden" name="currency" value="EUR" />
-    </form>
+    <Card className="p-4 sm:p-5">
+      <CardLabel>{label}</CardLabel>
+      <p className={cx("tabular text-xl sm:text-2xl mt-2 font-medium", toneClass)}>
+        {formatCurrency(value)}
+      </p>
+      {hint && <p className="text-xs text-text-faint mt-1">{hint}</p>}
+    </Card>
   );
 }
 </file>
@@ -2570,96 +2852,6 @@ export function DegiroUpload({ brokerAccounts }: { brokerAccounts: Account[] }) 
 }
 </file>
 
-<file path="src/components/portfolio/holdings-table.tsx">
-import { formatCurrency, formatPercent } from "@/lib/format";
-
-export interface PositionRow {
-  asset_id: string;
-  name: string;
-  symbol: string | null;
-  isin: string | null;
-  quantity_held: number;
-  net_invested: number;
-  total_dividends: number;
-  currentPrice: number | null;
-  marketValue: number;
-}
-
-export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
-  if (positions.length === 0) {
-    return (
-      <p className="text-sm text-text-muted py-6 text-center">
-        Ainda sem posições. Importa um extrato da DEGIRO acima.
-      </p>
-    );
-  }
-
-  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
-  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
-            <th className="py-2 pr-4 font-medium">Ativo</th>
-            <th className="py-2 pr-4 font-medium text-right">Qtd.</th>
-            <th className="py-2 pr-4 font-medium text-right">Custo Médio</th>
-            <th className="py-2 pr-4 font-medium text-right">Preço Atual</th>
-            <th className="py-2 pr-4 font-medium text-right">Valor Atual</th>
-            <th className="py-2 pr-4 font-medium text-right">Peso</th>
-            <th className="py-2 pr-4 font-medium text-right">Lucro/Prejuízo</th>
-            <th className="py-2 font-medium text-right">Dividendos</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((p) => {
-            const pnl = p.marketValue - p.net_invested;
-            const pnlPct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
-            const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
-            const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
-            return (
-              <tr key={p.asset_id} className="border-b border-line-soft last:border-0">
-                <td className="py-2.5 pr-4">
-                  <p className="text-text">{p.name}</p>
-                  <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
-                </td>
-                <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                  {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })}
-                </td>
-                <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                  {formatCurrency(avgCost)}
-                </td>
-                <td className="py-2.5 pr-4 text-right tabular text-text">
-                  {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}
-                </td>
-                <td className="py-2.5 pr-4 text-right tabular text-text">
-                  {formatCurrency(p.marketValue)}
-                </td>
-                <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                  {(weight * 100).toFixed(1)}%
-                </td>
-                <td
-                  className={`py-2.5 pr-4 text-right tabular ${
-                    pnl >= 0 ? "text-gain" : "text-loss"
-                  }`}
-                >
-                  {formatCurrency(pnl)}
-                  <span className="text-xs ml-1 opacity-70">({formatPercent(pnlPct)})</span>
-                </td>
-                <td className="py-2.5 text-right tabular text-text-muted">
-                  {formatCurrency(p.total_dividends)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-</file>
-
 <file path="src/components/reports/period-filter.tsx">
 "use client";
 
@@ -2694,6 +2886,167 @@ export function PeriodFilter({ active }: { active: PeriodKey }) {
         );
       })}
     </div>
+  );
+}
+</file>
+
+<file path="src/components/transactions/transaction-list.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteTransaction } from "@/app/transacoes/actions";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { Account, Category, Transaction } from "@/types/database";
+
+interface Row extends Transaction {
+  accountName: string;
+  transferAccountName: string | null;
+  categoryName: string | null;
+  categoryColor: string | null;
+  excludedFromReports: boolean;
+}
+
+function monthLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  const label = d.toLocaleDateString("pt-PT", { month: "long", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export function TransactionList({
+  transactions,
+  accounts,
+  categories,
+}: {
+  transactions: Transaction[];
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  const rows: Row[] = transactions.map((t) => {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    return {
+      ...t,
+      accountName: accountById.get(t.account_id)?.name ?? "—",
+      transferAccountName: t.transfer_account_id
+        ? accountById.get(t.transfer_account_id)?.name ?? "—"
+        : null,
+      categoryName: cat?.name ?? null,
+      categoryColor: cat?.color ?? null,
+      excludedFromReports: cat?.exclude_from_reports ?? false,
+    };
+  });
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-text-muted py-6 text-center">Ainda não há movimentos registados.</p>;
+  }
+
+  // Agrupa por mês (assume que `rows` já vem ordenado por data decrescente).
+  const groups: { label: string; rows: Row[] }[] = [];
+  for (const row of rows) {
+    const label = monthLabel(row.occurred_on);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) {
+      last.rows.push(row);
+    } else {
+      groups.push({ label, rows: [row] });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {groups.map((group) => {
+        const income = group.rows
+          .filter((r) => r.type === "receita" && !r.excludedFromReports)
+          .reduce((sum, r) => sum + Number(r.amount), 0);
+        const expense = group.rows
+          .filter((r) => r.type === "despesa" && !r.excludedFromReports)
+          .reduce((sum, r) => sum + Number(r.amount), 0);
+
+        return (
+          <div key={group.label}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint">{group.label}</p>
+              <p className="text-xs tabular text-text-faint">
+                {income > 0 && <span className="text-gain">+{formatCurrency(income)}</span>}
+                {income > 0 && expense > 0 && <span className="mx-1">·</span>}
+                {expense > 0 && <span className="text-loss">-{formatCurrency(expense)}</span>}
+              </p>
+            </div>
+            <ul className="flex flex-col">
+              {group.rows.map((t) => (
+                <TransactionRow key={t.id} row={t} />
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TransactionRow({ row }: { row: Row }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete() {
+    if (!confirm("Eliminar este movimento?")) return;
+    startTransition(async () => {
+      try {
+        await deleteTransaction(row.id);
+        toast.success("Movimento eliminado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao eliminar movimento.");
+      }
+    });
+  }
+
+  const sign = row.type === "receita" ? "+" : row.type === "despesa" ? "-" : "";
+  const toneClass =
+    row.type === "receita" ? "text-gain" : row.type === "despesa" ? "text-loss" : "text-text";
+
+  return (
+    <li className="flex items-center justify-between gap-3 py-3 border-b border-line-soft last:border-0">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {row.categoryColor && (
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: row.categoryColor }}
+            />
+          )}
+          <p className="text-sm text-text truncate">
+            {row.description ||
+              row.categoryName ||
+              (row.type === "transferencia" ? "Transferência" : row.type === "receita" ? "Receita" : "Despesa")}
+          </p>
+          {row.excludedFromReports && (
+            <span className="text-[10px] uppercase tracking-wide text-text-faint border border-line-soft rounded px-1.5 py-0.5 shrink-0">
+              Ajuste
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-text-faint mt-0.5">
+          {formatDate(row.occurred_on)} · {row.accountName}
+          {row.transferAccountName ? ` → ${row.transferAccountName}` : ""}
+          {row.categoryName ? ` · ${row.categoryName}` : ""}
+        </p>
+      </div>
+      <span className={`tabular text-sm shrink-0 ${toneClass}`}>
+        {sign}
+        {formatCurrency(row.amount)}
+      </span>
+      <button
+        onClick={handleDelete}
+        disabled={isPending}
+        className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
+        title="Eliminar"
+      >
+        <Trash2 size={14} strokeWidth={1.75} />
+      </button>
+    </li>
   );
 }
 </file>
@@ -2773,125 +3126,6 @@ export async function getNetWorthBreakdown(
     positions: enrichedPositions,
   };
 }
-</file>
-
-<file path="src/types/database.ts">
-// Tipos manuais que espelham supabase/schema.sql.
-// Para gerar automaticamente a partir do teu projeto real, corre:
-//   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
-
-export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
-export type CategoryKind = "receita" | "despesa";
-export type TransactionType = "receita" | "despesa" | "transferencia";
-export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
-
-export interface Account {
-  id: string;
-  user_id: string;
-  name: string;
-  type: AccountType;
-  currency: string;
-  institution: string | null;
-  opening_balance: number;
-  current_balance: number;
-  is_archived: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Category {
-  id: string;
-  user_id: string;
-  name: string;
-  kind: CategoryKind;
-  color: string | null;
-  icon: string | null;
-  is_default: boolean;
-  created_at: string;
-}
-
-export interface Transaction {
-  id: string;
-  user_id: string;
-  type: TransactionType;
-  amount: number;
-  occurred_on: string;
-  account_id: string;
-  transfer_account_id: string | null;
-  category_id: string | null;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Asset {
-  id: string;
-  isin: string | null;
-  symbol: string | null;
-  name: string;
-  currency: string;
-  created_at: string;
-}
-
-export interface AssetTransaction {
-  id: string;
-  user_id: string;
-  account_id: string;
-  asset_id: string;
-  operation: AssetOperation;
-  occurred_on: string;
-  occurred_at: string | null;
-  quantity: number | null;
-  price: number | null;
-  local_value: number | null;
-  fees: number | null;
-  total_value: number;
-  currency: string | null;
-  exchange_rate: number | null;
-  description: string | null;
-  order_id: string | null;
-  source_hash: string;
-  source: string;
-  raw_row: Record<string, string> | null;
-  created_at: string;
-}
-
-export interface AssetQuote {
-  asset_id: string;
-  price: number;
-  currency: string;
-  fetched_at: string;
-}
-
-export interface CsvImport {
-  id: string;
-  user_id: string;
-  account_id: string | null;
-  file_name: string;
-  file_hash: string;
-  rows_total: number;
-  rows_inserted: number;
-  rows_duplicated: number;
-  rows_failed: number;
-  created_at: string;
-}
-
-export interface PortfolioPosition {
-  user_id: string;
-  asset_id: string;
-  name: string;
-  symbol: string | null;
-  isin: string | null;
-  currency: string;
-  quantity_held: number;
-  net_invested: number;
-  total_dividends: number;
-}
-
-// Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
-// Substitui por `supabase gen types` quando ligares a um projeto real.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Database = any;
 </file>
 
 <file path="src/proxy.ts">
@@ -3014,331 +3248,471 @@ export default nextConfig;
 }
 </file>
 
-<file path="src/app/dashboard/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { getNetWorthBreakdown } from "@/lib/data/net-worth";
-import { StatCard } from "@/components/dashboard/stat-card";
-import { DonutChart } from "@/components/charts/donut-chart";
-import { Card, CardLabel } from "@/components/ui/card";
-import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+<file path="src/app/contas/actions.ts">
+"use server";
 
-export default async function DashboardPage() {
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import type { AccountType } from "@/types/database";
+
+export async function createAccount(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
 
-  const breakdown = await getNetWorthBreakdown(supabase, user!.id);
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? "banco") as AccountType;
+  const institution = String(formData.get("institution") ?? "").trim() || null;
+  const openingBalance = Number(String(formData.get("opening_balance") ?? "0").replace(",", "."));
+  const currency = String(formData.get("currency") ?? "EUR");
 
-  const slices = [
-    { name: "Contas Bancárias", value: breakdown.cashInBanks, color: "var(--color-info)" },
-    { name: "Poupança", value: breakdown.cashInSavings, color: "#B48CE0" },
-    { name: "Corretoras (livre)", value: breakdown.cashInBrokers, color: "var(--color-gold)" },
-    { name: "Numerário", value: breakdown.physicalCash, color: "#8A93A3" },
-    { name: "Portefólio", value: breakdown.portfolioValue, color: "var(--color-gain)" },
-  ];
+  if (!name) throw new Error("O nome da conta é obrigatório.");
 
-  return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-10">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
-          Património Global
-        </p>
-        <p className="font-display text-5xl tabular text-text">
-          {formatCurrency(breakdown.totalNetWorth)}
-        </p>
-        <p className="text-sm text-text-muted mt-2">
-          Soma de contas bancárias, poupança, saldo livre em corretoras, numerário e valor atual
-          do portefólio de investimentos.
-        </p>
-      </header>
+  const { error } = await supabase.from("accounts").insert({
+    user_id: user.id,
+    name,
+    type,
+    institution,
+    opening_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
+    current_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
+    currency,
+  });
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
-        <StatCard label="Contas Bancárias" value={breakdown.cashInBanks} />
-        <StatCard label="Poupança" value={breakdown.cashInSavings} />
-        <StatCard label="Corretoras (saldo livre)" value={breakdown.cashInBrokers} />
-        <StatCard label="Numerário" value={breakdown.physicalCash} />
-        <StatCard label="Portefólio (valor atual)" value={breakdown.portfolioValue} tone="gold" />
-      </div>
+  if (error) throw new Error(error.message);
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <Card className="lg:col-span-2">
-          <CardLabel>Distribuição do Património</CardLabel>
-          <div className="mt-4">
-            <DonutChart slices={slices} emptyMessage="Ainda sem saldo registado — adiciona contas e transações para veres a distribuição." />
-          </div>
-        </Card>
-
-        <Card className="lg:col-span-3">
-          <CardLabel>Investimentos — Custo vs. Valor Atual</CardLabel>
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-text-faint">Capital investido</p>
-              <p className="tabular text-xl text-text mt-1">{formatCurrency(breakdown.portfolioCost)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-text-faint">Lucro / Prejuízo não realizado</p>
-              <p
-                className={`tabular text-xl mt-1 ${
-                  breakdown.portfolioPnl >= 0 ? "text-gain" : "text-loss"
-                }`}
-              >
-                {formatSignedCurrency(breakdown.portfolioPnl)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 ledger-rule pt-4">
-            <p className="text-xs text-text-faint mb-3">Posições atuais</p>
-            {breakdown.positions.length === 0 ? (
-              <p className="text-sm text-text-muted">
-                Ainda não importaste transações de bolsa. Vai a{" "}
-                <a href="/portfolio" className="text-gold underline underline-offset-2">
-                  Portefólio
-                </a>{" "}
-                para carregar o CSV da DEGIRO.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {breakdown.positions.map((p) => (
-                  <li
-                    key={p.asset_id}
-                    className="flex items-center justify-between text-sm py-1.5 border-b border-line-soft last:border-0"
-                  >
-                    <span className="text-text">{p.name}</span>
-                    <span className="tabular text-text-muted">
-                      {p.quantity_held.toLocaleString("pt-PT")} un.
-                    </span>
-                    <span className="tabular text-text">{formatCurrency(p.marketValue)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
+export async function archiveAccount(accountId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("accounts").update({ is_archived: true }).eq("id", accountId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
 }
 </file>
 
-<file path="src/app/portfolio/page.tsx">
+<file path="src/app/contas/page.tsx">
 import { createClient } from "@/lib/supabase/server";
+import { AccountForm } from "@/components/accounts/account-form";
+import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
 import { Card, CardLabel } from "@/components/ui/card";
-import { DegiroUpload } from "@/components/portfolio/degiro-upload";
-import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
-import { HoldingsTable } from "@/components/portfolio/holdings-table";
-import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
-import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
-import { StatCard } from "@/components/dashboard/stat-card";
-import { formatPercent } from "@/lib/format";
-import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { formatCurrency } from "@/lib/format";
 import type { Account } from "@/types/database";
 
-const PALETTE = [
-  "var(--color-gold)",
-  "var(--color-gain)",
-  "var(--color-info)",
-  "#B48CE0",
-  "#F2789F",
-  "#5EC8D8",
-  "#D9A441",
-];
+const TYPE_LABEL: Record<Account["type"], string> = {
+  banco: "Banco",
+  poupanca: "Poupança",
+  corretora: "Corretora",
+  numerario: "Numerário",
+};
 
-export default async function PortfolioPage() {
+export default async function ContasPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: accounts }, breakdown] = await Promise.all([
-    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
-    getNetWorthBreakdown(supabase, user!.id),
-  ]);
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("user_id", user!.id)
+    .eq("is_archived", false)
+    .order("type")
+    .order("name");
 
-  const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
-  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
-
-  const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
-  const performancePct =
-    breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
-
-  const compositionSlices: DonutSlice[] = [...breakdown.positions]
-    .sort((a, b) => b.marketValue - a.marketValue)
-    .map((p, i) => ({
-      name: p.name,
-      value: p.marketValue,
-      color: PALETTE[i % PALETTE.length],
-    }));
+  const list: Account[] = accounts ?? [];
+  const total = list.reduce((sum, a) => sum + Number(a.current_balance), 0);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
-        <h1 className="font-display text-3xl text-text">Portefólio</h1>
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
+          Liquidez
+        </p>
+        <h1 className="font-display text-3xl text-text">Contas</h1>
         <p className="text-sm text-text-muted mt-2">
-          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
-          acompanha o valor atual e o lucro ou prejuízo de cada posição.
+          Bancos, corretoras e numerário. Os saldos atualizam-se automaticamente com as
+          receitas, despesas e transações de investimento que registares.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <StatCard label="Capital investido" value={breakdown.portfolioCost} />
-        <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
-        <StatCard
-          label="Lucro / Prejuízo"
-          value={breakdown.portfolioPnl}
-          tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
-        />
-        <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
-        <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
-      </div>
-
       <Card className="mb-8">
-        <CardLabel className="mb-3">Importar Extrato DEGIRO</CardLabel>
-        <DegiroUpload brokerAccounts={brokerAccounts} />
+        <CardLabel className="mb-3">Nova Conta</CardLabel>
+        <AccountForm />
       </Card>
-
-      {breakdown.positions.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="lg:col-span-3">
-            <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
-            <DonutChart slices={compositionSlices} />
-          </Card>
-
-          <Card className="lg:col-span-2 flex flex-col justify-between">
-            <div>
-              <CardLabel className="mb-3">Desempenho Global</CardLabel>
-              <p
-                className={`font-display text-4xl tabular ${
-                  performancePct >= 0 ? "text-gain" : "text-loss"
-                }`}
-              >
-                {formatPercent(performancePct)}
-              </p>
-              <p className="text-xs text-text-faint mt-2">
-                Lucro/prejuízo não realizado face ao capital investido.
-              </p>
-            </div>
-            <div className="mt-6">
-              <PerformanceHighlights positions={breakdown.positions} />
-            </div>
-          </Card>
-        </div>
-      )}
 
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <CardLabel>Posições Atuais</CardLabel>
-          <RefreshQuotesButton />
+          <CardLabel>As Tuas Contas</CardLabel>
+          <span className="tabular text-sm text-text-muted">
+            Total: <span className="text-text font-medium">{formatCurrency(total)}</span>
+          </span>
         </div>
-        <HoldingsTable positions={breakdown.positions} />
+
+        {list.length === 0 ? (
+          <p className="text-sm text-text-muted py-6 text-center">
+            Ainda não tens contas. Cria a primeira acima.
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {list.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center justify-between py-3 border-b border-line-soft last:border-0"
+              >
+                <div>
+                  <p className="text-sm text-text">{a.name}</p>
+                  <p className="text-xs text-text-faint mt-0.5">
+                    {TYPE_LABEL[a.type]}
+                    {a.institution ? ` · ${a.institution}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="tabular text-sm text-text">
+                    {formatCurrency(Number(a.current_balance), a.currency)}
+                  </span>
+                  <ArchiveAccountButton accountId={a.id} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );
 }
 </file>
 
-<file path="src/app/relatorios/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { Card, CardLabel } from "@/components/ui/card";
-import { PeriodFilter } from "@/components/reports/period-filter";
-import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
-import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
-import { StatCard } from "@/components/dashboard/stat-card";
-import type { Category, Transaction } from "@/types/database";
+<file path="src/app/login/page.tsx">
+"use client";
 
-function groupByCategory(
-  rows: Transaction[],
-  categoryById: Map<string, Category>
-): DonutSlice[] {
-  const map = new Map<string, DonutSlice>();
-  for (const t of rows) {
-    const cat = t.category_id ? categoryById.get(t.category_id) : null;
-    const key = cat?.id ?? "sem_categoria";
-    const name = cat?.name ?? "Sem categoria";
-    const color = cat?.color ?? "#57616F";
-    const existing = map.get(key);
-    if (existing) {
-      existing.value += Number(t.amount);
-    } else {
-      map.set(key, { name, value: Number(t.amount), color });
+import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) {
+      toast.error(
+        error.message === "Invalid login credentials"
+          ? "Email ou palavra-passe incorretos."
+          : error.message
+      );
+      return;
     }
+
+    router.push("/dashboard");
+    router.refresh();
   }
-  return Array.from(map.values()).sort((a, b) => b.value - a.value);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+        <div className="flex items-center gap-3 mb-1">
+          <Image src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-lg" />
+          <p className="font-display italic text-3xl text-text">Meu Capital</p>
+        </div>
+        <p className="text-sm text-text-muted mb-8">
+          O teu gestor de património e finanças pessoais.
+        </p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <label className="text-[11px] uppercase tracking-[0.14em] text-text-faint">Email</label>
+          <input
+            type="email"
+            required
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@exemplo.com"
+            className="rounded-md border border-line bg-surface-alt px-3 py-2.5 text-sm text-text outline-none focus:border-gold"
+          />
+
+          <label className="text-[11px] uppercase tracking-[0.14em] text-text-faint mt-2">
+            Palavra-passe
+          </label>
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            className="rounded-md border border-line bg-surface-alt px-3 py-2.5 text-sm text-text outline-none focus:border-gold"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-3 rounded-md bg-gold px-3 py-2.5 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? "A entrar..." : "Entrar"}
+          </button>
+        </form>
+
+        <p className="text-xs text-text-faint mt-6 leading-relaxed">
+          Não há registo público. As contas são criadas pelo administrador com{" "}
+          <code className="text-text-muted">npm run create-user</code>.
+        </p>
+      </div>
+    </div>
+  );
 }
+</file>
 
-export default async function RelatoriosPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ period?: string }>;
-}) {
-  const { period: periodParam } = await searchParams;
-  const period = (periodParam ?? "3m") as PeriodKey;
-  const { from } = resolvePeriodRange(period);
+<file path="src/app/transacoes/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { TransactionForm } from "@/components/transactions/transaction-form";
+import { TransactionList } from "@/components/transactions/transaction-list";
+import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
+import { Card, CardLabel } from "@/components/ui/card";
+import type { Account, Category, Transaction } from "@/types/database";
 
+export default async function TransacoesPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: transactions }, { data: categories }] = await Promise.all([
+  // Gera automaticamente qualquer movimento recorrente que já esteja
+  // vencido (renda, salário, subscrições...) antes de mostrar a lista.
+  await supabase.rpc("apply_due_recurring_transactions", { p_user_id: user!.id });
+
+  const [{ data: accounts }, { data: categories }, { data: transactions }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
+    supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
     supabase
       .from("transactions")
       .select("*")
       .eq("user_id", user!.id)
-      .gte("occurred_on", from)
-      .order("occurred_on", { ascending: false }),
-    supabase.from("categories").select("*").eq("user_id", user!.id),
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(100),
   ]);
 
-  const transactionsList: Transaction[] = transactions ?? [];
+  const accountsList: Account[] = accounts ?? [];
   const categoriesList: Category[] = categories ?? [];
-  const categoryById = new Map(categoriesList.map((c) => [c.id, c]));
-
-  const expenses = transactionsList.filter((t) => t.type === "despesa");
-  const income = transactionsList.filter((t) => t.type === "receita");
-
-  const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
-  const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
-
-  const expensesByCategory = groupByCategory(expenses, categoryById);
-  const incomeByCategory = groupByCategory(income, categoryById);
+  const transactionsList: Transaction[] = transactions ?? [];
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
-          <h1 className="font-display text-3xl text-text">Relatórios</h1>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
+          <h1 className="font-display text-3xl text-text">Movimentos</h1>
+          <p className="text-sm text-text-muted mt-2">
+            Regista receitas, despesas e transferências entre contas. Os saldos das contas
+            envolvidas atualizam-se de imediato.
+          </p>
         </div>
-        <PeriodFilter active={period} />
+        <a
+          href="/recorrentes"
+          className="shrink-0 text-xs text-gold underline underline-offset-2 whitespace-nowrap"
+        >
+          Ver recorrências
+        </a>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <StatCard label="Receitas no período" value={totalIncome} tone="gain" />
-        <StatCard label="Despesas no período" value={totalExpenses} tone="loss" />
-        <StatCard label="Balanço" value={totalIncome - totalExpenses} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
-          <DonutChart
-            slices={expensesByCategory}
-            emptyMessage="Sem despesas registadas neste período."
-          />
+      {accountsList.length === 0 ? (
+        <Card className="mb-8">
+          <p className="text-sm text-text-muted">
+            Precisas de pelo menos uma conta antes de registares movimentos.{" "}
+            <a href="/contas" className="text-gold underline underline-offset-2">
+              Cria uma conta
+            </a>
+            .
+          </p>
         </Card>
-
-        <Card>
-          <CardLabel className="mb-4">Receitas por Categoria</CardLabel>
-          <DonutChart
-            slices={incomeByCategory}
-            emptyMessage="Sem receitas registadas neste período."
-          />
+      ) : (
+        <Card className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <CardLabel>Novo Movimento</CardLabel>
+            <CategoryQuickAdd />
+          </div>
+          <TransactionForm accounts={accountsList} categories={categoriesList} />
         </Card>
-      </div>
+      )}
+
+      <Card>
+        <CardLabel className="mb-3">Últimos 100 Movimentos</CardLabel>
+        <TransactionList transactions={transactionsList} accounts={accountsList} categories={categoriesList} />
+      </Card>
     </div>
+  );
+}
+</file>
+
+<file path="src/app/globals.css">
+@import "tailwindcss";
+
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/600-italic.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+/*
+ * =========================================================================
+ * TOKENS DE DESIGN — "Livro-Razão" (Ledger)
+ * =========================================================================
+ * Paleta de tinta escura inspirada em extratos bancários e livros-razão
+ * contabilísticos: fundo quase-preto, réguas finas em vez de sombras,
+ * números tabulares em mono, e um único acento dourado ("património")
+ * que se distingue do verde (ganho) e vermelho (perda).
+ */
+:root {
+  --color-ink:          #0B0F14;
+  --color-surface:      #12171F;
+  --color-surface-alt:  #1A212B;
+  --color-line:         #232B36;
+  --color-line-soft:    #1A212B;
+  --color-text:         #EDEFF2;
+  --color-text-muted:   #8A93A3;
+  --color-text-faint:   #57616F;
+  --color-gold:         #D9A441;
+  --color-gold-soft:    #3A2F1B;
+  --color-gain:         #35D28A;
+  --color-gain-soft:    #123023;
+  --color-loss:         #E5636A;
+  --color-loss-soft:    #331A1D;
+  --color-info:         #6C9BD1;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-line: var(--color-line);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-gold: var(--color-gold);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-gain: var(--color-gain);
+  --color-gain-soft: var(--color-gain-soft);
+  --color-loss: var(--color-loss);
+  --color-loss-soft: var(--color-loss-soft);
+  --color-info: var(--color-info);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.ledger-rule {
+  border-top: 1px solid var(--color-line);
+}
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</file>
+
+<file path="src/app/manifest.ts">
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "Meu Capital",
+    short_name: "Meu Capital",
+    description: "Gestor de património e finanças pessoais.",
+    start_url: "/dashboard",
+    display: "standalone",
+    background_color: "#0B0F14",
+    theme_color: "#0B0F14",
+    orientation: "portrait",
+    icons: [
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/icons/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+}
+</file>
+
+<file path="src/components/accounts/archive-account-button.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Archive } from "lucide-react";
+import { toast } from "sonner";
+import { archiveAccount } from "@/app/contas/actions";
+
+export function ArchiveAccountButton({ accountId }: { accountId: string }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleClick() {
+    if (!confirm("Arquivar esta conta? Deixa de aparecer no dashboard, mas o histórico mantém-se.")) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await archiveAccount(accountId);
+        toast.success("Conta arquivada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao arquivar conta.");
+      }
+    });
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isPending}
+      title="Arquivar conta"
+      className="text-text-faint hover:text-loss transition-colors disabled:opacity-50"
+    >
+      <Archive size={15} strokeWidth={1.75} />
+    </button>
   );
 }
 </file>
@@ -3718,476 +4092,452 @@ export async function hashFileContent(text: string): Promise<string> {
 }
 </file>
 
-<file path="supabase/schema.sql">
--- =========================================================================
--- Gestor de Património e Finanças Pessoais — Esquema Supabase (Postgres)
--- =========================================================================
--- Este script é idempotente (pode ser corrido várias vezes em segurança).
--- Corre isto no SQL Editor do teu projeto Supabase.
--- =========================================================================
+<file path="LEIA-ME.md">
+# Como aplicar o rebranding para "Meu Capital"
 
-create extension if not exists "pgcrypto";
+## 1. Copia os ficheiros
 
--- -------------------------------------------------------------------------
--- 1. CONTAS (bancos, corretoras, numerário)
--- -------------------------------------------------------------------------
-do $$ begin
-  create type account_type as enum ('banco', 'corretora', 'numerario', 'poupanca');
-exception when duplicate_object then null;
-end $$;
+| Ficheiro | Estado |
+|---|---|
+| `public/icons/icon-192.png` | novo/substituir |
+| `public/icons/icon-512.png` | novo/substituir |
+| `public/icons/icon-512-maskable.png` | novo/substituir |
+| `src/app/icon.png` | novo/substituir (favicon automático do Next) |
+| `src/app/apple-icon.png` | novo/substituir (ícone do ecrã principal no iPhone) |
+| `src/app/manifest.ts` | substituir |
+| `src/app/layout.tsx` | substituir |
+| `src/app/login/page.tsx` | substituir |
+| `src/components/nav-sidebar.tsx` | substituir |
 
--- Migração suave: se o enum já existir de uma instalação anterior sem o
--- valor 'poupanca', acrescenta-o agora. "IF NOT EXISTS" já torna isto
--- seguro por si só — não precisa (nem pode, de forma fiável) de estar
--- dentro de um bloco PL/pgSQL.
-alter type account_type add value if not exists 'poupanca';
+Se ainda não tinhas aplicado os packs anteriores (PWA base + Fase 2), aplica-os
+primeiro — este pack assume que `manifest.ts`, `layout.tsx` e `nav-sidebar.tsx`
+já existem nesses caminhos.
 
-create table if not exists public.accounts (
-  id            uuid primary key default gen_random_uuid(),
-  user_id       uuid not null references auth.users(id) on delete cascade,
-  name          text not null,                 -- ex: "Santander", "DEGIRO", "Carteira"
-  type          account_type not null,
-  currency      text not null default 'EUR',
-  institution   text,                          -- ex: "Santander Totta", "DEGIRO B.V."
-  opening_balance numeric(18,2) not null default 0,
-  -- "Ponto de reconciliação": quando importamos um extrato da DEGIRO,
-  -- confiamos no saldo que a PRÓPRIA DEGIRO reporta (coluna "Saldo") em vez
-  -- de tentarmos recalcular tudo a partir das nossas transações — isso
-  -- captura automaticamente depósitos, levantamentos, cash sweeps, juros,
-  -- etc. que não modelamos individualmente. A partir deste ponto, só
-  -- somamos movimentos (transactions/asset_transactions) que aconteçam
-  -- DEPOIS de reconciled_at.
-  reconciled_balance numeric(18,2),
-  reconciled_at      timestamptz,
-  -- saldo corrente é derivado (ver view account_balances), mas guardamos
-  -- também um cache atualizado por trigger para leitura rápida no dashboard.
-  current_balance numeric(18,2) not null default 0,
-  is_archived   boolean not null default false,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
-);
+## 2. O que mudou
 
--- Migração suave para instalações já existentes (idempotente).
-alter table public.accounts add column if not exists reconciled_balance numeric(18,2);
-alter table public.accounts add column if not exists reconciled_at timestamptz;
+- **Nome da app**: "Livro" → "Meu Capital", em todo o lado onde aparecia
+  (manifest/PWA, título do separador do browser, ecrã de login, barra
+  lateral).
+- **Logo**: recortei o teu logo para um quadrado limpo e gerei os 4 formatos
+  que a plataforma pede — favicon, ícone da Apple (180×180), ícone normal da
+  PWA (192/512) e uma versão "maskable" (512, com mais margem à volta) para
+  não ficar cortado quando o Android o mostra dentro de um círculo/squircle.
+  Aparece agora na barra lateral (desktop) e no ecrã de login.
+- Não mudei o nome do pacote no `package.json` (`patrimonio-app`) nem o nome
+  do repositório — é só cosmético, mas diz se queres que troque também.
 
-create index if not exists idx_accounts_user on public.accounts(user_id);
+## 3. Testa
 
--- -------------------------------------------------------------------------
--- 2. CATEGORIAS (personalizáveis, para receitas/despesas)
--- -------------------------------------------------------------------------
-do $$ begin
-  create type category_kind as enum ('receita', 'despesa');
-exception when duplicate_object then null;
-end $$;
+```bash
+npm run dev
+```
 
-create table if not exists public.categories (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references auth.users(id) on delete cascade,
-  name        text not null,
-  kind        category_kind not null,
-  color       text default '#8B93A1',          -- para os gráficos
-  icon        text,                             -- nome de ícone (lucide-react)
-  is_default  boolean not null default false,
-  created_at  timestamptz not null default now(),
-  unique (user_id, name, kind)
-);
+- O separador do browser deve mostrar "Meu Capital — Património & Finanças
+  Pessoais" e o ícone novo.
+- Login e barra lateral devem mostrar o novo nome e logo.
+- Depois de fazeres deploy, tenta instalar a PWA outra vez (Android: prompt
+  de instalar; iPhone: Partilhar → Adicionar ao ecrã principal) — o ícone e o
+  nome no ecrã principal devem já ser os novos. Pode ser preciso desinstalar
+  a versão antiga primeiro se já a tinhas instalado com o nome "Livro".
+</file>
 
--- -------------------------------------------------------------------------
--- 3. TRANSAÇÕES FINANCEIRAS DIÁRIAS (orçamento: receitas / despesas / transferências)
--- -------------------------------------------------------------------------
-do $$ begin
-  create type transaction_type as enum ('receita', 'despesa', 'transferencia');
-exception when duplicate_object then null;
-end $$;
+<file path="src/app/layout.tsx">
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import { NavSidebar } from "@/components/nav-sidebar";
+import { MobileNav } from "@/components/mobile-nav";
+import { RegisterServiceWorker } from "@/components/register-sw";
+import { Toaster } from "sonner";
 
-create table if not exists public.transactions (
-  id              uuid primary key default gen_random_uuid(),
-  user_id         uuid not null references auth.users(id) on delete cascade,
-  type            transaction_type not null,
-  amount          numeric(18,2) not null check (amount > 0),
-  occurred_on     date not null,
-  account_id      uuid not null references public.accounts(id) on delete cascade,
-  -- usado apenas quando type = 'transferencia' (conta de destino)
-  transfer_account_id uuid references public.accounts(id) on delete set null,
-  category_id     uuid references public.categories(id) on delete set null,
-  description     text,
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now(),
-  check (
-    (type = 'transferencia' and transfer_account_id is not null and transfer_account_id <> account_id)
-    or (type <> 'transferencia' and transfer_account_id is null)
-  )
-);
+export const metadata: Metadata = {
+  title: "Meu Capital — Património & Finanças Pessoais",
+  description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Meu Capital",
+  },
+};
 
-create index if not exists idx_transactions_user_date on public.transactions(user_id, occurred_on desc);
-create index if not exists idx_transactions_account on public.transactions(account_id);
-create index if not exists idx_transactions_category on public.transactions(category_id);
+export const viewport: Viewport = {
+  themeColor: "#0B0F14",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
 
--- -------------------------------------------------------------------------
--- 4. ATIVOS (instrumentos financeiros — ações, ETFs, etc.)
--- -------------------------------------------------------------------------
-create table if not exists public.assets (
-  id          uuid primary key default gen_random_uuid(),
-  isin        text unique,                       -- pode ser null p/ ativos sem ISIN
-  symbol      text,                               -- ticker Yahoo Finance, ex: "VWCE.DE"
-  name        text not null,
-  currency    text not null default 'EUR',
-  created_at  timestamptz not null default now()
-);
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="pt-PT" className="h-full antialiased">
+      <body className="min-h-full bg-ink text-text font-sans">
+        <div className="flex min-h-screen">
+          <NavSidebar />
+          <main className="flex-1 min-w-0 pb-20 md:pb-0">{children}</main>
+        </div>
+        <MobileNav />
+        <RegisterServiceWorker />
+        <Toaster theme="dark" position="top-right" richColors />
+      </body>
+    </html>
+  );
+}
+</file>
 
-create index if not exists idx_assets_isin on public.assets(isin);
-create index if not exists idx_assets_symbol on public.assets(symbol);
+<file path="src/components/accounts/account-form.tsx">
+"use client";
 
--- -------------------------------------------------------------------------
--- 5. TRANSAÇÕES DE BOLSA (compras, vendas, dividendos, comissões — DEGIRO)
--- -------------------------------------------------------------------------
-do $$ begin
-  create type asset_operation as enum ('compra', 'venda', 'dividendo', 'comissao', 'outro');
-exception when duplicate_object then null;
-end $$;
+import { useRef, useTransition } from "react";
+import { createAccount } from "@/app/contas/actions";
+import { toast } from "sonner";
 
-create table if not exists public.asset_transactions (
-  id              uuid primary key default gen_random_uuid(),
-  user_id         uuid not null references auth.users(id) on delete cascade,
-  account_id      uuid not null references public.accounts(id) on delete cascade,
-  asset_id        uuid not null references public.assets(id) on delete cascade,
-  operation       asset_operation not null,
-  occurred_on     date not null,
-  occurred_at     timestamptz,                     -- data+hora, se disponível no CSV
-  quantity        numeric(18,6),                   -- null em dividendos/comissões avulsas
-  price           numeric(18,6),                   -- preço unitário na moeda local do ativo
-  local_value     numeric(18,2),                   -- valor na moeda local (coluna "Montante")
-  fees            numeric(18,2) default 0,
-  total_value     numeric(18,2) not null,           -- valor total em EUR (coluna "Total")
-  currency        text default 'EUR',
-  exchange_rate   numeric(18,6),
-  description     text,                             -- texto original da coluna Descrição
-  order_id        text,                              -- coluna "ID Ordem" da DEGIRO, se existir
-  -- hash único da linha original do CSV -> previne duplicados em re-importações
-  source_hash     text not null,
-  source          text not null default 'degiro',
-  raw_row         jsonb,                             -- guarda a linha original para auditoria
-  created_at      timestamptz not null default now(),
-  unique (user_id, source_hash)
-);
+export function AccountForm() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
 
-create index if not exists idx_asset_tx_user_date on public.asset_transactions(user_id, occurred_on desc);
-create index if not exists idx_asset_tx_asset on public.asset_transactions(asset_id);
-create index if not exists idx_asset_tx_account on public.asset_transactions(account_id);
+  async function action(formData: FormData) {
+    startTransition(async () => {
+      try {
+        await createAccount(formData);
+        formRef.current?.reset();
+        toast.success("Conta criada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao criar conta.");
+      }
+    });
+  }
 
--- -------------------------------------------------------------------------
--- 6. COTAÇÕES (cache de preços atuais, para não bombardear a API a cada load)
--- -------------------------------------------------------------------------
-create table if not exists public.asset_quotes (
-  asset_id      uuid primary key references public.assets(id) on delete cascade,
-  price         numeric(18,6) not null,
-  currency      text not null default 'EUR',
-  fetched_at    timestamptz not null default now()
-);
+  return (
+    <form ref={formRef} action={action} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <input
+        name="name"
+        required
+        placeholder="Nome (ex: Santander)"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+      />
+      <select
+        name="type"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+      >
+        <option value="banco">Banco</option>
+        <option value="poupanca">Poupança</option>
+        <option value="corretora">Corretora</option>
+        <option value="numerario">Numerário</option>
+      </select>
+      <input
+        name="institution"
+        placeholder="Instituição (opcional)"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+      />
+      <input
+        name="opening_balance"
+        placeholder="Saldo inicial"
+        inputMode="decimal"
+        defaultValue="0"
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+      />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="rounded-md bg-gold px-3 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+      >
+        {isPending ? "A criar..." : "Adicionar Conta"}
+      </button>
+      <input type="hidden" name="currency" value="EUR" />
+    </form>
+  );
+}
+</file>
 
--- -------------------------------------------------------------------------
--- 7. IMPORTAÇÕES CSV (histórico/auditoria de uploads DEGIRO)
--- -------------------------------------------------------------------------
-create table if not exists public.csv_imports (
-  id              uuid primary key default gen_random_uuid(),
-  user_id         uuid not null references auth.users(id) on delete cascade,
-  account_id      uuid references public.accounts(id) on delete set null,
-  file_name       text not null,
-  file_hash       text not null,               -- hash do ficheiro inteiro
-  rows_total      integer not null default 0,
-  rows_inserted   integer not null default 0,
-  rows_duplicated integer not null default 0,
-  rows_failed     integer not null default 0,
-  created_at      timestamptz not null default now(),
-  unique (user_id, file_hash)
-);
+<file path="src/components/portfolio/holdings-table.tsx">
+import { formatCurrency, formatPercent } from "@/lib/format";
 
--- =========================================================================
--- VIEWS
--- =========================================================================
+export interface PositionRow {
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  isin: string | null;
+  quantity_held: number;
+  net_invested: number;
+  total_dividends: number;
+  total_fees: number;
+  first_purchase_at: string | null;
+  currentPrice: number | null;
+  marketValue: number;
+}
 
--- Saldo corrente de cada conta a partir das transações (fonte de verdade).
---
--- Ponto de partida: coalesce(reconciled_balance, opening_balance). Se a
--- conta tiver sido reconciliada (ex: por uma importação DEGIRO), só somamos
--- movimentos que aconteceram DEPOIS desse ponto — o saldo reconciliado já
--- inclui o efeito de tudo o que aconteceu até lá.
-create or replace view public.account_balances as
-select
-  a.id as account_id,
-  a.user_id,
-  a.name,
-  a.type,
-  a.currency,
-  coalesce(a.reconciled_balance, a.opening_balance)
-    + coalesce(sum(case
-                     when t.occurred_on::timestamptz <= coalesce(a.reconciled_at, '-infinity'::timestamptz) then 0
-                     when t.type = 'receita' then t.amount
-                     when t.type = 'despesa' then -t.amount
-                     when t.type = 'transferencia' and t.account_id = a.id then -t.amount
-                     else 0 end), 0)
-    + coalesce((
-        select sum(t2.amount) from public.transactions t2
-        where t2.type = 'transferencia' and t2.transfer_account_id = a.id
-          and t2.occurred_on::timestamptz > coalesce(a.reconciled_at, '-infinity'::timestamptz)
-      ), 0)
-    + coalesce((
-        select sum(-at.total_value) from public.asset_transactions at
-        where at.account_id = a.id and at.operation in ('compra','comissao')
-          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
-      ), 0)
-    + coalesce((
-        select sum(at.total_value) from public.asset_transactions at
-        where at.account_id = a.id and at.operation in ('venda','dividendo')
-          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
-      ), 0)
-  as current_balance
-from public.accounts a
-left join public.transactions t on t.account_id = a.id
-group by a.id;
+function formatMonthYear(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
+}
 
--- Posições atuais do portefólio (quantidade líquida por ativo e preço médio de custo).
-create or replace view public.portfolio_positions as
-select
-  at.user_id,
-  at.asset_id,
-  ass.name,
-  ass.symbol,
-  ass.isin,
-  ass.currency,
-  sum(case when at.operation = 'compra' then at.quantity
-           when at.operation = 'venda' then -at.quantity
-           else 0 end) as quantity_held,
-  -- "total_value" já vem com o sinal do movimento de caixa (compra = saída,
-  -- negativo; venda = entrada, positiva). Para chegar ao capital líquido
-  -- investido (um valor positivo quando ainda há dinheiro "preso" na
-  -- posição), invertemos o sinal em ambos os casos: uma compra de -1000€
-  -- soma +1000€ ao investido; uma venda de +400€ soma -400€ (reduz o
-  -- capital investido, porque já recebeste esse dinheiro de volta).
-  sum(case when at.operation in ('compra', 'venda') then -at.total_value
-           else 0 end) as net_invested,
-  sum(case when at.operation = 'dividendo' then at.total_value else 0 end) as total_dividends
-from public.asset_transactions at
-join public.assets ass on ass.id = at.asset_id
-group by at.user_id, at.asset_id, ass.name, ass.symbol, ass.isin, ass.currency;
+export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
+  if (positions.length === 0) {
+    return (
+      <p className="text-sm text-text-muted py-6 text-center">
+        Ainda sem posições. Importa um extrato da DEGIRO acima.
+      </p>
+    );
+  }
 
--- =========================================================================
--- TRIGGERS: manter accounts.current_balance sincronizado (cache de leitura)
--- =========================================================================
-create or replace function public.refresh_account_balance(p_account_id uuid)
-returns void language plpgsql as $$
-begin
-  update public.accounts a
-  set current_balance = coalesce(v.current_balance, a.opening_balance),
-      updated_at = now()
-  from public.account_balances v
-  where v.account_id = a.id and a.id = p_account_id;
-end;
-$$;
+  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
+  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
 
--- Fixa o saldo de uma conta a um valor conhecido num determinado instante
--- (ex: o saldo que a DEGIRO reportou na última linha de um extrato
--- importado). Só avança o ponto de reconciliação para a frente no tempo —
--- reimportar um ficheiro mais antigo nunca faz a conta "recuar".
-create or replace function public.reconcile_account_balance(
-  p_account_id uuid,
-  p_balance numeric,
-  p_at timestamptz
-)
-returns void language plpgsql as $$
-begin
-  update public.accounts
-  set reconciled_balance = p_balance,
-      reconciled_at = p_at
-  where id = p_account_id
-    and (reconciled_at is null or p_at > reconciled_at);
+  return (
+    <div>
+      <p className="sm:hidden text-xs text-text-faint mb-2">← Desliza para o lado para ver mais →</p>
+      <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
+        <table className="w-full text-sm min-w-[860px]">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
+              <th className="py-2 pr-4 font-medium">Ativo</th>
+              <th className="py-2 pr-4 font-medium text-right">Qtd.</th>
+              <th className="py-2 pr-4 font-medium text-right">Custo Médio</th>
+              <th className="py-2 pr-4 font-medium text-right">Preço Atual</th>
+              <th className="py-2 pr-4 font-medium text-right">Valor Atual</th>
+              <th className="py-2 pr-4 font-medium text-right">Peso</th>
+              <th className="py-2 pr-4 font-medium text-right">Lucro/Prejuízo</th>
+              <th className="py-2 pr-4 font-medium text-right">Dividendos</th>
+              <th className="py-2 pr-4 font-medium text-right">Retorno Total</th>
+              <th className="py-2 font-medium text-right">Desde</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((p) => {
+              const pnl = p.marketValue - p.net_invested;
+              const pnlPct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
+              const totalReturn = pnl + p.total_dividends;
+              const totalReturnPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
+              const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
+              const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
+              return (
+                <tr key={p.asset_id} className="border-b border-line-soft last:border-0">
+                  <td className="py-2.5 pr-4">
+                    <p className="text-text">{p.name}</p>
+                    <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                    {formatCurrency(avgCost)}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text">
+                    {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text">
+                    {formatCurrency(p.marketValue)}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                    {(weight * 100).toFixed(1)}%
+                  </td>
+                  <td
+                    className={`py-2.5 pr-4 text-right tabular ${
+                      pnl >= 0 ? "text-gain" : "text-loss"
+                    }`}
+                  >
+                    {formatCurrency(pnl)}
+                    <span className="text-xs ml-1 opacity-70">({formatPercent(pnlPct)})</span>
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                    {formatCurrency(p.total_dividends)}
+                  </td>
+                  <td
+                    className={`py-2.5 pr-4 text-right tabular ${
+                      totalReturn >= 0 ? "text-gain" : "text-loss"
+                    }`}
+                    title="Lucro/prejuízo + dividendos recebidos"
+                  >
+                    {formatCurrency(totalReturn)}
+                    <span className="text-xs ml-1 opacity-70">({formatPercent(totalReturnPct)})</span>
+                  </td>
+                  <td className="py-2.5 text-right tabular text-text-faint text-xs">
+                    {formatMonthYear(p.first_purchase_at)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+</file>
 
-  perform public.refresh_account_balance(p_account_id);
-end;
-$$;
+<file path="src/types/database.ts">
+// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql.
+// Para gerar automaticamente a partir do teu projeto real, corre:
+//   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
 
-create or replace function public.trg_transactions_refresh_balance()
-returns trigger language plpgsql as $$
-begin
-  if TG_OP = 'DELETE' then
-    perform public.refresh_account_balance(old.account_id);
-    if old.transfer_account_id is not null then
-      perform public.refresh_account_balance(old.transfer_account_id);
-    end if;
-    return old;
-  else
-    perform public.refresh_account_balance(new.account_id);
-    if new.transfer_account_id is not null then
-      perform public.refresh_account_balance(new.transfer_account_id);
-    end if;
-    if TG_OP = 'UPDATE' and old.account_id <> new.account_id then
-      perform public.refresh_account_balance(old.account_id);
-    end if;
-    return new;
-  end if;
-end;
-$$;
+export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
+export type CategoryKind = "receita" | "despesa";
+export type TransactionType = "receita" | "despesa" | "transferencia";
+export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
+export type RecurrenceFrequency = "diaria" | "semanal" | "mensal" | "anual";
 
-drop trigger if exists transactions_balance_trigger on public.transactions;
-create trigger transactions_balance_trigger
-after insert or update or delete on public.transactions
-for each row execute function public.trg_transactions_refresh_balance();
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  institution: string | null;
+  opening_balance: number;
+  current_balance: number;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
-create or replace function public.trg_asset_transactions_refresh_balance()
-returns trigger language plpgsql as $$
-begin
-  if TG_OP = 'DELETE' then
-    perform public.refresh_account_balance(old.account_id);
-    return old;
-  else
-    perform public.refresh_account_balance(new.account_id);
-    return new;
-  end if;
-end;
-$$;
+export interface Category {
+  id: string;
+  user_id: string;
+  name: string;
+  kind: CategoryKind;
+  color: string | null;
+  icon: string | null;
+  is_default: boolean;
+  created_at: string;
+}
 
-drop trigger if exists asset_transactions_balance_trigger on public.asset_transactions;
-create trigger asset_transactions_balance_trigger
-after insert or update or delete on public.asset_transactions
-for each row execute function public.trg_asset_transactions_refresh_balance();
+export interface Transaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  occurred_on: string;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
--- =========================================================================
--- ROW LEVEL SECURITY
--- =========================================================================
-alter table public.accounts enable row level security;
-alter table public.categories enable row level security;
-alter table public.transactions enable row level security;
-alter table public.asset_transactions enable row level security;
-alter table public.csv_imports enable row level security;
-alter table public.assets enable row level security;
-alter table public.asset_quotes enable row level security;
+export interface Asset {
+  id: string;
+  isin: string | null;
+  symbol: string | null;
+  name: string;
+  currency: string;
+  created_at: string;
+}
 
--- accounts
-drop policy if exists "accounts_select_own" on public.accounts;
-create policy "accounts_select_own" on public.accounts for select using (auth.uid() = user_id);
-drop policy if exists "accounts_insert_own" on public.accounts;
-create policy "accounts_insert_own" on public.accounts for insert with check (auth.uid() = user_id);
-drop policy if exists "accounts_update_own" on public.accounts;
-create policy "accounts_update_own" on public.accounts for update using (auth.uid() = user_id);
-drop policy if exists "accounts_delete_own" on public.accounts;
-create policy "accounts_delete_own" on public.accounts for delete using (auth.uid() = user_id);
+export interface AssetTransaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  asset_id: string;
+  operation: AssetOperation;
+  occurred_on: string;
+  occurred_at: string | null;
+  quantity: number | null;
+  price: number | null;
+  local_value: number | null;
+  fees: number | null;
+  total_value: number;
+  currency: string | null;
+  exchange_rate: number | null;
+  description: string | null;
+  order_id: string | null;
+  source_hash: string;
+  source: string;
+  raw_row: Record<string, string> | null;
+  created_at: string;
+}
 
--- categories
-drop policy if exists "categories_select_own" on public.categories;
-create policy "categories_select_own" on public.categories for select using (auth.uid() = user_id);
-drop policy if exists "categories_insert_own" on public.categories;
-create policy "categories_insert_own" on public.categories for insert with check (auth.uid() = user_id);
-drop policy if exists "categories_update_own" on public.categories;
-create policy "categories_update_own" on public.categories for update using (auth.uid() = user_id);
-drop policy if exists "categories_delete_own" on public.categories;
-create policy "categories_delete_own" on public.categories for delete using (auth.uid() = user_id);
+export interface AssetQuote {
+  asset_id: string;
+  price: number;
+  currency: string;
+  fetched_at: string;
+}
 
--- transactions
-drop policy if exists "transactions_select_own" on public.transactions;
-create policy "transactions_select_own" on public.transactions for select using (auth.uid() = user_id);
-drop policy if exists "transactions_insert_own" on public.transactions;
-create policy "transactions_insert_own" on public.transactions for insert with check (auth.uid() = user_id);
-drop policy if exists "transactions_update_own" on public.transactions;
-create policy "transactions_update_own" on public.transactions for update using (auth.uid() = user_id);
-drop policy if exists "transactions_delete_own" on public.transactions;
-create policy "transactions_delete_own" on public.transactions for delete using (auth.uid() = user_id);
+export interface CsvImport {
+  id: string;
+  user_id: string;
+  account_id: string | null;
+  file_name: string;
+  file_hash: string;
+  rows_total: number;
+  rows_inserted: number;
+  rows_duplicated: number;
+  rows_failed: number;
+  created_at: string;
+}
 
--- asset_transactions
-drop policy if exists "asset_tx_select_own" on public.asset_transactions;
-create policy "asset_tx_select_own" on public.asset_transactions for select using (auth.uid() = user_id);
-drop policy if exists "asset_tx_insert_own" on public.asset_transactions;
-create policy "asset_tx_insert_own" on public.asset_transactions for insert with check (auth.uid() = user_id);
-drop policy if exists "asset_tx_update_own" on public.asset_transactions;
-create policy "asset_tx_update_own" on public.asset_transactions for update using (auth.uid() = user_id);
-drop policy if exists "asset_tx_delete_own" on public.asset_transactions;
-create policy "asset_tx_delete_own" on public.asset_transactions for delete using (auth.uid() = user_id);
+export interface PortfolioPosition {
+  user_id: string;
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  isin: string | null;
+  currency: string;
+  quantity_held: number;
+  net_invested: number;
+  total_dividends: number;
+}
 
--- csv_imports
-drop policy if exists "csv_imports_select_own" on public.csv_imports;
-create policy "csv_imports_select_own" on public.csv_imports for select using (auth.uid() = user_id);
-drop policy if exists "csv_imports_insert_own" on public.csv_imports;
-create policy "csv_imports_insert_own" on public.csv_imports for insert with check (auth.uid() = user_id);
+export interface NetWorthSnapshot {
+  id: string;
+  user_id: string;
+  snapshot_date: string;
+  total_net_worth: number;
+  cash_in_banks: number;
+  cash_in_savings: number;
+  cash_in_brokers: number;
+  physical_cash: number;
+  portfolio_value: number;
+  portfolio_cost: number;
+  created_at: string;
+}
 
--- assets & quotes: catálogo partilhado, leitura para todos os utilizadores autenticados
-drop policy if exists "assets_select_all_authenticated" on public.assets;
-create policy "assets_select_all_authenticated" on public.assets for select using (auth.role() = 'authenticated');
-drop policy if exists "assets_insert_authenticated" on public.assets;
-create policy "assets_insert_authenticated" on public.assets for insert with check (auth.role() = 'authenticated');
-drop policy if exists "asset_quotes_select_all_authenticated" on public.asset_quotes;
-create policy "asset_quotes_select_all_authenticated" on public.asset_quotes for select using (auth.role() = 'authenticated');
-drop policy if exists "asset_quotes_upsert_authenticated" on public.asset_quotes;
-create policy "asset_quotes_upsert_authenticated" on public.asset_quotes for insert with check (auth.role() = 'authenticated');
-drop policy if exists "asset_quotes_update_authenticated" on public.asset_quotes;
-create policy "asset_quotes_update_authenticated" on public.asset_quotes for update using (auth.role() = 'authenticated');
+export interface RecurringTransaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  frequency: RecurrenceFrequency;
+  interval_count: number;
+  start_date: string;
+  end_date: string | null;
+  next_occurrence: string;
+  is_active: boolean;
+  created_at: string;
+}
 
--- =========================================================================
--- CATEGORIAS PRÉ-DEFINIDAS (opcional: correr manualmente por utilizador,
--- ou chamar esta função depois do signup a partir de um trigger auth.users)
--- =========================================================================
-create or replace function public.seed_default_categories(p_user_id uuid)
-returns void language plpgsql as $$
-begin
-  insert into public.categories (user_id, name, kind, color, is_default) values
-    -- Receitas
-    (p_user_id, 'Salário',             'receita', '#3DDC97', true),
-    (p_user_id, 'Freelance / Extra',   'receita', '#2FB380', true),
-    (p_user_id, 'Dividendos',          'receita', '#4C9AFF', true),
-    (p_user_id, 'Reembolsos',          'receita', '#63C7B2', true),
-    (p_user_id, 'Presentes Recebidos', 'receita', '#8FD9C4', true),
-    (p_user_id, 'Outros Rendimentos',  'receita', '#8B93A1', true),
+export interface Budget {
+  id: string;
+  user_id: string;
+  category_id: string;
+  monthly_limit: number;
+  created_at: string;
+}
 
-    -- Casa e contas fixas
-    (p_user_id, 'Renda / Prestação Casa', 'despesa', '#9B7EDE', true),
-    (p_user_id, 'Condomínio',             'despesa', '#A98CE0', true),
-    (p_user_id, 'Eletricidade',           'despesa', '#D9A441', true),
-    (p_user_id, 'Água',                   'despesa', '#4FB6D9', true),
-    (p_user_id, 'Gás',                    'despesa', '#E08A3C', true),
-    (p_user_id, 'Internet / TV',          'despesa', '#7C8CF8', true),
-    (p_user_id, 'Telemóvel',              'despesa', '#6E7BE0', true),
-    (p_user_id, 'Manutenção da Casa',     'despesa', '#B69A78', true),
+export interface BudgetStatus {
+  user_id: string;
+  category_id: string;
+  category_name: string;
+  category_color: string | null;
+  monthly_limit: number;
+  spent_this_month: number;
+}
 
-    -- Alimentação
-    (p_user_id, 'Supermercado',        'despesa', '#E5484D', true),
-    (p_user_id, 'Restaurantes',        'despesa', '#F0685E', true),
-    (p_user_id, 'Cafés / Snacks',      'despesa', '#F58F86', true),
+export interface RealizedPnlRow {
+  asset_id: string;
+  realized_pnl: number;
+}
 
-    -- Transportes
-    (p_user_id, 'Combustível',         'despesa', '#D9A441', true),
-    (p_user_id, 'Transportes Públicos','despesa', '#C98F2E', true),
-    (p_user_id, 'Manutenção do Carro', 'despesa', '#B87F1E', true),
-    (p_user_id, 'Portagens / Parque',  'despesa', '#DDB05A', true),
-    (p_user_id, 'Seguro Automóvel',    'despesa', '#C79A4A', true),
-
-    -- Saúde e bem-estar
-    (p_user_id, 'Farmácia',            'despesa', '#F2789F', true),
-    (p_user_id, 'Médico / Consultas',  'despesa', '#EE5A88', true),
-    (p_user_id, 'Ginásio / Desporto',  'despesa', '#F79CB7', true),
-    (p_user_id, 'Seguro de Saúde',     'despesa', '#E56E97', true),
-
-    -- Educação e desenvolvimento
-    (p_user_id, 'Educação / Cursos',   'despesa', '#5B8DEF', true),
-    (p_user_id, 'Livros',              'despesa', '#7FA6F5', true),
-
-    -- Lazer e estilo de vida
-    (p_user_id, 'Lazer / Entretenimento', 'despesa', '#5EC8D8', true),
-    (p_user_id, 'Viagens / Férias',       'despesa', '#4AB0C2', true),
-    (p_user_id, 'Subscrições (Streaming, Apps)', 'despesa', '#7C8CF8', true),
-    (p_user_id, 'Roupa / Calçado',        'despesa', '#F2B84B', true),
-    (p_user_id, 'Compras Diversas',       'despesa', '#F0A82E', true),
-    (p_user_id, 'Presentes Dados',        'despesa', '#F5C97A', true),
-    (p_user_id, 'Animais de Estimação',   'despesa', '#8FBF6B', true),
-
-    -- Finanças e obrigações
-    (p_user_id, 'Impostos',            'despesa', '#B0525C', true),
-    (p_user_id, 'Comissões Bancárias', 'despesa', '#9C6B6F', true),
-    (p_user_id, 'Seguros (Outros)',    'despesa', '#A87A82', true),
-    (p_user_id, 'Poupança / Investimento', 'despesa', '#3DDC97', true),
-
-    (p_user_id, 'Outros',              'despesa', '#8B93A1', true)
-  on conflict (user_id, name, kind) do nothing;
-end;
-$$;
+// Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
+// Substitui por `supabase gen types` quando ligares a um projeto real.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Database = any;
 </file>
 
 <file path="README.md">
@@ -4425,6 +4775,935 @@ enviar um link de reposição de password a partir daí, se preferires).
   Server Actions, rotas de API) usa sempre a `anon key` e depende da
   sessão do utilizador autenticado, com toda a segurança garantida pela
   Row Level Security.
+</file>
+
+<file path="src/components/nav-sidebar.tsx">
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { LayoutGrid, Wallet, ArrowLeftRight, Repeat, PieChart, LineChart } from "lucide-react";
+import { cx } from "@/lib/format";
+
+const ITEMS = [
+  { href: "/dashboard", label: "Património", icon: LayoutGrid },
+  { href: "/contas", label: "Contas", icon: Wallet },
+  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
+  { href: "/recorrentes", label: "Recorrências", icon: Repeat },
+  { href: "/relatorios", label: "Relatórios", icon: PieChart },
+  { href: "/portfolio", label: "Portefólio", icon: LineChart },
+];
+
+export function NavSidebar() {
+  const pathname = usePathname();
+  if (pathname === "/login") return null;
+
+  return (
+    <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">
+      <div className="flex items-center gap-2.5 px-2 mb-8">
+        <Image
+          src="/icons/icon-192.png"
+          alt=""
+          width={28}
+          height={28}
+          className="rounded-md shrink-0"
+        />
+        <div>
+          <p className="font-display text-lg italic leading-tight tracking-tight text-text">
+            Meu Capital
+          </p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
+            Património &amp; Finanças
+          </p>
+        </div>
+      </div>
+
+      <nav className="flex flex-col gap-1">
+        {ITEMS.map((item) => {
+          const active = pathname?.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cx(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                active
+                  ? "bg-surface-alt text-gold"
+                  : "text-text-muted hover:text-text hover:bg-surface-alt/60"
+              )}
+            >
+              <Icon size={16} strokeWidth={1.75} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto pt-6 ledger-rule text-[11px] text-text-faint leading-relaxed">
+        Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
+      </div>
+    </aside>
+  );
+}
+</file>
+
+<file path="supabase/schema.sql">
+-- =========================================================================
+-- Gestor de Património e Finanças Pessoais — Esquema Supabase (Postgres)
+-- =========================================================================
+-- Este script é idempotente (pode ser corrido várias vezes em segurança).
+-- Corre isto no SQL Editor do teu projeto Supabase.
+-- =========================================================================
+
+create extension if not exists "pgcrypto";
+
+-- -------------------------------------------------------------------------
+-- 1. CONTAS (bancos, corretoras, numerário)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type account_type as enum ('banco', 'corretora', 'numerario', 'poupanca');
+exception when duplicate_object then null;
+end $$;
+
+-- Migração suave: se o enum já existir de uma instalação anterior sem o
+-- valor 'poupanca', acrescenta-o agora. "IF NOT EXISTS" já torna isto
+-- seguro por si só — não precisa (nem pode, de forma fiável) de estar
+-- dentro de um bloco PL/pgSQL.
+alter type account_type add value if not exists 'poupanca';
+
+create table if not exists public.accounts (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  name          text not null,                 -- ex: "Santander", "DEGIRO", "Carteira"
+  type          account_type not null,
+  currency      text not null default 'EUR',
+  institution   text,                          -- ex: "Santander Totta", "DEGIRO B.V."
+  opening_balance numeric(18,2) not null default 0,
+  -- "Ponto de reconciliação": quando importamos um extrato da DEGIRO,
+  -- confiamos no saldo que a PRÓPRIA DEGIRO reporta (coluna "Saldo") em vez
+  -- de tentarmos recalcular tudo a partir das nossas transações — isso
+  -- captura automaticamente depósitos, levantamentos, cash sweeps, juros,
+  -- etc. que não modelamos individualmente. A partir deste ponto, só
+  -- somamos movimentos (transactions/asset_transactions) que aconteçam
+  -- DEPOIS de reconciled_at.
+  reconciled_balance numeric(18,2),
+  reconciled_at      timestamptz,
+  -- saldo corrente é derivado (ver view account_balances), mas guardamos
+  -- também um cache atualizado por trigger para leitura rápida no dashboard.
+  current_balance numeric(18,2) not null default 0,
+  is_archived   boolean not null default false,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+-- Migração suave para instalações já existentes (idempotente).
+alter table public.accounts add column if not exists reconciled_balance numeric(18,2);
+alter table public.accounts add column if not exists reconciled_at timestamptz;
+
+create index if not exists idx_accounts_user on public.accounts(user_id);
+
+-- -------------------------------------------------------------------------
+-- 2. CATEGORIAS (personalizáveis, para receitas/despesas)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type category_kind as enum ('receita', 'despesa');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.categories (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  name        text not null,
+  kind        category_kind not null,
+  color       text default '#8B93A1',          -- para os gráficos
+  icon        text,                             -- nome de ícone (lucide-react)
+  is_default  boolean not null default false,
+  -- Categorias marcadas com isto (ex: "Ajuste de Saldo") ficam de fora dos
+  -- Relatórios — servem para corrigir/definir saldos manualmente sem que
+  -- isso pareça um rendimento ou despesa real do período.
+  exclude_from_reports boolean not null default false,
+  created_at  timestamptz not null default now(),
+  unique (user_id, name, kind)
+);
+
+alter table public.categories add column if not exists exclude_from_reports boolean not null default false;
+
+-- -------------------------------------------------------------------------
+-- 3. TRANSAÇÕES FINANCEIRAS DIÁRIAS (orçamento: receitas / despesas / transferências)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type transaction_type as enum ('receita', 'despesa', 'transferencia');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.transactions (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  type            transaction_type not null,
+  amount          numeric(18,2) not null check (amount > 0),
+  occurred_on     date not null,
+  account_id      uuid not null references public.accounts(id) on delete cascade,
+  -- usado apenas quando type = 'transferencia' (conta de destino)
+  transfer_account_id uuid references public.accounts(id) on delete set null,
+  category_id     uuid references public.categories(id) on delete set null,
+  description     text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  check (
+    (type = 'transferencia' and transfer_account_id is not null and transfer_account_id <> account_id)
+    or (type <> 'transferencia' and transfer_account_id is null)
+  )
+);
+
+create index if not exists idx_transactions_user_date on public.transactions(user_id, occurred_on desc);
+create index if not exists idx_transactions_account on public.transactions(account_id);
+create index if not exists idx_transactions_category on public.transactions(category_id);
+
+-- -------------------------------------------------------------------------
+-- 4. ATIVOS (instrumentos financeiros — ações, ETFs, etc.)
+-- -------------------------------------------------------------------------
+create table if not exists public.assets (
+  id          uuid primary key default gen_random_uuid(),
+  isin        text unique,                       -- pode ser null p/ ativos sem ISIN
+  symbol      text,                               -- ticker Yahoo Finance, ex: "VWCE.DE"
+  name        text not null,
+  currency    text not null default 'EUR',
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_assets_isin on public.assets(isin);
+create index if not exists idx_assets_symbol on public.assets(symbol);
+
+-- -------------------------------------------------------------------------
+-- 5. TRANSAÇÕES DE BOLSA (compras, vendas, dividendos, comissões — DEGIRO)
+-- -------------------------------------------------------------------------
+do $$ begin
+  create type asset_operation as enum ('compra', 'venda', 'dividendo', 'comissao', 'outro');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.asset_transactions (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  account_id      uuid not null references public.accounts(id) on delete cascade,
+  asset_id        uuid not null references public.assets(id) on delete cascade,
+  operation       asset_operation not null,
+  occurred_on     date not null,
+  occurred_at     timestamptz,                     -- data+hora, se disponível no CSV
+  quantity        numeric(18,6),                   -- null em dividendos/comissões avulsas
+  price           numeric(18,6),                   -- preço unitário na moeda local do ativo
+  local_value     numeric(18,2),                   -- valor na moeda local (coluna "Montante")
+  fees            numeric(18,2) default 0,
+  total_value     numeric(18,2) not null,           -- valor total em EUR (coluna "Total")
+  currency        text default 'EUR',
+  exchange_rate   numeric(18,6),
+  description     text,                             -- texto original da coluna Descrição
+  order_id        text,                              -- coluna "ID Ordem" da DEGIRO, se existir
+  -- hash único da linha original do CSV -> previne duplicados em re-importações
+  source_hash     text not null,
+  source          text not null default 'degiro',
+  raw_row         jsonb,                             -- guarda a linha original para auditoria
+  created_at      timestamptz not null default now(),
+  unique (user_id, source_hash)
+);
+
+create index if not exists idx_asset_tx_user_date on public.asset_transactions(user_id, occurred_on desc);
+create index if not exists idx_asset_tx_asset on public.asset_transactions(asset_id);
+create index if not exists idx_asset_tx_account on public.asset_transactions(account_id);
+
+-- -------------------------------------------------------------------------
+-- 6. COTAÇÕES (cache de preços atuais, para não bombardear a API a cada load)
+-- -------------------------------------------------------------------------
+create table if not exists public.asset_quotes (
+  asset_id      uuid primary key references public.assets(id) on delete cascade,
+  price         numeric(18,6) not null,
+  currency      text not null default 'EUR',
+  fetched_at    timestamptz not null default now()
+);
+
+-- -------------------------------------------------------------------------
+-- 7. IMPORTAÇÕES CSV (histórico/auditoria de uploads DEGIRO)
+-- -------------------------------------------------------------------------
+create table if not exists public.csv_imports (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  account_id      uuid references public.accounts(id) on delete set null,
+  file_name       text not null,
+  file_hash       text not null,               -- hash do ficheiro inteiro
+  rows_total      integer not null default 0,
+  rows_inserted   integer not null default 0,
+  rows_duplicated integer not null default 0,
+  rows_failed     integer not null default 0,
+  created_at      timestamptz not null default now(),
+  unique (user_id, file_hash)
+);
+
+-- =========================================================================
+-- VIEWS
+-- =========================================================================
+
+-- Saldo corrente de cada conta a partir das transações (fonte de verdade).
+--
+-- Ponto de partida: coalesce(reconciled_balance, opening_balance). Se a
+-- conta tiver sido reconciliada (ex: por uma importação DEGIRO), só somamos
+-- movimentos que aconteceram DEPOIS desse ponto — o saldo reconciliado já
+-- inclui o efeito de tudo o que aconteceu até lá.
+create or replace view public.account_balances as
+select
+  a.id as account_id,
+  a.user_id,
+  a.name,
+  a.type,
+  a.currency,
+  coalesce(a.reconciled_balance, a.opening_balance)
+    + coalesce(sum(case
+                     when t.occurred_on::timestamptz <= coalesce(a.reconciled_at, '-infinity'::timestamptz) then 0
+                     when t.type = 'receita' then t.amount
+                     when t.type = 'despesa' then -t.amount
+                     when t.type = 'transferencia' and t.account_id = a.id then -t.amount
+                     else 0 end), 0)
+    + coalesce((
+        select sum(t2.amount) from public.transactions t2
+        where t2.type = 'transferencia' and t2.transfer_account_id = a.id
+          and t2.occurred_on::timestamptz > coalesce(a.reconciled_at, '-infinity'::timestamptz)
+      ), 0)
+    + coalesce((
+        select sum(-at.total_value) from public.asset_transactions at
+        where at.account_id = a.id and at.operation in ('compra','comissao')
+          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
+      ), 0)
+    + coalesce((
+        select sum(at.total_value) from public.asset_transactions at
+        where at.account_id = a.id and at.operation in ('venda','dividendo')
+          and coalesce(at.occurred_at, at.occurred_on::timestamptz) > coalesce(a.reconciled_at, '-infinity'::timestamptz)
+      ), 0)
+  as current_balance
+from public.accounts a
+left join public.transactions t on t.account_id = a.id
+group by a.id;
+
+-- Posições atuais do portefólio (quantidade líquida por ativo e preço médio de custo).
+create or replace view public.portfolio_positions as
+select
+  at.user_id,
+  at.asset_id,
+  ass.name,
+  ass.symbol,
+  ass.isin,
+  ass.currency,
+  sum(case when at.operation = 'compra' then at.quantity
+           when at.operation = 'venda' then -at.quantity
+           else 0 end) as quantity_held,
+  -- "total_value" já vem com o sinal do movimento de caixa (compra = saída,
+  -- negativo; venda = entrada, positiva). Para chegar ao capital líquido
+  -- investido (um valor positivo quando ainda há dinheiro "preso" na
+  -- posição), invertemos o sinal em ambos os casos: uma compra de -1000€
+  -- soma +1000€ ao investido; uma venda de +400€ soma -400€ (reduz o
+  -- capital investido, porque já recebeste esse dinheiro de volta).
+  sum(case when at.operation in ('compra', 'venda') then -at.total_value
+           else 0 end) as net_invested,
+  sum(case when at.operation = 'dividendo' then at.total_value else 0 end) as total_dividends,
+  sum(case when at.operation = 'comissao' then at.total_value else 0 end) as total_fees,
+  min(case when at.operation = 'compra' then coalesce(at.occurred_at, at.occurred_on::timestamptz) end) as first_purchase_at,
+  count(*) filter (where at.operation in ('compra', 'venda')) as trade_count
+from public.asset_transactions at
+join public.assets ass on ass.id = at.asset_id
+group by at.user_id, at.asset_id, ass.name, ass.symbol, ass.isin, ass.currency;
+
+-- =========================================================================
+-- TRIGGERS: manter accounts.current_balance sincronizado (cache de leitura)
+-- =========================================================================
+create or replace function public.refresh_account_balance(p_account_id uuid)
+returns void language plpgsql as $$
+begin
+  update public.accounts a
+  set current_balance = coalesce(v.current_balance, a.opening_balance),
+      updated_at = now()
+  from public.account_balances v
+  where v.account_id = a.id and a.id = p_account_id;
+end;
+$$;
+
+-- Fixa o saldo de uma conta a um valor conhecido num determinado instante
+-- (ex: o saldo que a DEGIRO reportou na última linha de um extrato
+-- importado). Só avança o ponto de reconciliação para a frente no tempo —
+-- reimportar um ficheiro mais antigo nunca faz a conta "recuar".
+create or replace function public.reconcile_account_balance(
+  p_account_id uuid,
+  p_balance numeric,
+  p_at timestamptz
+)
+returns void language plpgsql as $$
+begin
+  update public.accounts
+  set reconciled_balance = p_balance,
+      reconciled_at = p_at
+  where id = p_account_id
+    and (reconciled_at is null or p_at > reconciled_at);
+
+  perform public.refresh_account_balance(p_account_id);
+end;
+$$;
+
+create or replace function public.trg_transactions_refresh_balance()
+returns trigger language plpgsql as $$
+begin
+  if TG_OP = 'DELETE' then
+    perform public.refresh_account_balance(old.account_id);
+    if old.transfer_account_id is not null then
+      perform public.refresh_account_balance(old.transfer_account_id);
+    end if;
+    return old;
+  else
+    perform public.refresh_account_balance(new.account_id);
+    if new.transfer_account_id is not null then
+      perform public.refresh_account_balance(new.transfer_account_id);
+    end if;
+    if TG_OP = 'UPDATE' and old.account_id <> new.account_id then
+      perform public.refresh_account_balance(old.account_id);
+    end if;
+    return new;
+  end if;
+end;
+$$;
+
+drop trigger if exists transactions_balance_trigger on public.transactions;
+create trigger transactions_balance_trigger
+after insert or update or delete on public.transactions
+for each row execute function public.trg_transactions_refresh_balance();
+
+create or replace function public.trg_asset_transactions_refresh_balance()
+returns trigger language plpgsql as $$
+begin
+  if TG_OP = 'DELETE' then
+    perform public.refresh_account_balance(old.account_id);
+    return old;
+  else
+    perform public.refresh_account_balance(new.account_id);
+    return new;
+  end if;
+end;
+$$;
+
+drop trigger if exists asset_transactions_balance_trigger on public.asset_transactions;
+create trigger asset_transactions_balance_trigger
+after insert or update or delete on public.asset_transactions
+for each row execute function public.trg_asset_transactions_refresh_balance();
+
+-- =========================================================================
+-- ROW LEVEL SECURITY
+-- =========================================================================
+alter table public.accounts enable row level security;
+alter table public.categories enable row level security;
+alter table public.transactions enable row level security;
+alter table public.asset_transactions enable row level security;
+alter table public.csv_imports enable row level security;
+alter table public.assets enable row level security;
+alter table public.asset_quotes enable row level security;
+
+-- accounts
+drop policy if exists "accounts_select_own" on public.accounts;
+create policy "accounts_select_own" on public.accounts for select using (auth.uid() = user_id);
+drop policy if exists "accounts_insert_own" on public.accounts;
+create policy "accounts_insert_own" on public.accounts for insert with check (auth.uid() = user_id);
+drop policy if exists "accounts_update_own" on public.accounts;
+create policy "accounts_update_own" on public.accounts for update using (auth.uid() = user_id);
+drop policy if exists "accounts_delete_own" on public.accounts;
+create policy "accounts_delete_own" on public.accounts for delete using (auth.uid() = user_id);
+
+-- categories
+drop policy if exists "categories_select_own" on public.categories;
+create policy "categories_select_own" on public.categories for select using (auth.uid() = user_id);
+drop policy if exists "categories_insert_own" on public.categories;
+create policy "categories_insert_own" on public.categories for insert with check (auth.uid() = user_id);
+drop policy if exists "categories_update_own" on public.categories;
+create policy "categories_update_own" on public.categories for update using (auth.uid() = user_id);
+drop policy if exists "categories_delete_own" on public.categories;
+create policy "categories_delete_own" on public.categories for delete using (auth.uid() = user_id);
+
+-- transactions
+drop policy if exists "transactions_select_own" on public.transactions;
+create policy "transactions_select_own" on public.transactions for select using (auth.uid() = user_id);
+drop policy if exists "transactions_insert_own" on public.transactions;
+create policy "transactions_insert_own" on public.transactions for insert with check (auth.uid() = user_id);
+drop policy if exists "transactions_update_own" on public.transactions;
+create policy "transactions_update_own" on public.transactions for update using (auth.uid() = user_id);
+drop policy if exists "transactions_delete_own" on public.transactions;
+create policy "transactions_delete_own" on public.transactions for delete using (auth.uid() = user_id);
+
+-- asset_transactions
+drop policy if exists "asset_tx_select_own" on public.asset_transactions;
+create policy "asset_tx_select_own" on public.asset_transactions for select using (auth.uid() = user_id);
+drop policy if exists "asset_tx_insert_own" on public.asset_transactions;
+create policy "asset_tx_insert_own" on public.asset_transactions for insert with check (auth.uid() = user_id);
+drop policy if exists "asset_tx_update_own" on public.asset_transactions;
+create policy "asset_tx_update_own" on public.asset_transactions for update using (auth.uid() = user_id);
+drop policy if exists "asset_tx_delete_own" on public.asset_transactions;
+create policy "asset_tx_delete_own" on public.asset_transactions for delete using (auth.uid() = user_id);
+
+-- csv_imports
+drop policy if exists "csv_imports_select_own" on public.csv_imports;
+create policy "csv_imports_select_own" on public.csv_imports for select using (auth.uid() = user_id);
+drop policy if exists "csv_imports_insert_own" on public.csv_imports;
+create policy "csv_imports_insert_own" on public.csv_imports for insert with check (auth.uid() = user_id);
+
+-- assets & quotes: catálogo partilhado, leitura para todos os utilizadores autenticados
+drop policy if exists "assets_select_all_authenticated" on public.assets;
+create policy "assets_select_all_authenticated" on public.assets for select using (auth.role() = 'authenticated');
+drop policy if exists "assets_insert_authenticated" on public.assets;
+create policy "assets_insert_authenticated" on public.assets for insert with check (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_select_all_authenticated" on public.asset_quotes;
+create policy "asset_quotes_select_all_authenticated" on public.asset_quotes for select using (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_upsert_authenticated" on public.asset_quotes;
+create policy "asset_quotes_upsert_authenticated" on public.asset_quotes for insert with check (auth.role() = 'authenticated');
+drop policy if exists "asset_quotes_update_authenticated" on public.asset_quotes;
+create policy "asset_quotes_update_authenticated" on public.asset_quotes for update using (auth.role() = 'authenticated');
+
+-- =========================================================================
+-- CATEGORIAS PRÉ-DEFINIDAS (opcional: correr manualmente por utilizador,
+-- ou chamar esta função depois do signup a partir de um trigger auth.users)
+-- =========================================================================
+create or replace function public.seed_default_categories(p_user_id uuid)
+returns void language plpgsql as $$
+begin
+  insert into public.categories (user_id, name, kind, color, is_default) values
+    -- Receitas
+    (p_user_id, 'Salário',             'receita', '#3DDC97', true),
+    (p_user_id, 'Freelance / Extra',   'receita', '#2FB380', true),
+    (p_user_id, 'Dividendos',          'receita', '#4C9AFF', true),
+    (p_user_id, 'Reembolsos',          'receita', '#63C7B2', true),
+    (p_user_id, 'Presentes Recebidos', 'receita', '#8FD9C4', true),
+    (p_user_id, 'Outros Rendimentos',  'receita', '#8B93A1', true),
+
+    -- Casa e contas fixas
+    (p_user_id, 'Renda / Prestação Casa', 'despesa', '#9B7EDE', true),
+    (p_user_id, 'Condomínio',             'despesa', '#A98CE0', true),
+    (p_user_id, 'Eletricidade',           'despesa', '#D9A441', true),
+    (p_user_id, 'Água',                   'despesa', '#4FB6D9', true),
+    (p_user_id, 'Gás',                    'despesa', '#E08A3C', true),
+    (p_user_id, 'Internet / TV',          'despesa', '#7C8CF8', true),
+    (p_user_id, 'Telemóvel',              'despesa', '#6E7BE0', true),
+    (p_user_id, 'Manutenção da Casa',     'despesa', '#B69A78', true),
+
+    -- Alimentação
+    (p_user_id, 'Supermercado',        'despesa', '#E5484D', true),
+    (p_user_id, 'Restaurantes',        'despesa', '#F0685E', true),
+    (p_user_id, 'Cafés / Snacks',      'despesa', '#F58F86', true),
+
+    -- Transportes
+    (p_user_id, 'Combustível',         'despesa', '#D9A441', true),
+    (p_user_id, 'Transportes Públicos','despesa', '#C98F2E', true),
+    (p_user_id, 'Manutenção do Carro', 'despesa', '#B87F1E', true),
+    (p_user_id, 'Portagens / Parque',  'despesa', '#DDB05A', true),
+    (p_user_id, 'Seguro Automóvel',    'despesa', '#C79A4A', true),
+
+    -- Saúde e bem-estar
+    (p_user_id, 'Farmácia',            'despesa', '#F2789F', true),
+    (p_user_id, 'Médico / Consultas',  'despesa', '#EE5A88', true),
+    (p_user_id, 'Ginásio / Desporto',  'despesa', '#F79CB7', true),
+    (p_user_id, 'Seguro de Saúde',     'despesa', '#E56E97', true),
+
+    -- Educação e desenvolvimento
+    (p_user_id, 'Educação / Cursos',   'despesa', '#5B8DEF', true),
+    (p_user_id, 'Livros',              'despesa', '#7FA6F5', true),
+
+    -- Lazer e estilo de vida
+    (p_user_id, 'Lazer / Entretenimento', 'despesa', '#5EC8D8', true),
+    (p_user_id, 'Viagens / Férias',       'despesa', '#4AB0C2', true),
+    (p_user_id, 'Subscrições (Streaming, Apps)', 'despesa', '#7C8CF8', true),
+    (p_user_id, 'Roupa / Calçado',        'despesa', '#F2B84B', true),
+    (p_user_id, 'Compras Diversas',       'despesa', '#F0A82E', true),
+    (p_user_id, 'Presentes Dados',        'despesa', '#F5C97A', true),
+    (p_user_id, 'Animais de Estimação',   'despesa', '#8FBF6B', true),
+
+    -- Finanças e obrigações
+    (p_user_id, 'Impostos',            'despesa', '#B0525C', true),
+    (p_user_id, 'Comissões Bancárias', 'despesa', '#9C6B6F', true),
+    (p_user_id, 'Seguros (Outros)',    'despesa', '#A87A82', true),
+    (p_user_id, 'Poupança / Investimento', 'despesa', '#3DDC97', true),
+
+    (p_user_id, 'Outros',              'despesa', '#8B93A1', true)
+  on conflict (user_id, name, kind) do nothing;
+
+  -- Categoria especial para corrigir/definir saldos manualmente (ex: saldo
+  -- inicial de uma conta) sem que isso conte como receita ou despesa real
+  -- nos Relatórios.
+  insert into public.categories (user_id, name, kind, color, is_default, exclude_from_reports) values
+    (p_user_id, 'Ajuste de Saldo', 'receita', '#57616F', true, true),
+    (p_user_id, 'Ajuste de Saldo', 'despesa', '#57616F', true, true)
+  on conflict (user_id, name, kind) do update set exclude_from_reports = true;
+end;
+$$;
+</file>
+
+<file path="src/app/dashboard/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { getNetWorthHistory } from "@/lib/data/net-worth-history";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { DonutChart } from "@/components/charts/donut-chart";
+import { NetWorthHistoryChart } from "@/components/dashboard/net-worth-history-chart";
+import { Card, CardLabel } from "@/components/ui/card";
+import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [breakdown, history] = await Promise.all([
+    getNetWorthBreakdown(supabase, user!.id),
+    getNetWorthHistory(supabase, user!.id),
+  ]);
+
+  const slices = [
+    { name: "Contas Bancárias", value: breakdown.cashInBanks, color: "var(--color-info)" },
+    { name: "Poupança", value: breakdown.cashInSavings, color: "#B48CE0" },
+    { name: "Corretoras (livre)", value: breakdown.cashInBrokers, color: "var(--color-gold)" },
+    { name: "Numerário", value: breakdown.physicalCash, color: "#8A93A3" },
+    { name: "Portefólio", value: breakdown.portfolioValue, color: "var(--color-gain)" },
+  ];
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-10">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
+          Património Global
+        </p>
+        <p className="font-display text-5xl tabular text-text">
+          {formatCurrency(breakdown.totalNetWorth)}
+        </p>
+        <p className="text-sm text-text-muted mt-2">
+          Soma de contas bancárias, poupança, saldo livre em corretoras, numerário e valor atual
+          do portefólio de investimentos.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+        <StatCard label="Contas Bancárias" value={breakdown.cashInBanks} />
+        <StatCard label="Poupança" value={breakdown.cashInSavings} />
+        <StatCard label="Corretoras (saldo livre)" value={breakdown.cashInBrokers} />
+        <StatCard label="Numerário" value={breakdown.physicalCash} />
+        <StatCard label="Portefólio (valor atual)" value={breakdown.portfolioValue} tone="gold" />
+      </div>
+
+      <Card className="mb-4">
+        <CardLabel className="mb-1">Evolução do Património</CardLabel>
+        <p className="text-xs text-text-faint mb-2">Últimos 90 dias, com um ponto capturado por dia.</p>
+        <NetWorthHistoryChart snapshots={history} />
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <Card className="lg:col-span-2">
+          <CardLabel>Distribuição do Património</CardLabel>
+          <div className="mt-4">
+            <DonutChart slices={slices} emptyMessage="Ainda sem saldo registado — adiciona contas e transações para veres a distribuição." />
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardLabel>Investimentos — Custo vs. Valor Atual</CardLabel>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-text-faint">Capital investido</p>
+              <p className="tabular text-xl text-text mt-1">{formatCurrency(breakdown.portfolioCost)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-faint">Lucro / Prejuízo não realizado</p>
+              <p
+                className={`tabular text-xl mt-1 ${
+                  breakdown.portfolioPnl >= 0 ? "text-gain" : "text-loss"
+                }`}
+              >
+                {formatSignedCurrency(breakdown.portfolioPnl)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 ledger-rule pt-4">
+            <p className="text-xs text-text-faint mb-3">Posições atuais</p>
+            {breakdown.positions.length === 0 ? (
+              <p className="text-sm text-text-muted">
+                Ainda não importaste transações de bolsa. Vai a{" "}
+                <a href="/portfolio" className="text-gold underline underline-offset-2">
+                  Portefólio
+                </a>{" "}
+                para carregar o CSV da DEGIRO.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {breakdown.positions.map((p) => (
+                  <li
+                    key={p.asset_id}
+                    className="flex items-center justify-between text-sm py-1.5 border-b border-line-soft last:border-0"
+                  >
+                    <span className="text-text">{p.name}</span>
+                    <span className="tabular text-text-muted">
+                      {p.quantity_held.toLocaleString("pt-PT")} un.
+                    </span>
+                    <span className="tabular text-text">{formatCurrency(p.marketValue)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/portfolio/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { DegiroUpload } from "@/components/portfolio/degiro-upload";
+import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
+import { HoldingsTable } from "@/components/portfolio/holdings-table";
+import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
+import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { formatPercent } from "@/lib/format";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import type { Account, RealizedPnlRow } from "@/types/database";
+
+const PALETTE = [
+  "var(--color-gold)",
+  "var(--color-gain)",
+  "var(--color-info)",
+  "#B48CE0",
+  "#F2789F",
+  "#5EC8D8",
+  "#D9A441",
+];
+
+export default async function PortfolioPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: accounts }, breakdown, { data: realizedRows }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
+    getNetWorthBreakdown(supabase, user!.id),
+    supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
+  ]);
+
+  const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
+  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+  const performancePct =
+    breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
+  const totalRealizedPnl = ((realizedRows ?? []) as RealizedPnlRow[]).reduce(
+    (sum, r) => sum + Number(r.realized_pnl),
+    0
+  );
+
+  const compositionSlices: DonutSlice[] = [...breakdown.positions]
+    .sort((a, b) => b.marketValue - a.marketValue)
+    .map((p, i) => ({
+      name: p.name,
+      value: p.marketValue,
+      color: PALETTE[i % PALETTE.length],
+    }));
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
+        <h1 className="font-display text-3xl text-text">Portefólio</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
+          acompanha o valor atual e o lucro ou prejuízo de cada posição.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+        <StatCard label="Capital investido" value={breakdown.portfolioCost} />
+        <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
+        <StatCard
+          label="Lucro / Prejuízo (não realizado)"
+          value={breakdown.portfolioPnl}
+          tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
+        />
+        <StatCard
+          label="Lucro Realizado"
+          value={totalRealizedPnl}
+          tone={totalRealizedPnl >= 0 ? "gain" : "loss"}
+          hint="Ganhos/perdas já vendidos, custo médio"
+        />
+        <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
+        <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
+      </div>
+
+      <Card className="mb-8">
+        <CardLabel className="mb-3">Importar Extrato DEGIRO</CardLabel>
+        <DegiroUpload brokerAccounts={brokerAccounts} />
+      </Card>
+
+      {breakdown.positions.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+          <Card className="lg:col-span-3">
+            <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
+            <DonutChart slices={compositionSlices} />
+          </Card>
+
+          <Card className="lg:col-span-2 flex flex-col justify-between">
+            <div>
+              <CardLabel className="mb-3">Desempenho Global</CardLabel>
+              <p
+                className={`font-display text-4xl tabular ${
+                  performancePct >= 0 ? "text-gain" : "text-loss"
+                }`}
+              >
+                {formatPercent(performancePct)}
+              </p>
+              <p className="text-xs text-text-faint mt-2">
+                Lucro/prejuízo não realizado face ao capital investido.
+              </p>
+            </div>
+            <div className="mt-6">
+              <PerformanceHighlights positions={breakdown.positions} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <CardLabel>Posições Atuais</CardLabel>
+          <RefreshQuotesButton />
+        </div>
+        <HoldingsTable positions={breakdown.positions} />
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/relatorios/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { PeriodFilter } from "@/components/reports/period-filter";
+import { BudgetForm } from "@/components/reports/budget-form";
+import { BudgetList } from "@/components/reports/budget-list";
+import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
+import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
+import { StatCard } from "@/components/dashboard/stat-card";
+import type { BudgetStatus, Category, Transaction } from "@/types/database";
+
+function groupByCategory(
+  rows: Transaction[],
+  categoryById: Map<string, Category>
+): DonutSlice[] {
+  const map = new Map<string, DonutSlice>();
+  for (const t of rows) {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    const key = cat?.id ?? "sem_categoria";
+    const name = cat?.name ?? "Sem categoria";
+    const color = cat?.color ?? "#57616F";
+    const existing = map.get(key);
+    if (existing) {
+      existing.value += Number(t.amount);
+    } else {
+      map.set(key, { name, value: Number(t.amount), color });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.value - a.value);
+}
+
+export default async function RelatoriosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const { period: periodParam } = await searchParams;
+  const period = (periodParam ?? "3m") as PeriodKey;
+  const { from } = resolvePeriodRange(period);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: transactions }, { data: categories }, { data: budgetStatuses }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user!.id)
+      .gte("occurred_on", from)
+      .order("occurred_on", { ascending: false }),
+    supabase.from("categories").select("*").eq("user_id", user!.id),
+    supabase.from("budget_status").select("*").eq("user_id", user!.id),
+  ]);
+
+  const transactionsList: Transaction[] = transactions ?? [];
+  const categoriesList: Category[] = categories ?? [];
+  const categoryById = new Map(categoriesList.map((c) => [c.id, c]));
+  const budgetStatusesList: BudgetStatus[] = budgetStatuses ?? [];
+
+  const expenses = transactionsList.filter((t) => t.type === "despesa");
+  const income = transactionsList.filter((t) => t.type === "receita");
+
+  const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const expensesByCategory = groupByCategory(expenses, categoryById);
+  const incomeByCategory = groupByCategory(income, categoryById);
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
+          <h1 className="font-display text-3xl text-text">Relatórios</h1>
+        </div>
+        <PeriodFilter active={period} />
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <StatCard label="Receitas no período" value={totalIncome} tone="gain" />
+        <StatCard label="Despesas no período" value={totalExpenses} tone="loss" />
+        <StatCard label="Balanço" value={totalIncome - totalExpenses} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card>
+          <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
+          <DonutChart
+            slices={expensesByCategory}
+            emptyMessage="Sem despesas registadas neste período."
+          />
+        </Card>
+
+        <Card>
+          <CardLabel className="mb-4">Receitas por Categoria</CardLabel>
+          <DonutChart
+            slices={incomeByCategory}
+            emptyMessage="Sem receitas registadas neste período."
+          />
+        </Card>
+      </div>
+
+      <Card>
+        <CardLabel className="mb-1">Orçamentos Mensais</CardLabel>
+        <p className="text-xs text-text-faint mb-4">
+          Define um limite de gasto por categoria e acompanha o consumo do mês atual.
+        </p>
+        <div className="mb-5">
+          <BudgetForm categories={categoriesList} />
+        </div>
+        <div className="ledger-rule pt-4">
+          <BudgetList statuses={budgetStatusesList} />
+        </div>
+      </Card>
+    </div>
+  );
+}
 </file>
 
 </files>

@@ -1,46 +1,42 @@
-# Como aplicar o rebranding para "Meu Capital"
+# Corrigir o deploy que falhou
 
-## 1. Copia os ficheiros
+O `npm run build` corre o `tsc` a sério (o `npm run dev` não) — apanhou 2
+sítios onde o front-end já esperava campos que a base de dados e os tipos
+ainda não tinham. Não é nada partido pelo que te mandei antes; é código teu
+(ou de outra sessão) que ficou um passo à frente do schema.
 
-| Ficheiro | Estado |
-|---|---|
-| `public/icons/icon-192.png` | novo/substituir |
-| `public/icons/icon-512.png` | novo/substituir |
-| `public/icons/icon-512-maskable.png` | novo/substituir |
-| `src/app/icon.png` | novo/substituir (favicon automático do Next) |
-| `src/app/apple-icon.png` | novo/substituir (ícone do ecrã principal no iPhone) |
-| `src/app/manifest.ts` | substituir |
-| `src/app/layout.tsx` | substituir |
-| `src/app/login/page.tsx` | substituir |
-| `src/components/nav-sidebar.tsx` | substituir |
+## 1. Corre o SQL
 
-Se ainda não tinhas aplicado os packs anteriores (PWA base + Fase 2), aplica-os
-primeiro — este pack assume que `manifest.ts`, `layout.tsx` e `nav-sidebar.tsx`
-já existem nesses caminhos.
+No SQL Editor da Supabase, corre `003_correcoes_build.sql` (depois do
+`schema.sql` e do `002_melhorias.sql`, se ainda não os tiveres corrido).
 
-## 2. O que mudou
+Isto acrescenta:
+- `categories.exclude_from_reports` (boolean, default `false`) — para a
+  badge "Ajuste" que já tens em `transaction-list.tsx`.
+- `total_fees` e `first_purchase_at` na view `portfolio_positions` — para as
+  colunas que já tens em `holdings-table.tsx`.
 
-- **Nome da app**: "Livro" → "Meu Capital", em todo o lado onde aparecia
-  (manifest/PWA, título do separador do browser, ecrã de login, barra
-  lateral).
-- **Logo**: recortei o teu logo para um quadrado limpo e gerei os 4 formatos
-  que a plataforma pede — favicon, ícone da Apple (180×180), ícone normal da
-  PWA (192/512) e uma versão "maskable" (512, com mais margem à volta) para
-  não ficar cortado quando o Android o mostra dentro de um círculo/squircle.
-  Aparece agora na barra lateral (desktop) e no ecrã de login.
-- Não mudei o nome do pacote no `package.json` (`patrimonio-app`) nem o nome
-  do repositório — é só cosmético, mas diz se queres que troque também.
+## 2. Substitui o ficheiro de tipos
 
-## 3. Testa
+`src/types/database.ts` — vem com os campos novos adicionados aos tipos
+`Category` e `PortfolioPosition` (mais tudo o que já lá estava dos packs
+anteriores). Isto sozinho já resolve os 3 erros do build.
+
+## 3. Volta a fazer deploy
 
 ```bash
-npm run dev
+npm run build
 ```
 
-- O separador do browser deve mostrar "Meu Capital — Património & Finanças
-  Pessoais" e o ícone novo.
-- Login e barra lateral devem mostrar o novo nome e logo.
-- Depois de fazeres deploy, tenta instalar a PWA outra vez (Android: prompt
-  de instalar; iPhone: Partilhar → Adicionar ao ecrã principal) — o ícone e o
-  nome no ecrã principal devem já ser os novos. Pode ser preciso desinstalar
-  a versão antiga primeiro se já a tinhas instalado com o nome "Livro".
+localmente primeiro para confirmares que compila, depois `git push` /
+redeploy no Vercel.
+
+## Nota — a badge "Ajuste" nunca vai aparecer ainda
+
+Adicionei a coluna `exclude_from_reports`, mas não existe nenhum sítio na UI
+para a ligares numa categoria (não vi um formulário de edição de categorias
+no que me mandaste — só o "Nova categoria" rápido em `category-quick-add.tsx`).
+Por agora todas as categorias ficam com `exclude_from_reports = false` por
+omissão, por isso o build passa e nada muda visualmente. Se quiseres, faço a
+seguir um pequeno toggle na listagem/edição de categorias para conseguires
+marcar isso.

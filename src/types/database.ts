@@ -1,4 +1,5 @@
-// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql.
+// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql +
+// 003_correcoes_build.sql.
 // Para gerar automaticamente a partir do teu projeto real, corre:
 //   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
 
@@ -30,6 +31,8 @@ export interface Category {
   color: string | null;
   icon: string | null;
   is_default: boolean;
+  /** Categorias "ajuste" — ficam de fora dos totais de receitas/despesas nos relatórios. */
+  exclude_from_reports: boolean;
   created_at: string;
 }
 
@@ -109,6 +112,10 @@ export interface PortfolioPosition {
   quantity_held: number;
   net_invested: number;
   total_dividends: number;
+  /** Comissões pagas neste ativo (embutidas nas compras/vendas + linhas avulsas). */
+  total_fees: number;
+  /** Data da primeira compra deste ativo, ou null se nunca houve uma. */
+  first_purchase_at: string | null;
 }
 
 export interface NetWorthSnapshot {
