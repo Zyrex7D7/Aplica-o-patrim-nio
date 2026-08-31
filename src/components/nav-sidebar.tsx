@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, ArrowLeftRight, PieChart, LineChart } from "lucide-react";
+import { LayoutGrid, Wallet, ArrowLeftRight, Repeat, PieChart, LineChart } from "lucide-react";
 import { cx } from "@/lib/format";
 
 const ITEMS = [
   { href: "/dashboard", label: "Património", icon: LayoutGrid },
   { href: "/contas", label: "Contas", icon: Wallet },
   { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
+  { href: "/recorrentes", label: "Recorrências", icon: Repeat },
   { href: "/relatorios", label: "Relatórios", icon: PieChart },
   { href: "/portfolio", label: "Portefólio", icon: LineChart },
 ];
 
 export function NavSidebar() {
   const pathname = usePathname();
+  if (pathname === "/login") return null;
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">

@@ -11,6 +11,10 @@ export default async function TransacoesPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Gera automaticamente qualquer movimento recorrente que já esteja
+  // vencido (renda, salário, subscrições...) antes de mostrar a lista.
+  await supabase.rpc("apply_due_recurring_transactions", { p_user_id: user!.id });
+
   const [{ data: accounts }, { data: categories }, { data: transactions }] = await Promise.all([
     supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
     supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
@@ -28,14 +32,22 @@ export default async function TransacoesPage() {
   const transactionsList: Transaction[] = transactions ?? [];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
-      <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
-        <h1 className="font-display text-3xl text-text">Movimentos</h1>
-        <p className="text-sm text-text-muted mt-2">
-          Regista receitas, despesas e transferências entre contas. Os saldos das contas
-          envolvidas atualizam-se de imediato.
-        </p>
+    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
+          <h1 className="font-display text-3xl text-text">Movimentos</h1>
+          <p className="text-sm text-text-muted mt-2">
+            Regista receitas, despesas e transferências entre contas. Os saldos das contas
+            envolvidas atualizam-se de imediato.
+          </p>
+        </div>
+        <a
+          href="/recorrentes"
+          className="shrink-0 text-xs text-gold underline underline-offset-2 whitespace-nowrap"
+        >
+          Ver recorrências
+        </a>
       </header>
 
       {accountsList.length === 0 ? (

@@ -1,4 +1,4 @@
-// Tipos manuais que espelham supabase/schema.sql.
+// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql.
 // Para gerar automaticamente a partir do teu projeto real, corre:
 //   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
 
@@ -6,6 +6,7 @@ export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
 export type CategoryKind = "receita" | "despesa";
 export type TransactionType = "receita" | "despesa" | "transferencia";
 export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
+export type RecurrenceFrequency = "diaria" | "semanal" | "mensal" | "anual";
 
 export interface Account {
   id: string;
@@ -29,7 +30,6 @@ export interface Category {
   color: string | null;
   icon: string | null;
   is_default: boolean;
-  exclude_from_reports: boolean;
   created_at: string;
 }
 
@@ -109,9 +109,60 @@ export interface PortfolioPosition {
   quantity_held: number;
   net_invested: number;
   total_dividends: number;
-  total_fees: number;
-  first_purchase_at: string | null;
-  trade_count: number;
+}
+
+export interface NetWorthSnapshot {
+  id: string;
+  user_id: string;
+  snapshot_date: string;
+  total_net_worth: number;
+  cash_in_banks: number;
+  cash_in_savings: number;
+  cash_in_brokers: number;
+  physical_cash: number;
+  portfolio_value: number;
+  portfolio_cost: number;
+  created_at: string;
+}
+
+export interface RecurringTransaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  frequency: RecurrenceFrequency;
+  interval_count: number;
+  start_date: string;
+  end_date: string | null;
+  next_occurrence: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Budget {
+  id: string;
+  user_id: string;
+  category_id: string;
+  monthly_limit: number;
+  created_at: string;
+}
+
+export interface BudgetStatus {
+  user_id: string;
+  category_id: string;
+  category_name: string;
+  category_color: string | null;
+  monthly_limit: number;
+  spent_this_month: number;
+}
+
+export interface RealizedPnlRow {
+  asset_id: string;
+  realized_pnl: number;
 }
 
 // Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
