@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteTransaction } from "@/app/transacoes/actions";
+import { EditTransactionDialog } from "@/components/transactions/edit-transaction-dialog";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Account, Category, Transaction } from "@/types/database";
 
@@ -48,7 +49,7 @@ export function TransactionList({
   });
 
   if (rows.length === 0) {
-    return <p className="text-sm text-text-muted py-6 text-center">Ainda não há movimentos registados.</p>;
+    return <p className="text-sm text-text-muted py-6 text-center">Nenhum movimento encontrado.</p>;
   }
 
   // Agrupa por mês (assume que `rows` já vem ordenado por data decrescente).
@@ -85,7 +86,7 @@ export function TransactionList({
             </div>
             <ul className="flex flex-col">
               {group.rows.map((t) => (
-                <TransactionRow key={t.id} row={t} />
+                <TransactionRow key={t.id} row={t} accounts={accounts} categories={categories} />
               ))}
             </ul>
           </div>
@@ -95,7 +96,15 @@ export function TransactionList({
   );
 }
 
-function TransactionRow({ row }: { row: Row }) {
+function TransactionRow({
+  row,
+  accounts,
+  categories,
+}: {
+  row: Row;
+  accounts: Account[];
+  categories: Category[];
+}) {
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
@@ -145,6 +154,7 @@ function TransactionRow({ row }: { row: Row }) {
         {sign}
         {formatCurrency(row.amount)}
       </span>
+      <EditTransactionDialog transaction={row} accounts={accounts} categories={categories} />
       <button
         onClick={handleDelete}
         disabled={isPending}

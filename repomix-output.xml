@@ -138,6 +138,7 @@ src/
     ui/
       card.tsx
     bottom-nav.tsx
+    mobile-header.tsx
     mobile-nav.tsx
     nav-sidebar.tsx
     register-sw.tsx
@@ -157,6 +158,7 @@ src/
       client.ts
       server.ts
     format.ts
+    nav-items.ts
   types/
     database.ts
   proxy.ts
@@ -1796,51 +1798,125 @@ export function BottomNav() {
 }
 </file>
 
-<file path="src/components/mobile-nav.tsx">
+<file path="src/components/mobile-header.tsx">
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, ArrowLeftRight, PieChart, LineChart } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { cx } from "@/lib/format";
+import { NAV_ITEMS } from "@/lib/nav-items";
 
-const ITEMS = [
-  { href: "/dashboard", label: "Património", icon: LayoutGrid },
-  { href: "/contas", label: "Contas", icon: Wallet },
-  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
-  { href: "/relatorios", label: "Relatórios", icon: PieChart },
-  { href: "/portfolio", label: "Portefólio", icon: LineChart },
-];
-
-export function MobileNav() {
+export function MobileHeader() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  // Fecha o painel sempre que a rota muda (ex: depois de tocar num link).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Impede o scroll do fundo enquanto o painel está aberto.
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [open]);
+
   if (pathname === "/login") return null;
 
   return (
-    <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-surface/95 backdrop-blur"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-    >
-      <div className="grid grid-cols-5">
-        {ITEMS.map((item) => {
-          const active = pathname?.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cx(
-                "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] transition-colors",
-                active ? "text-gold" : "text-text-faint"
-              )}
+    <>
+      <header
+        className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between border-b border-line bg-surface/95 backdrop-blur px-4"
+        style={{
+          height: "calc(52px + env(safe-area-inset-top))",
+          paddingTop: "env(safe-area-inset-top)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <Image src="/icons/icon-192.png" alt="" width={24} height={24} className="rounded-md" />
+          <p className="font-display text-base italic text-text">Meu Capital</p>
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Abrir menu"
+          className="p-2 -mr-2 text-text-muted hover:text-text transition-colors"
+        >
+          <Menu size={22} strokeWidth={1.75} />
+        </button>
+      </header>
+
+      {/* Fundo escurecido + painel lateral. Fica sempre montado (para a
+          transição de saída funcionar) mas sem interação nem visível
+          quando fechado. */}
+      <div
+        className={cx(
+          "md:hidden fixed inset-0 z-50 transition-opacity duration-200",
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+      >
+        <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+
+        <nav
+          className={cx(
+            "absolute top-0 left-0 h-full w-72 max-w-[80vw] bg-surface border-r border-line flex flex-col transition-transform duration-200",
+            open ? "translate-x-0" : "-translate-x-full"
+          )}
+          style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="flex items-center justify-between px-4 py-4 border-b border-line-soft">
+            <div className="flex items-center gap-2.5">
+              <Image src="/icons/icon-192.png" alt="" width={28} height={28} className="rounded-md" />
+              <div>
+                <p className="font-display text-lg italic leading-tight text-text">Meu Capital</p>
+                <p className="text-[10px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
+                  Património &amp; Finanças
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Fechar menu"
+              className="p-2 text-text-faint hover:text-text transition-colors"
             >
-              <Icon size={20} strokeWidth={active ? 2 : 1.75} />
-              {item.label}
-            </Link>
-          );
-        })}
+              <X size={20} strokeWidth={1.75} />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1 px-3 py-4 overflow-y-auto">
+            {NAV_ITEMS.map((item) => {
+              const active = pathname?.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cx(
+                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+                    active
+                      ? "bg-surface-alt text-gold"
+                      : "text-text-muted hover:text-text hover:bg-surface-alt/60"
+                  )}
+                >
+                  <Icon size={18} strokeWidth={1.75} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="mt-auto px-4 py-4 ledger-rule text-[11px] text-text-faint leading-relaxed">
+            Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
+          </div>
+        </nav>
       </div>
-    </nav>
+    </>
   );
 }
 </file>
@@ -2208,6 +2284,22 @@ export function formatDate(iso: string): string {
 export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
 }
+</file>
+
+<file path="src/lib/nav-items.ts">
+import { LayoutGrid, Wallet, ArrowLeftRight, Repeat, PieChart, LineChart } from "lucide-react";
+
+export const NAV_ITEMS = [
+  { href: "/dashboard", label: "Património", icon: LayoutGrid },
+  { href: "/contas", label: "Contas", icon: Wallet },
+  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
+  { href: "/recorrentes", label: "Recorrências", icon: Repeat },
+  { href: "/relatorios", label: "Relatórios", icon: PieChart },
+  { href: "/portfolio", label: "Portefólio", icon: LineChart },
+] as const;
+
+/** Subconjunto mostrado na barra fixa de baixo no telemóvel — só cabem 5 sem ficar apertado. */
+export const BOTTOM_NAV_ITEMS = NAV_ITEMS.filter((item) => item.href !== "/recorrentes");
 </file>
 
 <file path="test-fixtures/degiro-conta.csv">
@@ -3123,6 +3215,47 @@ function TransactionRow({ row }: { row: Row }) {
 }
 </file>
 
+<file path="src/components/mobile-nav.tsx">
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cx } from "@/lib/format";
+import { BOTTOM_NAV_ITEMS } from "@/lib/nav-items";
+
+export function MobileNav() {
+  const pathname = usePathname();
+  if (pathname === "/login") return null;
+
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-surface/95 backdrop-blur"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="grid grid-cols-5">
+        {BOTTOM_NAV_ITEMS.map((item) => {
+          const active = pathname?.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cx(
+                "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] transition-colors",
+                active ? "text-gold" : "text-text-faint"
+              )}
+            >
+              <Icon size={20} strokeWidth={active ? 2 : 1.75} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+</file>
+
 <file path="src/lib/data/net-worth.ts">
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Account, PortfolioPosition } from "@/types/database";
@@ -3198,59 +3331,6 @@ export async function getNetWorthBreakdown(
     positions: enrichedPositions,
   };
 }
-</file>
-
-<file path="src/proxy.ts">
-import { createServerClient } from "@supabase/ssr";
-import { type NextRequest, NextResponse } from "next/server";
-
-const PUBLIC_PATHS = ["/login"];
-
-export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
-  const isRoot = request.nextUrl.pathname === "/";
-
-  if (!user && !isPublic && !isRoot) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
-  }
-
-  if (user && (isPublic || isRoot)) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    return NextResponse.redirect(dashboardUrl);
-  }
-
-  return response;
-}
-
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
-};
 </file>
 
 <file path="next.config.ts">
@@ -4164,48 +4244,65 @@ export async function hashFileContent(text: string): Promise<string> {
 }
 </file>
 
-<file path="src/app/layout.tsx">
-import type { Metadata, Viewport } from "next";
-import "./globals.css";
-import { NavSidebar } from "@/components/nav-sidebar";
-import { MobileNav } from "@/components/mobile-nav";
-import { RegisterServiceWorker } from "@/components/register-sw";
-import { Toaster } from "sonner";
+<file path="src/proxy.ts">
+import { createServerClient } from "@supabase/ssr";
+import { type NextRequest, NextResponse } from "next/server";
 
-export const metadata: Metadata = {
-  title: "Meu Capital — Património & Finanças Pessoais",
-  description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Meu Capital",
-  },
-};
+const PUBLIC_PATHS = ["/login"];
 
-export const viewport: Viewport = {
-  themeColor: "#0B0F14",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  viewportFit: "cover",
-};
+export async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request });
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="pt-PT" className="h-full antialiased">
-      <body className="min-h-full bg-ink text-text font-sans">
-        <div className="flex min-h-screen">
-          <NavSidebar />
-          <main className="flex-1 min-w-0 pb-20 md:pb-0">{children}</main>
-        </div>
-        <MobileNav />
-        <RegisterServiceWorker />
-        <Toaster theme="dark" position="top-right" richColors />
-      </body>
-    </html>
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
+      },
+    }
   );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+  const isRoot = request.nextUrl.pathname === "/";
+
+  if (!user && !isPublic && !isRoot) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (user && (isPublic || isRoot)) {
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = "/dashboard";
+    return NextResponse.redirect(dashboardUrl);
+  }
+
+  return response;
 }
+
+export const config = {
+  // Ficheiros de PWA (manifest, service worker, página offline) têm de
+  // continuar acessíveis SEM sessão — é assim que o Chrome verifica se o
+  // site é instalável, e é assim que um service worker consegue mostrar a
+  // página offline mesmo com a sessão expirada. Sem esta exclusão, o
+  // middleware redirecionava-os para /login (HTML em vez de JSON/JS),
+  // partindo a instalação da app.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|sw\\.js|offline\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)$).*)",
+  ],
+};
 </file>
 
 <file path="src/components/accounts/account-form.tsx">
@@ -4387,51 +4484,6 @@ export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
     </div>
   );
 }
-</file>
-
-<file path="LEIA-ME.md">
-# Corrigir o deploy que falhou
-
-O `npm run build` corre o `tsc` a sério (o `npm run dev` não) — apanhou 2
-sítios onde o front-end já esperava campos que a base de dados e os tipos
-ainda não tinham. Não é nada partido pelo que te mandei antes; é código teu
-(ou de outra sessão) que ficou um passo à frente do schema.
-
-## 1. Corre o SQL
-
-No SQL Editor da Supabase, corre `003_correcoes_build.sql` (depois do
-`schema.sql` e do `002_melhorias.sql`, se ainda não os tiveres corrido).
-
-Isto acrescenta:
-- `categories.exclude_from_reports` (boolean, default `false`) — para a
-  badge "Ajuste" que já tens em `transaction-list.tsx`.
-- `total_fees` e `first_purchase_at` na view `portfolio_positions` — para as
-  colunas que já tens em `holdings-table.tsx`.
-
-## 2. Substitui o ficheiro de tipos
-
-`src/types/database.ts` — vem com os campos novos adicionados aos tipos
-`Category` e `PortfolioPosition` (mais tudo o que já lá estava dos packs
-anteriores). Isto sozinho já resolve os 3 erros do build.
-
-## 3. Volta a fazer deploy
-
-```bash
-npm run build
-```
-
-localmente primeiro para confirmares que compila, depois `git push` /
-redeploy no Vercel.
-
-## Nota — a badge "Ajuste" nunca vai aparecer ainda
-
-Adicionei a coluna `exclude_from_reports`, mas não existe nenhum sítio na UI
-para a ligares numa categoria (não vi um formulário de edição de categorias
-no que me mandaste — só o "Nova categoria" rápido em `category-quick-add.tsx`).
-Por agora todas as categorias ficam com `exclude_from_reports = false` por
-omissão, por isso o build passa e nada muda visualmente. Se quiseres, faço a
-seguir um pequeno toggle na listagem/edição de categorias para conseguires
-marcar isso.
 </file>
 
 <file path="README.md">
@@ -4669,78 +4721,6 @@ enviar um link de reposição de password a partir daí, se preferires).
   Server Actions, rotas de API) usa sempre a `anon key` e depende da
   sessão do utilizador autenticado, com toda a segurança garantida pela
   Row Level Security.
-</file>
-
-<file path="src/components/nav-sidebar.tsx">
-"use client";
-
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, ArrowLeftRight, Repeat, PieChart, LineChart } from "lucide-react";
-import { cx } from "@/lib/format";
-
-const ITEMS = [
-  { href: "/dashboard", label: "Património", icon: LayoutGrid },
-  { href: "/contas", label: "Contas", icon: Wallet },
-  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
-  { href: "/recorrentes", label: "Recorrências", icon: Repeat },
-  { href: "/relatorios", label: "Relatórios", icon: PieChart },
-  { href: "/portfolio", label: "Portefólio", icon: LineChart },
-];
-
-export function NavSidebar() {
-  const pathname = usePathname();
-  if (pathname === "/login") return null;
-
-  return (
-    <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">
-      <div className="flex items-center gap-2.5 px-2 mb-8">
-        <Image
-          src="/icons/icon-192.png"
-          alt=""
-          width={28}
-          height={28}
-          className="rounded-md shrink-0"
-        />
-        <div>
-          <p className="font-display text-lg italic leading-tight tracking-tight text-text">
-            Meu Capital
-          </p>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
-            Património &amp; Finanças
-          </p>
-        </div>
-      </div>
-
-      <nav className="flex flex-col gap-1">
-        {ITEMS.map((item) => {
-          const active = pathname?.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cx(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                active
-                  ? "bg-surface-alt text-gold"
-                  : "text-text-muted hover:text-text hover:bg-surface-alt/60"
-              )}
-            >
-              <Icon size={16} strokeWidth={1.75} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="mt-auto pt-6 ledger-rule text-[11px] text-text-faint leading-relaxed">
-        Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
-      </div>
-    </aside>
-  );
-}
 </file>
 
 <file path="src/types/database.ts">
@@ -5413,6 +5393,47 @@ end;
 $$;
 </file>
 
+<file path="LEIA-ME.md">
+# Menu lateral no telemóvel (hambúrguer)
+
+## Ficheiros
+
+| Ficheiro | Estado |
+|---|---|
+| `src/lib/nav-items.ts` | novo — lista única de secções, usada por todos os menus |
+| `src/components/mobile-header.tsx` | novo — cabeçalho fixo no topo (mobile) + painel lateral |
+| `src/components/mobile-nav.tsx` | substituir — passa a usar a lista partilhada |
+| `src/components/nav-sidebar.tsx` | substituir — passa a usar a lista partilhada |
+| `src/app/layout.tsx` | substituir — liga o `MobileHeader` e ajusta o espaçamento |
+
+## O que muda
+
+- **Novo cabeçalho fixo no topo**, só em ecrãs pequenos (`md:hidden`): logo +
+  nome à esquerda, ícone de hambúrguer à direita.
+- Tocar no hambúrguer abre um **painel lateral** com as 6 secções (incluindo
+  "Recorrências", que não cabia na barra de baixo): Património, Contas,
+  Movimentos, Recorrências, Relatórios, Portefólio.
+- O painel fecha ao tocar fora dele, no X, ou automaticamente ao navegares
+  para outra secção.
+- A barra de baixo (5 ícones) continua igual — serve para os atalhos mais
+  usados; o menu lateral é que dá acesso a tudo.
+- `src/lib/nav-items.ts` passa a ser a única lista de secções — já não há
+  risco de um menu ter uma secção e outro não (foi o que aconteceu com
+  "Recorrências" da última vez).
+
+## Testa
+
+```bash
+npm run dev
+```
+Reduz a largura da janela (ou usa o modo mobile das DevTools) e confirma:
+- O cabeçalho novo aparece no topo, o conteúdo da página não fica escondido
+  atrás dele nem da barra de baixo.
+- O hambúrguer abre o painel com as 6 secções, e "Recorrências" já lá está.
+- No desktop (ecrã largo) nada disto aparece — mantém-se a barra lateral
+  normal.
+</file>
+
 <file path="src/app/dashboard/page.tsx">
 import { createClient } from "@/lib/supabase/server";
 import { getNetWorthBreakdown } from "@/lib/data/net-worth";
@@ -5777,6 +5798,115 @@ export default async function RelatoriosPage({
         </div>
       </Card>
     </div>
+  );
+}
+</file>
+
+<file path="src/app/layout.tsx">
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import { NavSidebar } from "@/components/nav-sidebar";
+import { MobileHeader } from "@/components/mobile-header";
+import { RegisterServiceWorker } from "@/components/register-sw";
+import { Toaster } from "sonner";
+
+export const metadata: Metadata = {
+  title: "Meu Capital — Património & Finanças Pessoais",
+  description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Meu Capital",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B0F14",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="pt-PT" className="h-full antialiased">
+      <body className="min-h-full bg-ink text-text font-sans">
+        <div className="flex min-h-screen">
+          <NavSidebar />
+          <main className="flex-1 min-w-0 pt-[calc(52px+env(safe-area-inset-top))] md:pt-0">
+            {children}
+          </main>
+        </div>
+        <MobileHeader />
+        <RegisterServiceWorker />
+        <Toaster theme="dark" position="top-right" richColors />
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="src/components/nav-sidebar.tsx">
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { cx } from "@/lib/format";
+import { NAV_ITEMS } from "@/lib/nav-items";
+
+export function NavSidebar() {
+  const pathname = usePathname();
+  if (pathname === "/login") return null;
+
+  return (
+    <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface/40 px-4 py-6">
+      <div className="flex items-center gap-2.5 px-2 mb-8">
+        <Image
+          src="/icons/icon-192.png"
+          alt=""
+          width={28}
+          height={28}
+          className="rounded-md shrink-0"
+        />
+        <div>
+          <p className="font-display text-lg italic leading-tight tracking-tight text-text">
+            Meu Capital
+          </p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
+            Património &amp; Finanças
+          </p>
+        </div>
+      </div>
+
+      <nav className="flex flex-col gap-1">
+        {NAV_ITEMS.map((item) => {
+          const active = pathname?.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cx(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                active
+                  ? "bg-surface-alt text-gold"
+                  : "text-text-muted hover:text-text hover:bg-surface-alt/60"
+              )}
+            >
+              <Icon size={16} strokeWidth={1.75} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto pt-6 ledger-rule text-[11px] text-text-faint leading-relaxed">
+        Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
+      </div>
+    </aside>
   );
 }
 </file>

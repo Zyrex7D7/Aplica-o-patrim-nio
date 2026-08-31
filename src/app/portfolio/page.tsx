@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { History } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardLabel } from "@/components/ui/card";
 import { DegiroUpload } from "@/components/portfolio/degiro-upload";
@@ -53,13 +55,22 @@ export default async function PortfolioPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
-        <h1 className="font-display text-3xl text-text">Portefólio</h1>
-        <p className="text-sm text-text-muted mt-2">
-          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
-          acompanha o valor atual e o lucro ou prejuízo de cada posição.
-        </p>
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
+          <h1 className="font-display text-3xl text-text">Portefólio</h1>
+          <p className="text-sm text-text-muted mt-2">
+            Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
+            acompanha o valor atual e o lucro ou prejuízo de cada posição.
+          </p>
+        </div>
+        <Link
+          href="/portfolio/importacoes"
+          className="shrink-0 flex items-center gap-1.5 text-xs text-text-faint hover:text-gold transition-colors whitespace-nowrap mt-1"
+        >
+          <History size={13} strokeWidth={1.75} />
+          Histórico de importações
+        </Link>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">

@@ -1,11 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { TransactionList } from "@/components/transactions/transaction-list";
+import { TransactionFilters } from "@/components/transactions/transaction-filters";
 import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
+import { CategoryManager } from "@/components/transactions/category-manager";
 import { Card, CardLabel } from "@/components/ui/card";
 import type { Account, Category, Transaction } from "@/types/database";
 
-export default async function TransacoesPage() {
+export default async function TransacoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; account?: string; category?: string }>;
+}) {
+  const { q, account, category } = await searchParams;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -15,16 +23,27 @@ export default async function TransacoesPage() {
   // vencido (renda, salário, subscrições...) antes de mostrar a lista.
   await supabase.rpc("apply_due_recurring_transactions", { p_user_id: user!.id });
 
+  let query = supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", user!.id)
+    .order("occurred_on", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  // Sem filtros: mantém o limite original de 100 para não sobrecarregar a
+  // página; com filtros, alarga-se para a pesquisa realmente encontrar o
+  // movimento pretendido em vez de ficar escondido fora da 1ª página.
+  const hasFilters = Boolean(q || account || category);
+  query = query.limit(hasFilters ? 500 : 100);
+
+  if (account) query = query.eq("account_id", account);
+  if (category) query = query.eq("category_id", category);
+  if (q) query = query.ilike("description", `%${q}%`);
+
   const [{ data: accounts }, { data: categories }, { data: transactions }] = await Promise.all([
     supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
     supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
-    supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user!.id)
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(100),
+    query,
   ]);
 
   const accountsList: Account[] = accounts ?? [];
@@ -70,8 +89,16 @@ export default async function TransacoesPage() {
         </Card>
       )}
 
+      <Card className="mb-8">
+        <CardLabel className="mb-3">Categorias</CardLabel>
+        <CategoryManager categories={categoriesList} />
+      </Card>
+
       <Card>
-        <CardLabel className="mb-3">Últimos 100 Movimentos</CardLabel>
+        <div className="flex items-center justify-between mb-3">
+          <CardLabel>{hasFilters ? "Movimentos Filtrados" : "Últimos 100 Movimentos"}</CardLabel>
+        </div>
+        <TransactionFilters accounts={accountsList} categories={categoriesList} />
         <TransactionList transactions={transactionsList} accounts={accountsList} categories={categoriesList} />
       </Card>
     </div>

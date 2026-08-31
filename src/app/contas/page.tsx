@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { AccountForm } from "@/components/accounts/account-form";
 import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
+import { EditAccountDialog } from "@/components/accounts/edit-account-dialog";
 import { Card, CardLabel } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
 import type { Account } from "@/types/database";
@@ -77,6 +78,7 @@ export default async function ContasPage() {
                   <span className="tabular text-sm text-text">
                     {formatCurrency(Number(a.current_balance), a.currency)}
                   </span>
+                  <EditAccountDialog account={a} />
                   <ArchiveAccountButton accountId={a.id} />
                 </div>
               </li>

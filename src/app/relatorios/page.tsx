@@ -3,6 +3,7 @@ import { Card, CardLabel } from "@/components/ui/card";
 import { PeriodFilter } from "@/components/reports/period-filter";
 import { BudgetForm } from "@/components/reports/budget-form";
 import { BudgetList } from "@/components/reports/budget-list";
+import { ExportCsvButton } from "@/components/reports/export-csv-button";
 import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
 import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -74,7 +75,10 @@ export default async function RelatoriosPage({
           <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
           <h1 className="font-display text-3xl text-text">Relatórios</h1>
         </div>
-        <PeriodFilter active={period} />
+        <div className="flex flex-col items-start sm:items-end gap-2">
+          <PeriodFilter active={period} />
+          <ExportCsvButton transactions={transactionsList} categories={categoriesList} periodLabel={period} />
+        </div>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

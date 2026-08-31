@@ -8,6 +8,13 @@ function parseAmount(raw: FormDataEntryValue | null): number {
   return Number(String(raw ?? "0").replace(",", "."));
 }
 
+function revalidateTransactionPaths() {
+  revalidatePath("/transacoes");
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
+}
+
 export async function createTransaction(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -42,20 +49,59 @@ export async function createTransaction(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
-  revalidatePath("/transacoes");
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
-  revalidatePath("/relatorios");
+  revalidateTransactionPaths();
+}
+
+/** Edita um movimento existente. Devolve { error } em vez de rebentar, para uso em formulários com useTransition. */
+export async function updateTransaction(
+  transactionId: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const type = String(formData.get("type") ?? "despesa") as TransactionType;
+  const amount = parseAmount(formData.get("amount"));
+  const occurredOn = String(formData.get("occurred_on") ?? "");
+  const accountId = String(formData.get("account_id") ?? "");
+  const transferAccountId = String(formData.get("transfer_account_id") ?? "") || null;
+  const categoryId = String(formData.get("category_id") ?? "") || null;
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "O valor tem de ser maior que zero." };
+  if (!occurredOn) return { error: "A data é obrigatória." };
+  if (!accountId) return { error: "Escolhe a conta de origem/destino." };
+  if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
+    return { error: "Escolhe uma conta de destino diferente da conta de origem." };
+  }
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({
+      type,
+      amount,
+      occurred_on: occurredOn,
+      account_id: accountId,
+      transfer_account_id: type === "transferencia" ? transferAccountId : null,
+      category_id: type === "transferencia" ? null : categoryId,
+      description,
+    })
+    .eq("id", transactionId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidateTransactionPaths();
+  return {};
 }
 
 export async function deleteTransaction(transactionId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("transactions").delete().eq("id", transactionId);
   if (error) throw new Error(error.message);
-  revalidatePath("/transacoes");
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
-  revalidatePath("/relatorios");
+  revalidateTransactionPaths();
 }
 
 export async function createCategory(formData: FormData) {
@@ -80,4 +126,54 @@ export async function createCategory(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/transacoes");
+}
+
+/** Edita nome, cor e a exclusão dos Relatórios de uma categoria existente. */
+export async function updateCategory(
+  categoryId: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const color = String(formData.get("color") ?? "#8B93A1");
+  const excludeFromReports = formData.get("exclude_from_reports") === "on";
+
+  if (!name) return { error: "O nome da categoria é obrigatório." };
+
+  const { error } = await supabase
+    .from("categories")
+    .update({ name, color, exclude_from_reports: excludeFromReports })
+    .eq("id", categoryId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/transacoes");
+  revalidatePath("/relatorios");
+  revalidatePath("/recorrentes");
+  return {};
+}
+
+/**
+ * Apaga uma categoria. As transações que a usavam ficam "Sem categoria"
+ * (category_id passa a null via `on delete set null` no schema), nunca são
+ * apagadas.
+ */
+export async function deleteCategory(categoryId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase.from("categories").delete().eq("id", categoryId).eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/transacoes");
+  revalidatePath("/relatorios");
+  revalidatePath("/recorrentes");
+  return {};
 }
