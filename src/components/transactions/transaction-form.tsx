@@ -53,11 +53,17 @@ export function TransactionForm({
 
   return (
     <form ref={formRef} action={action} className="flex flex-col gap-3">
-      <div className="flex gap-2">
+      {/*
+        grid-cols-3 (em vez de flex + flex-1) garante que as 3 opções
+        ocupam sempre exatamente um terço da largura cada, sem nunca
+        esticar a linha para fora do cartão. Em ecrãs pequenos mostra-se
+        "Transf." em vez de "Transferência" para o texto caber sem cortar.
+      */}
+      <div className="grid grid-cols-3 gap-2">
         {(["despesa", "receita", "transferencia"] as const).map((t) => (
           <label
             key={t}
-            className={`flex-1 text-center cursor-pointer rounded-md border px-3 py-2 text-sm capitalize transition-colors ${
+            className={`text-center cursor-pointer rounded-md border px-2 py-2 text-xs sm:text-sm capitalize transition-colors truncate ${
               type === t
                 ? "border-gold text-gold bg-surface-alt"
                 : "border-line text-text-muted hover:text-text"
@@ -74,7 +80,14 @@ export function TransactionForm({
               }}
               className="hidden"
             />
-            {t === "transferencia" ? "Transferência" : t}
+            {t === "transferencia" ? (
+              <>
+                <span className="sm:hidden">Transf.</span>
+                <span className="hidden sm:inline">Transferência</span>
+              </>
+            ) : (
+              t
+            )}
           </label>
         ))}
       </div>
@@ -137,17 +150,17 @@ export function TransactionForm({
         )}
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <input
           name="description"
           placeholder="Descrição (opcional) — ex: Continente, Netflix..."
           onBlur={(e) => handleDescriptionBlur(e.target.value)}
-          className="flex-1 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          className="flex-1 min-w-0 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
         />
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50 shrink-0"
         >
           {isPending ? "A guardar..." : "Registar"}
         </button>
