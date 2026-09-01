@@ -39,7 +39,7 @@ export function WipeImportsButton() {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 max-w-full">
       <input
         autoFocus
         value={input}
@@ -50,7 +50,7 @@ export function WipeImportsButton() {
       <button
         onClick={handleConfirm}
         disabled={isPending}
-        className="text-xs text-loss hover:opacity-80 disabled:opacity-50"
+        className="text-xs text-loss hover:opacity-80 disabled:opacity-50 shrink-0"
       >
         {isPending ? "A apagar..." : "Confirmar"}
       </button>
@@ -59,7 +59,7 @@ export function WipeImportsButton() {
           setConfirming(false);
           setInput("");
         }}
-        className="text-xs text-text-faint hover:text-text"
+        className="text-xs text-text-faint hover:text-text shrink-0"
       >
         Cancelar
       </button>

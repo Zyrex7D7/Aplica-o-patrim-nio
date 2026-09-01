@@ -9,11 +9,19 @@ import { hashFileContent, parseDegiroCsv } from "@/lib/degiro/parser";
  * 1. Faz parse do CSV no servidor (fonte de verdade — nunca confiar apenas
  *    no parsing feito no browser).
  * 2. Garante que cada ISIN/produto tem uma linha correspondente em `assets`.
- * 3. Insere as `asset_transactions`, ignorando duplicados através da
- *    restrição única (user_id, source_hash), e liga-as a esta importação
- *    via `import_id` — assim é possível desfazer a importação inteira mais
- *    tarde apagando só a linha em `csv_imports` (cascade trata do resto).
- * 4. Regista um resumo em `csv_imports` para auditoria/histórico.
+ * 3. Cria PRIMEIRO a linha em `csv_imports` — a foreign key
+ *    `asset_transactions_import_id_fkey` exige que essa linha já exista
+ *    antes de qualquer `asset_transactions` apontar para ela. (Esta era a
+ *    causa do erro "violates foreign key constraint
+ *    asset_transactions_import_id_fkey": o código antigo gerava o
+ *    importId e inseria já as transações com ele, antes de a linha em
+ *    csv_imports existir.)
+ * 4. Só depois insere as `asset_transactions`, ignorando duplicados através
+ *    da restrição única (user_id, source_hash).
+ * 5. Atualiza `csv_imports` com as contagens finais (inseridas/duplicadas).
+ *    Se a inserção das transações falhar, remove a linha de importação
+ *    criada no passo 3 (rollback), para não ficar uma importação "fantasma"
+ *    com 0 transações no histórico.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -59,11 +67,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Id gerado antecipadamente para conseguirmos ligar já as transações a
-  // esta importação (ver rowsToInsert abaixo) mesmo antes de inserirmos a
-  // linha em csv_imports.
-  const importId = crypto.randomUUID();
-
   // --- 1. Upsert de ativos (por ISIN; fallback pelo nome do produto) ------
   const assetIdByKey = new Map<string, string>();
   const uniqueAssets = new Map<string, { isin: string | null; name: string; currency: string }>();
@@ -107,7 +110,32 @@ export async function POST(req: NextRequest) {
     assetIdByKey.set(key, inserted.id);
   }
 
-  // --- 2. Inserção das transações (ignora duplicados pelo source_hash) ---
+  // --- 2. Cria a linha de importação PRIMEIRO (a FK exige que já exista) --
+  const { data: importRow, error: importInsertError } = await supabase
+    .from("csv_imports")
+    .insert({
+      user_id: userId,
+      account_id: accountId,
+      file_name: fileName,
+      file_hash: fileHash,
+      rows_total: parsed.rows.length,
+      rows_inserted: 0,
+      rows_duplicated: 0,
+      rows_failed: parsed.skipped,
+    })
+    .select("id")
+    .single();
+
+  if (importInsertError || !importRow) {
+    return NextResponse.json(
+      { error: importInsertError?.message ?? "Falha ao registar a importação." },
+      { status: 500 }
+    );
+  }
+
+  const importId = importRow.id;
+
+  // --- 3. Inserção das transações (ignora duplicados pelo source_hash) ---
   const rowsToInsert = parsed.rows.map((row) => {
     const key = row.isin ?? `name:${row.product}`;
     return {
@@ -139,25 +167,22 @@ export async function POST(req: NextRequest) {
     .select("id");
 
   if (insertError) {
+    // Rollback: sem transações associadas, não faz sentido deixar uma
+    // importação "vazia" no histórico.
+    await supabase.from("csv_imports").delete().eq("id", importId);
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
   const rowsInserted = insertedRows?.length ?? 0;
   const rowsDuplicated = rowsToInsert.length - rowsInserted;
 
-  await supabase.from("csv_imports").insert({
-    id: importId,
-    user_id: userId,
-    account_id: accountId,
-    file_name: fileName,
-    file_hash: fileHash,
-    rows_total: parsed.rows.length,
-    rows_inserted: rowsInserted,
-    rows_duplicated: rowsDuplicated,
-    rows_failed: parsed.skipped,
-  });
+  // --- 4. Atualiza a importação com as contagens finais -------------------
+  await supabase
+    .from("csv_imports")
+    .update({ rows_inserted: rowsInserted, rows_duplicated: rowsDuplicated })
+    .eq("id", importId);
 
-  // --- 3. Reconcilia o saldo da conta com o valor que a própria DEGIRO
+  // --- 5. Reconcilia o saldo da conta com o valor que a própria DEGIRO
   //         reportou (coluna "Saldo") na linha mais recente do ficheiro.
   //         Isto garante que depósitos, levantamentos, cash sweeps e juros
   //         — que não modelamos individualmente — continuam refletidos no

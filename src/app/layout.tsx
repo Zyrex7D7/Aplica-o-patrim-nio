@@ -26,8 +26,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-PT" className="h-full antialiased">
-      <body className="min-h-full bg-ink text-text font-sans">
+    <html lang="pt-PT" className="h-full antialiased overflow-x-hidden">
+      <body className="min-h-full bg-ink text-text font-sans overflow-x-hidden">
         <div className="flex min-h-screen">
           <NavSidebar />
           <main className="flex-1 min-w-0 pt-[calc(52px+env(safe-area-inset-top))] md:pt-0">

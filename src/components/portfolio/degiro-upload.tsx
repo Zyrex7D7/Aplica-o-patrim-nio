@@ -88,14 +88,16 @@ export function DegiroUpload({ brokerAccounts }: { brokerAccounts: Account[] }) 
         </select>
 
         <label
-          className={`flex-1 flex items-center justify-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm text-center cursor-pointer transition-colors ${
             isPending
               ? "border-line text-text-faint opacity-60"
               : "border-line-soft text-text-muted hover:border-gold hover:text-gold"
           }`}
         >
-          <UploadCloud size={16} strokeWidth={1.75} />
-          {isPending ? "A processar..." : "Escolher CSV da DEGIRO (Transacções ou Estado de Conta)"}
+          <UploadCloud size={16} strokeWidth={1.75} className="shrink-0" />
+          <span className="min-w-0">
+            {isPending ? "A processar..." : "Escolher CSV da DEGIRO (Transacções ou Estado de Conta)"}
+          </span>
           <input
             ref={fileInputRef}
             type="file"
@@ -111,11 +113,11 @@ export function DegiroUpload({ brokerAccounts }: { brokerAccounts: Account[] }) 
       </div>
 
       {result && (
-        <div className="rounded-md border border-line-soft bg-surface-alt/60 px-4 py-3 text-xs text-text-muted">
+        <div className="rounded-md border border-line-soft bg-surface-alt/60 px-4 py-3 text-xs text-text-muted overflow-hidden">
           {result.error ? (
-            <p className="text-loss">{result.error}</p>
+            <p className="text-loss break-words">{result.error}</p>
           ) : result.alreadyImported ? (
-            <p>{result.message}</p>
+            <p className="break-words">{result.message}</p>
           ) : (
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               <span>
@@ -130,14 +132,14 @@ export function DegiroUpload({ brokerAccounts }: { brokerAccounts: Account[] }) 
             </div>
           )}
           {result.warnings && result.warnings.length > 0 && (
-            <ul className="mt-2 list-disc list-inside text-text-faint">
+            <ul className="mt-2 list-disc list-inside text-text-faint break-words">
               {result.warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
             </ul>
           )}
           {result.reconciledBalance && (
-            <p className="mt-2 text-gain">
+            <p className="mt-2 text-gain break-words">
               Saldo da conta atualizado para {result.reconciledBalance.balance.toLocaleString("pt-PT", {
                 style: "currency",
                 currency: "EUR",

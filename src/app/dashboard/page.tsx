@@ -27,12 +27,12 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-10">
         <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
           Património Global
         </p>
-        <p className="font-display text-5xl tabular text-text">
+        <p className="font-display text-3xl sm:text-4xl md:text-5xl tabular text-text break-words">
           {formatCurrency(breakdown.totalNetWorth)}
         </p>
         <p className="text-sm text-text-muted mt-2">
@@ -66,14 +66,14 @@ export default async function DashboardPage() {
         <Card className="lg:col-span-3">
           <CardLabel>Investimentos — Custo vs. Valor Atual</CardLabel>
           <div className="mt-4 grid grid-cols-2 gap-4">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-text-faint">Capital investido</p>
-              <p className="tabular text-xl text-text mt-1">{formatCurrency(breakdown.portfolioCost)}</p>
+              <p className="tabular text-xl text-text mt-1 break-words">{formatCurrency(breakdown.portfolioCost)}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-text-faint">Lucro / Prejuízo não realizado</p>
               <p
-                className={`tabular text-xl mt-1 ${
+                className={`tabular text-xl mt-1 break-words ${
                   breakdown.portfolioPnl >= 0 ? "text-gain" : "text-loss"
                 }`}
               >
@@ -97,13 +97,13 @@ export default async function DashboardPage() {
                 {breakdown.positions.map((p) => (
                   <li
                     key={p.asset_id}
-                    className="flex items-center justify-between text-sm py-1.5 border-b border-line-soft last:border-0"
+                    className="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-line-soft last:border-0"
                   >
-                    <span className="text-text">{p.name}</span>
-                    <span className="tabular text-text-muted">
+                    <span className="text-text truncate min-w-0">{p.name}</span>
+                    <span className="tabular text-text-muted shrink-0">
                       {p.quantity_held.toLocaleString("pt-PT")} un.
                     </span>
-                    <span className="tabular text-text">{formatCurrency(p.marketValue)}</span>
+                    <span className="tabular text-text shrink-0">{formatCurrency(p.marketValue)}</span>
                   </li>
                 ))}
               </ul>

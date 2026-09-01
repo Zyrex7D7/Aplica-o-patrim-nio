@@ -9,18 +9,26 @@
 -- como numa que já tenha parte disto (create table/view/function usam
 -- if not exists / or replace em todo o lado).
 --
--- ⚠️ AVISO IMPORTANTE sobre a secção 10 (RECONSTRUÍDA):
+-- NOTA sobre esta ronda de correções: o erro
+-- "insert or update on table asset_transactions violates foreign key
+-- constraint asset_transactions_import_id_fkey" NÃO era um problema deste
+-- esquema — a foreign key e a cascade estão corretas. A causa era o
+-- código em src/app/api/degiro/import/route.ts inserir as
+-- asset_transactions com um import_id antes de a linha correspondente
+-- existir em csv_imports. Esse ficheiro já vem corrigido nesta pasta.
+-- Este schema.sql não tem alterações face à versão anterior — está aqui
+-- só para correres tudo de uma vez, sem pontas soltas.
+--
+-- AVISO IMPORTANTE (herdado, sobre a secção 10):
 -- As tabelas `recurring_transactions`, `budgets`, `net_worth_snapshots` e
 -- as funções `apply_due_recurring_transactions`, `get_realized_pnl` e
--- `capture_net_worth_snapshot` são usadas pelo código da app mas a sua
--- definição original (presumivelmente num ficheiro "002_melhorias.sql")
--- nunca foi partilhada. Reconstruí-as aqui a partir do que o código
--- pressupõe (nomes de tabelas/colunas em types/database.ts, chamadas RPC).
--- Se já tens estes objetos na tua base de dados REAL com uma lógica
--- diferente (nomeadamente `get_realized_pnl`, que pode usar FIFO em vez de
--- custo médio), correr este script vai SUBSTITUIR essa lógica e os
--- números de "Lucro Realizado" podem mudar. Revê a secção 10 antes de
--- correr em produção, ou salta-a se já tiveres a tua própria versão.
+-- `capture_net_worth_snapshot` foram reconstruídas a partir do que o
+-- código pressupõe (types/database.ts, chamadas RPC), porque o ficheiro
+-- original "002_melhorias.sql" nunca foi partilhado. Se já tens estes
+-- objetos na tua base de dados REAL com lógica diferente (nomeadamente
+-- `get_realized_pnl`, que pode usar FIFO em vez de custo médio), correr
+-- este script vai SUBSTITUIR essa lógica. Revê antes de correr em
+-- produção se isso se aplicar a ti.
 -- =========================================================================
 
 
@@ -71,11 +79,6 @@ create table if not exists public.accounts (
   currency            text not null default 'EUR',
   institution         text,
   opening_balance     numeric(18,2) not null default 0,
-  -- Ponto de reconciliação: quando importamos um extrato DEGIRO, confiamos
-  -- no saldo que a própria DEGIRO reporta em vez de recalcular tudo a
-  -- partir das nossas transações (captura depósitos, levantamentos, cash
-  -- sweeps, juros, etc. que não modelamos individualmente). A partir daqui
-  -- só somamos movimentos que aconteçam DEPOIS de reconciled_at.
   reconciled_balance  numeric(18,2),
   reconciled_at       timestamptz,
   current_balance     numeric(18,2) not null default 0,
@@ -101,11 +104,7 @@ create table if not exists public.categories (
   color                 text default '#8B93A1',
   icon                  text,
   is_default            boolean not null default false,
-  -- Categorias "ajuste" ficam de fora dos totais de receitas/despesas nos
-  -- relatórios (ex: correções de saldo, movimentos internos).
   exclude_from_reports  boolean not null default false,
-  -- Marca esta categoria como representando uma comissão/taxa (ex:
-  -- "Comissões Bancárias"), para entrar no resumo de Comissões e Taxas.
   is_fee                boolean not null default false,
   created_at            timestamptz not null default now(),
   unique (user_id, name, kind)
@@ -158,6 +157,27 @@ create index if not exists idx_assets_symbol on public.assets(symbol);
 
 
 -- =========================================================================
+-- 9. IMPORTAÇÕES CSV (histórico/auditoria de uploads DEGIRO)
+-- =========================================================================
+-- Criada ANTES de asset_transactions porque esta tem uma foreign key
+-- para csv_imports.id (import_id) — ordem que já respeitávamos no schema,
+-- e que agora o código do route.ts também respeita ao inserir os dados.
+create table if not exists public.csv_imports (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  account_id      uuid references public.accounts(id) on delete set null,
+  file_name       text not null,
+  file_hash       text not null,
+  rows_total      integer not null default 0,
+  rows_inserted   integer not null default 0,
+  rows_duplicated integer not null default 0,
+  rows_failed     integer not null default 0,
+  created_at      timestamptz not null default now(),
+  unique (user_id, file_hash)
+);
+
+
+-- =========================================================================
 -- 7. TRANSAÇÕES DE BOLSA (compras, vendas, dividendos, comissões — DEGIRO)
 -- =========================================================================
 create table if not exists public.asset_transactions (
@@ -165,9 +185,6 @@ create table if not exists public.asset_transactions (
   user_id         uuid not null references auth.users(id) on delete cascade,
   account_id      uuid not null references public.accounts(id) on delete cascade,
   asset_id        uuid not null references public.assets(id) on delete cascade,
-  -- Liga esta transação à importação DEGIRO que a criou. Com
-  -- "on delete cascade", apagar a linha em csv_imports apaga
-  -- automaticamente todas as transações que essa importação trouxe.
   import_id       uuid references public.csv_imports(id) on delete cascade,
   operation       asset_operation not null,
   occurred_on     date not null,
@@ -187,10 +204,6 @@ create table if not exists public.asset_transactions (
   created_at      timestamptz not null default now(),
   unique (user_id, source_hash)
 );
--- Nota de ordem: csv_imports é criada na secção 9, mas o Postgres resolve
--- a referência acima na mesma transação de execução do script; se
--- preferires correr isto por partes, cria primeiro csv_imports (secção 9)
--- e só depois esta tabela, ou usa a versão idempotente abaixo:
 alter table public.asset_transactions add column if not exists import_id uuid references public.csv_imports(id) on delete cascade;
 
 create index if not exists idx_asset_tx_user_date on public.asset_transactions(user_id, occurred_on desc);
@@ -211,31 +224,8 @@ create table if not exists public.asset_quotes (
 
 
 -- =========================================================================
--- 9. IMPORTAÇÕES CSV (histórico/auditoria de uploads DEGIRO)
+-- 10. RECORRÊNCIAS, ORÇAMENTOS, HISTÓRICO DE PATRIMÓNIO
 -- =========================================================================
-create table if not exists public.csv_imports (
-  id              uuid primary key default gen_random_uuid(),
-  user_id         uuid not null references auth.users(id) on delete cascade,
-  account_id      uuid references public.accounts(id) on delete set null,
-  file_name       text not null,
-  file_hash       text not null,
-  rows_total      integer not null default 0,
-  rows_inserted   integer not null default 0,
-  rows_duplicated integer not null default 0,
-  rows_failed     integer not null default 0,
-  created_at      timestamptz not null default now(),
-  unique (user_id, file_hash)
-);
-
-
--- =========================================================================
--- 10. RECONSTRUÍDO — recorrências, orçamentos, histórico de património
--- =========================================================================
--- Ver aviso no topo do ficheiro. Estas definições foram inferidas do
--- código (types/database.ts + chamadas RPC), não copiadas do teu
--- "002_melhorias.sql" original (que não foi partilhado).
-
--- 10.1 Recorrências (renda, salário, subscrições...)
 create table if not exists public.recurring_transactions (
   id                    uuid primary key default gen_random_uuid(),
   user_id               uuid not null references auth.users(id) on delete cascade,
@@ -256,9 +246,6 @@ create table if not exists public.recurring_transactions (
 
 create index if not exists idx_recurring_user on public.recurring_transactions(user_id);
 
--- Gera os movimentos de qualquer recorrência vencida (next_occurrence <=
--- hoje) e avança next_occurrence — repete até estar em dia ou até
--- ultrapassar end_date, altura em que desativa a recorrência sozinha.
 create or replace function public.apply_due_recurring_transactions(p_user_id uuid)
 returns void language plpgsql as $$
 declare
@@ -293,7 +280,6 @@ begin
 end;
 $$;
 
--- 10.2 Orçamentos mensais por categoria
 create table if not exists public.budgets (
   id              uuid primary key default gen_random_uuid(),
   user_id         uuid not null references auth.users(id) on delete cascade,
@@ -320,7 +306,6 @@ join public.categories c on c.id = b.category_id
 left join public.transactions t on t.category_id = b.category_id and t.user_id = b.user_id
 group by b.user_id, b.category_id, c.name, c.color, b.monthly_limit;
 
--- 10.3 Histórico diário de património, para o gráfico de evolução
 create table if not exists public.net_worth_snapshots (
   id                  uuid primary key default gen_random_uuid(),
   user_id             uuid not null references auth.users(id) on delete cascade,
@@ -339,10 +324,6 @@ create table if not exists public.net_worth_snapshots (
 create index if not exists idx_net_worth_snapshots_user_date
   on public.net_worth_snapshots(user_id, snapshot_date);
 
--- Faz upsert do snapshot de HOJE, recalculado a partir das contas +
--- portfolio_positions + asset_quotes — a mesma lógica de
--- lib/data/net-worth.ts, mas em SQL, para não depender de a app estar
--- aberta em todos os dias para capturar o ponto.
 create or replace function public.capture_net_worth_snapshot(p_user_id uuid)
 returns void language plpgsql as $$
 declare
@@ -394,9 +375,6 @@ begin
 end;
 $$;
 
--- 10.4 Lucro realizado por ativo (custo médio, mesma metodologia usada em
--- portfolio_positions/HoldingsTable — não é FIFO). Para cada venda, o
--- custo é o preço médio de compra acumulado até esse ponto no tempo.
 create or replace function public.get_realized_pnl(p_user_id uuid)
 returns table(asset_id uuid, realized_pnl numeric)
 language sql stable as $$
@@ -449,8 +427,6 @@ create table if not exists public.category_rules (
 
 create index if not exists idx_category_rules_user on public.category_rules(user_id);
 
--- Sugere a categoria cuja palavra-chave mais longa (mais específica)
--- aparece no texto; em empate, ganha a de maior "priority".
 create or replace function public.suggest_category(p_user_id uuid, p_description text)
 returns uuid language sql stable as $$
   select cr.category_id
@@ -462,11 +438,8 @@ returns uuid language sql stable as $$
   limit 1;
 $$;
 
--- Marca a categoria por omissão já existente como sendo uma taxa.
 update public.categories set is_fee = true where name = 'Comissões Bancárias' and kind = 'despesa';
 
--- Resumo agregado: comissões bancárias (categorias is_fee=true) +
--- comissões de investimento (avulsas + embutidas nas transações DEGIRO).
 create or replace function public.get_fees_summary(p_user_id uuid, p_from date default '1900-01-01')
 returns table(banking_fees numeric, investment_fees numeric, total_fees numeric)
 language sql stable as $$
@@ -495,7 +468,6 @@ language sql stable as $$
     ) i;
 $$;
 
--- Lista detalhada das linhas que compõem as comissões/taxas.
 create or replace function public.get_fee_transactions(p_user_id uuid, p_from date default '1900-01-01')
 returns table(occurred_on date, source text, description text, amount numeric)
 language sql stable as $$
@@ -530,9 +502,6 @@ $$;
 -- =========================================================================
 -- 12. VIEWS PRINCIPAIS
 -- =========================================================================
-
--- Saldo corrente de cada conta, a partir de opening/reconciled_balance +
--- transações posteriores ao ponto de reconciliação.
 create or replace view public.account_balances as
 select
   a.id as account_id,
@@ -567,8 +536,6 @@ from public.accounts a
 left join public.transactions t on t.account_id = a.id
 group by a.id;
 
--- Posições atuais do portefólio (versão final, com total_fees e
--- first_purchase_at — equivalente ao estado depois de 003_correcoes_build.sql).
 create or replace view public.portfolio_positions as
 select
   at.user_id,
@@ -608,10 +575,6 @@ begin
 end;
 $$;
 
--- Fixa o saldo de uma conta a um valor conhecido num instante (ex: o saldo
--- que a DEGIRO reportou na última linha de um extrato). Só avança o ponto
--- de reconciliação para a frente — reimportar um ficheiro mais antigo
--- nunca faz a conta "recuar".
 create or replace function public.reconcile_account_balance(
   p_account_id uuid, p_balance numeric, p_at timestamptz
 )
@@ -687,7 +650,6 @@ alter table public.budgets enable row level security;
 alter table public.net_worth_snapshots enable row level security;
 alter table public.category_rules enable row level security;
 
--- accounts
 drop policy if exists "accounts_select_own" on public.accounts;
 create policy "accounts_select_own" on public.accounts for select using (auth.uid() = user_id);
 drop policy if exists "accounts_insert_own" on public.accounts;
@@ -697,7 +659,6 @@ create policy "accounts_update_own" on public.accounts for update using (auth.ui
 drop policy if exists "accounts_delete_own" on public.accounts;
 create policy "accounts_delete_own" on public.accounts for delete using (auth.uid() = user_id);
 
--- categories
 drop policy if exists "categories_select_own" on public.categories;
 create policy "categories_select_own" on public.categories for select using (auth.uid() = user_id);
 drop policy if exists "categories_insert_own" on public.categories;
@@ -707,7 +668,6 @@ create policy "categories_update_own" on public.categories for update using (aut
 drop policy if exists "categories_delete_own" on public.categories;
 create policy "categories_delete_own" on public.categories for delete using (auth.uid() = user_id);
 
--- transactions
 drop policy if exists "transactions_select_own" on public.transactions;
 create policy "transactions_select_own" on public.transactions for select using (auth.uid() = user_id);
 drop policy if exists "transactions_insert_own" on public.transactions;
@@ -717,7 +677,6 @@ create policy "transactions_update_own" on public.transactions for update using 
 drop policy if exists "transactions_delete_own" on public.transactions;
 create policy "transactions_delete_own" on public.transactions for delete using (auth.uid() = user_id);
 
--- asset_transactions
 drop policy if exists "asset_tx_select_own" on public.asset_transactions;
 create policy "asset_tx_select_own" on public.asset_transactions for select using (auth.uid() = user_id);
 drop policy if exists "asset_tx_insert_own" on public.asset_transactions;
@@ -727,7 +686,6 @@ create policy "asset_tx_update_own" on public.asset_transactions for update usin
 drop policy if exists "asset_tx_delete_own" on public.asset_transactions;
 create policy "asset_tx_delete_own" on public.asset_transactions for delete using (auth.uid() = user_id);
 
--- csv_imports
 drop policy if exists "csv_imports_select_own" on public.csv_imports;
 create policy "csv_imports_select_own" on public.csv_imports for select using (auth.uid() = user_id);
 drop policy if exists "csv_imports_insert_own" on public.csv_imports;
@@ -735,7 +693,6 @@ create policy "csv_imports_insert_own" on public.csv_imports for insert with che
 drop policy if exists "csv_imports_delete_own" on public.csv_imports;
 create policy "csv_imports_delete_own" on public.csv_imports for delete using (auth.uid() = user_id);
 
--- assets & quotes: catálogo partilhado, leitura para todos os autenticados
 drop policy if exists "assets_select_all_authenticated" on public.assets;
 create policy "assets_select_all_authenticated" on public.assets for select using (auth.role() = 'authenticated');
 drop policy if exists "assets_insert_authenticated" on public.assets;
@@ -747,7 +704,6 @@ create policy "asset_quotes_upsert_authenticated" on public.asset_quotes for ins
 drop policy if exists "asset_quotes_update_authenticated" on public.asset_quotes;
 create policy "asset_quotes_update_authenticated" on public.asset_quotes for update using (auth.role() = 'authenticated');
 
--- recurring_transactions
 drop policy if exists "recurring_select_own" on public.recurring_transactions;
 create policy "recurring_select_own" on public.recurring_transactions for select using (auth.uid() = user_id);
 drop policy if exists "recurring_insert_own" on public.recurring_transactions;
@@ -757,7 +713,6 @@ create policy "recurring_update_own" on public.recurring_transactions for update
 drop policy if exists "recurring_delete_own" on public.recurring_transactions;
 create policy "recurring_delete_own" on public.recurring_transactions for delete using (auth.uid() = user_id);
 
--- budgets
 drop policy if exists "budgets_select_own" on public.budgets;
 create policy "budgets_select_own" on public.budgets for select using (auth.uid() = user_id);
 drop policy if exists "budgets_insert_own" on public.budgets;
@@ -767,7 +722,6 @@ create policy "budgets_update_own" on public.budgets for update using (auth.uid(
 drop policy if exists "budgets_delete_own" on public.budgets;
 create policy "budgets_delete_own" on public.budgets for delete using (auth.uid() = user_id);
 
--- net_worth_snapshots
 drop policy if exists "net_worth_snapshots_select_own" on public.net_worth_snapshots;
 create policy "net_worth_snapshots_select_own" on public.net_worth_snapshots for select using (auth.uid() = user_id);
 drop policy if exists "net_worth_snapshots_insert_own" on public.net_worth_snapshots;
@@ -775,7 +729,6 @@ create policy "net_worth_snapshots_insert_own" on public.net_worth_snapshots for
 drop policy if exists "net_worth_snapshots_update_own" on public.net_worth_snapshots;
 create policy "net_worth_snapshots_update_own" on public.net_worth_snapshots for update using (auth.uid() = user_id);
 
--- category_rules
 drop policy if exists "category_rules_select_own" on public.category_rules;
 create policy "category_rules_select_own" on public.category_rules for select using (auth.uid() = user_id);
 drop policy if exists "category_rules_insert_own" on public.category_rules;
@@ -793,7 +746,6 @@ create or replace function public.seed_default_categories(p_user_id uuid)
 returns void language plpgsql as $$
 begin
   insert into public.categories (user_id, name, kind, color, is_default) values
-    -- Receitas
     (p_user_id, 'Salário',             'receita', '#3DDC97', true),
     (p_user_id, 'Freelance / Extra',   'receita', '#2FB380', true),
     (p_user_id, 'Dividendos',          'receita', '#4C9AFF', true),
@@ -801,7 +753,6 @@ begin
     (p_user_id, 'Presentes Recebidos', 'receita', '#8FD9C4', true),
     (p_user_id, 'Outros Rendimentos',  'receita', '#8B93A1', true),
 
-    -- Casa e contas fixas
     (p_user_id, 'Renda / Prestação Casa', 'despesa', '#9B7EDE', true),
     (p_user_id, 'Condomínio',             'despesa', '#A98CE0', true),
     (p_user_id, 'Eletricidade',           'despesa', '#D9A441', true),
@@ -811,29 +762,24 @@ begin
     (p_user_id, 'Telemóvel',              'despesa', '#6E7BE0', true),
     (p_user_id, 'Manutenção da Casa',     'despesa', '#B69A78', true),
 
-    -- Alimentação
     (p_user_id, 'Supermercado',        'despesa', '#E5484D', true),
     (p_user_id, 'Restaurantes',        'despesa', '#F0685E', true),
     (p_user_id, 'Cafés / Snacks',      'despesa', '#F58F86', true),
 
-    -- Transportes
     (p_user_id, 'Combustível',         'despesa', '#D9A441', true),
     (p_user_id, 'Transportes Públicos','despesa', '#C98F2E', true),
     (p_user_id, 'Manutenção do Carro', 'despesa', '#B87F1E', true),
     (p_user_id, 'Portagens / Parque',  'despesa', '#DDB05A', true),
     (p_user_id, 'Seguro Automóvel',    'despesa', '#C79A4A', true),
 
-    -- Saúde e bem-estar
     (p_user_id, 'Farmácia',            'despesa', '#F2789F', true),
     (p_user_id, 'Médico / Consultas',  'despesa', '#EE5A88', true),
     (p_user_id, 'Ginásio / Desporto',  'despesa', '#F79CB7', true),
     (p_user_id, 'Seguro de Saúde',     'despesa', '#E56E97', true),
 
-    -- Educação e desenvolvimento
     (p_user_id, 'Educação / Cursos',   'despesa', '#5B8DEF', true),
     (p_user_id, 'Livros',              'despesa', '#7FA6F5', true),
 
-    -- Lazer e estilo de vida
     (p_user_id, 'Lazer / Entretenimento', 'despesa', '#5EC8D8', true),
     (p_user_id, 'Viagens / Férias',       'despesa', '#4AB0C2', true),
     (p_user_id, 'Subscrições (Streaming, Apps)', 'despesa', '#7C8CF8', true),
@@ -842,7 +788,6 @@ begin
     (p_user_id, 'Presentes Dados',        'despesa', '#F5C97A', true),
     (p_user_id, 'Animais de Estimação',   'despesa', '#8FBF6B', true),
 
-    -- Finanças e obrigações
     (p_user_id, 'Impostos',            'despesa', '#B0525C', true),
     (p_user_id, 'Comissões Bancárias', 'despesa', '#9C6B6F', true),
     (p_user_id, 'Seguros (Outros)',    'despesa', '#A87A82', true),

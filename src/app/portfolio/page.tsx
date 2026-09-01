@@ -55,7 +55,7 @@ export default async function PortfolioPage() {
     }));
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
         <h1 className="font-display text-3xl text-text">Portefólio</h1>
@@ -85,9 +85,9 @@ export default async function PortfolioPage() {
       </div>
 
       <Card className="mb-8">
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
           <CardLabel>Importar Extrato DEGIRO</CardLabel>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <UndoImportButton />
             <WipeImportsButton />
           </div>
@@ -106,7 +106,7 @@ export default async function PortfolioPage() {
             <div>
               <CardLabel className="mb-3">Desempenho Global</CardLabel>
               <p
-                className={`font-display text-4xl tabular ${
+                className={`font-display text-3xl sm:text-4xl tabular break-words ${
                   performancePct >= 0 ? "text-gain" : "text-loss"
                 }`}
               >
@@ -124,7 +124,7 @@ export default async function PortfolioPage() {
       )}
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <CardLabel>Posições Atuais</CardLabel>
           <RefreshQuotesButton />
         </div>

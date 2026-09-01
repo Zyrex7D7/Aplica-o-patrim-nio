@@ -37,22 +37,22 @@ function BudgetRow({ status }: { status: BudgetStatus }) {
 
   return (
     <li>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="flex items-center gap-2 text-sm text-text">
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span className="flex items-center gap-2 text-sm text-text min-w-0">
           <span
-            className="inline-block h-2 w-2 rounded-full"
+            className="inline-block h-2 w-2 rounded-full shrink-0"
             style={{ backgroundColor: status.category_color ?? "#8B93A1" }}
           />
-          {status.category_name}
+          <span className="truncate">{status.category_name}</span>
         </span>
-        <span className="flex items-center gap-3">
-          <span className={`tabular text-xs ${over ? "text-loss" : "text-text-muted"}`}>
+        <span className="flex items-center gap-3 shrink-0">
+          <span className={`tabular text-xs whitespace-nowrap ${over ? "text-loss" : "text-text-muted"}`}>
             {formatCurrency(status.spent_this_month)} / {formatCurrency(status.monthly_limit)}
           </span>
           <button
             onClick={handleDelete}
             disabled={isPending}
-            className="text-text-faint hover:text-loss transition-colors disabled:opacity-50"
+            className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
           >
             <Trash2 size={13} strokeWidth={1.75} />
           </button>
