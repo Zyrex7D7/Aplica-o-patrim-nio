@@ -1,9 +1,8 @@
-import Link from "next/link";
-import { History } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardLabel } from "@/components/ui/card";
 import { DegiroUpload } from "@/components/portfolio/degiro-upload";
 import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
+import { UndoImportButton } from "@/components/portfolio/undo-import-button";
 import { HoldingsTable } from "@/components/portfolio/holdings-table";
 import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
 import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
@@ -38,6 +37,7 @@ export default async function PortfolioPage() {
   const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
 
   const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+  const totalFees = breakdown.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
   const performancePct =
     breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
   const totalRealizedPnl = ((realizedRows ?? []) as RealizedPnlRow[]).reduce(
@@ -55,25 +55,16 @@ export default async function PortfolioPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
-          <h1 className="font-display text-3xl text-text">Portefólio</h1>
-          <p className="text-sm text-text-muted mt-2">
-            Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
-            acompanha o valor atual e o lucro ou prejuízo de cada posição.
-          </p>
-        </div>
-        <Link
-          href="/portfolio/importacoes"
-          className="shrink-0 flex items-center gap-1.5 text-xs text-text-faint hover:text-gold transition-colors whitespace-nowrap mt-1"
-        >
-          <History size={13} strokeWidth={1.75} />
-          Histórico de importações
-        </Link>
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
+        <h1 className="font-display text-3xl text-text">Portefólio</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
+          acompanha o valor atual e o lucro ou prejuízo de cada posição.
+        </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
         <StatCard label="Capital investido" value={breakdown.portfolioCost} />
         <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
         <StatCard
@@ -88,11 +79,15 @@ export default async function PortfolioPage() {
           hint="Ganhos/perdas já vendidos, custo médio"
         />
         <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
+        <StatCard label="Comissões e Taxas Pagas" value={totalFees} tone="loss" />
         <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
       </div>
 
       <Card className="mb-8">
-        <CardLabel className="mb-3">Importar Extrato DEGIRO</CardLabel>
+        <div className="flex items-center justify-between mb-3">
+          <CardLabel>Importar Extrato DEGIRO</CardLabel>
+          <UndoImportButton />
+        </div>
         <DegiroUpload brokerAccounts={brokerAccounts} />
       </Card>
 

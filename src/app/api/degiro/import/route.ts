@@ -10,7 +10,9 @@ import { hashFileContent, parseDegiroCsv } from "@/lib/degiro/parser";
  *    no parsing feito no browser).
  * 2. Garante que cada ISIN/produto tem uma linha correspondente em `assets`.
  * 3. Insere as `asset_transactions`, ignorando duplicados através da
- *    restrição única (user_id, source_hash).
+ *    restrição única (user_id, source_hash), e liga-as a esta importação
+ *    via `import_id` — assim é possível desfazer a importação inteira mais
+ *    tarde apagando só a linha em `csv_imports` (cascade trata do resto).
  * 4. Regista um resumo em `csv_imports` para auditoria/histórico.
  */
 export async function POST(req: NextRequest) {
@@ -56,6 +58,11 @@ export async function POST(req: NextRequest) {
       { status: 422 }
     );
   }
+
+  // Id gerado antecipadamente para conseguirmos ligar já as transações a
+  // esta importação (ver rowsToInsert abaixo) mesmo antes de inserirmos a
+  // linha em csv_imports.
+  const importId = crypto.randomUUID();
 
   // --- 1. Upsert de ativos (por ISIN; fallback pelo nome do produto) ------
   const assetIdByKey = new Map<string, string>();
@@ -107,6 +114,7 @@ export async function POST(req: NextRequest) {
       user_id: userId,
       account_id: accountId,
       asset_id: assetIdByKey.get(key)!,
+      import_id: importId,
       operation: row.operation,
       occurred_on: row.date,
       occurred_at: row.datetime,
@@ -138,6 +146,7 @@ export async function POST(req: NextRequest) {
   const rowsDuplicated = rowsToInsert.length - rowsInserted;
 
   await supabase.from("csv_imports").insert({
+    id: importId,
     user_id: userId,
     account_id: accountId,
     file_name: fileName,
