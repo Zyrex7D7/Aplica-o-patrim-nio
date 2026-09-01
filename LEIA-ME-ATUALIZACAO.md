@@ -15,6 +15,11 @@
    - `src/app/portfolio/page.tsx`
    - `src/app/relatorios/page.tsx`
 
+4. **Ficheiro novo adicional**:
+   - `src/components/portfolio/wipe-imports-button.tsx`
+   (e `src/app/portfolio/actions.ts` já vem com a função `deleteAllImports`
+   incluída — se já tinhas copiado a versão anterior, substitui-a por esta.)
+
 ## O que muda
 
 - **Remover última importação**: botão em Portefólio → "Importar Extrato
@@ -30,3 +35,22 @@
   "Visão Geral" (o que já lá estava) e "Orçamentos" (o formulário e a
   lista de orçamentos por categoria, que antes ficavam sempre visíveis no
   fundo da página).
+
+- **Apagar tudo e recomeçar**: segundo botão, ao lado de "Remover última
+  importação". Apaga TODAS as transações de bolsa e importações DEGIRO do
+  utilizador, e limpa o ponto de reconciliação das contas afetadas (o
+  saldo volta a ser calculado a partir do saldo inicial + movimentos de
+  orçamento, como se nunca tivesse havido nenhuma importação). Pede para
+  escreveres "APAGAR" antes de confirmar, porque é irreversível. Não apaga
+  as contas nem o catálogo de ativos, só os dados de importação.
+
+## Nota sobre o SQL "do projeto todo"
+
+O `schema.sql` que partilhaste refere um `002_melhorias.sql` que não veio
+incluído — é onde vivem `budgets`, `recurring_transactions`, a view
+`budget_status` e a função `get_realized_pnl` (usadas na app, mas sem
+definição disponível aqui). Não incluí essas peças no consolidado porque
+`get_realized_pnl` faz cálculo de lucro realizado sobre dinheiro a sério, e
+prefiro não adivinhar essa fórmula. Se encontrares esse ficheiro
+(SQL Editor do Supabase → histórico, ou Database → Migrations), manda-mo
+que junto tudo num script único.

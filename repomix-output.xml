@@ -85,24 +85,35 @@ src/
         route.ts
     contas/
       actions.ts
+      loading.tsx
       page.tsx
     dashboard/
+      loading.tsx
       page.tsx
     login/
       page.tsx
     portfolio/
+      importacoes/
+        page.tsx
+      actions.ts
+      loading.tsx
       page.tsx
     recorrentes/
       actions.ts
+      loading.tsx
       page.tsx
     relatorios/
       actions.ts
+      loading.tsx
       page.tsx
     transacoes/
       actions.ts
+      loading.tsx
       page.tsx
     apple-icon.png
+    error.tsx
     favicon.ico
+    global-error.tsx
     globals.css
     icon.png
     layout.tsx
@@ -112,6 +123,7 @@ src/
     accounts/
       account-form.tsx
       archive-account-button.tsx
+      edit-account-dialog.tsx
     charts/
       donut-chart.tsx
     dashboard/
@@ -123,6 +135,7 @@ src/
       holdings-table.tsx
       performance-highlights.tsx
       refresh-quotes-button.tsx
+      undo-import-button.tsx
     recurring/
       recurring-form.tsx
       recurring-list.tsx
@@ -130,13 +143,21 @@ src/
       budget-form.tsx
       budget-list.tsx
       category-breakdown-chart.tsx
+      export-csv-button.tsx
+      fees-summary.tsx
       period-filter.tsx
+      reports-tabs.tsx
     transactions/
+      category-manager.tsx
       category-quick-add.tsx
+      category-rules-manager.tsx
+      edit-transaction-dialog.tsx
+      transaction-filters.tsx
       transaction-form.tsx
       transaction-list.tsx
     ui/
       card.tsx
+      skeleton.tsx
     bottom-nav.tsx
     mobile-header.tsx
     mobile-nav.tsx
@@ -163,6 +184,8 @@ src/
     database.ts
   proxy.ts
 supabase/
+  004_regras_categorizacao_e_taxas.sql
+  004_remover_importacao.sql
   schema.sql
 test-fixtures/
   degiro-conta.csv
@@ -173,6 +196,9 @@ test-fixtures/
 AGENTS.md
 CLAUDE.md
 eslint.config.mjs
+LEIA-ME-ALTERACOES.md
+LEIA-ME-ATUALIZACAO.md
+LEIA-ME-RONDA-2.md
 LEIA-ME.md
 next.config.ts
 package.json
@@ -431,6 +457,153 @@ export async function GET(request: NextRequest) {
 }
 </file>
 
+<file path="src/app/contas/loading.tsx">
+import { PageSkeleton } from "@/components/ui/skeleton";
+
+export default function Loading() {
+  return <PageSkeleton />;
+}
+</file>
+
+<file path="src/app/dashboard/loading.tsx">
+import { PageSkeleton } from "@/components/ui/skeleton";
+
+export default function Loading() {
+  return <PageSkeleton />;
+}
+</file>
+
+<file path="src/app/portfolio/importacoes/page.tsx">
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { Card } from "@/components/ui/card";
+import type { CsvImport } from "@/types/database";
+
+export default async function ImportacoesPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: imports } = await supabase
+    .from("csv_imports")
+    .select("*")
+    .eq("user_id", user!.id)
+    .order("created_at", { ascending: false });
+
+  const list: CsvImport[] = imports ?? [];
+
+  return (
+    <div className="max-w-4xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <Link
+          href="/portfolio"
+          className="inline-flex items-center gap-1.5 text-xs text-text-faint hover:text-gold transition-colors mb-4"
+        >
+          <ArrowLeft size={13} strokeWidth={1.75} />
+          Voltar ao Portefólio
+        </Link>
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
+        <h1 className="font-display text-3xl text-text">Histórico de Importações</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Todos os extratos da DEGIRO que já carregaste, com o número de transações inseridas e
+          ignoradas em cada um.
+        </p>
+      </header>
+
+      <Card>
+        {list.length === 0 ? (
+          <p className="text-sm text-text-muted py-6 text-center">
+            Ainda não importaste nenhum ficheiro.
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {list.map((imp) => (
+              <li
+                key={imp.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 border-b border-line-soft last:border-0"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm text-text truncate">{imp.file_name}</p>
+                  <p className="text-xs text-text-faint mt-0.5">
+                    {new Date(imp.created_at).toLocaleString("pt-PT")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs shrink-0">
+                  <span className="text-text-muted">Total: {imp.rows_total}</span>
+                  <span className="text-gain">Inseridas: {imp.rows_inserted}</span>
+                  <span className="text-text-faint">Duplicadas: {imp.rows_duplicated}</span>
+                  {imp.rows_failed > 0 && <span className="text-loss">Falhadas: {imp.rows_failed}</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/portfolio/actions.ts">
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Remove a importação DEGIRO mais recente do utilizador. Graças ao
+ * "on delete cascade" em asset_transactions.import_id, apagar a linha em
+ * csv_imports apaga automaticamente todas as transações que essa
+ * importação criou.
+ *
+ * Nota: o "reconciled_balance" da conta (o saldo que a DEGIRO reportou
+ * nesta importação) não é revertido automaticamente — só é substituído
+ * na próxima importação que reconciliares.
+ */
+export async function deleteLastImport(): Promise<{ error?: string; message?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { data: lastImport, error: findError } = await supabase
+    .from("csv_imports")
+    .select("id, file_name, rows_inserted")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (findError) return { error: findError.message };
+  if (!lastImport) return { error: "Não há nenhuma importação para remover." };
+
+  const { error: deleteError } = await supabase
+    .from("csv_imports")
+    .delete()
+    .eq("id", lastImport.id);
+
+  if (deleteError) return { error: deleteError.message };
+
+  revalidatePath("/portfolio");
+  revalidatePath("/dashboard");
+
+  return {
+    message: `Importação "${lastImport.file_name}" removida (${lastImport.rows_inserted} transação(ões)).`,
+  };
+}
+</file>
+
+<file path="src/app/portfolio/loading.tsx">
+import { PageSkeleton } from "@/components/ui/skeleton";
+
+export default function Loading() {
+  return <PageSkeleton />;
+}
+</file>
+
 <file path="src/app/recorrentes/actions.ts">
 "use server";
 
@@ -501,6 +674,14 @@ export async function deleteRecurringTransaction(id: string): Promise<{ error?: 
   if (error) return { error: error.message };
   revalidatePath("/recorrentes");
   return {};
+}
+</file>
+
+<file path="src/app/recorrentes/loading.tsx">
+import { PageSkeleton } from "@/components/ui/skeleton";
+
+export default function Loading() {
+  return <PageSkeleton />;
 }
 </file>
 
@@ -617,89 +798,118 @@ export async function deleteBudget(categoryId: string): Promise<{ error?: string
 }
 </file>
 
-<file path="src/app/transacoes/actions.ts">
-"use server";
+<file path="src/app/relatorios/loading.tsx">
+import { PageSkeleton } from "@/components/ui/skeleton";
 
-import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import type { TransactionType } from "@/types/database";
-
-function parseAmount(raw: FormDataEntryValue | null): number {
-  return Number(String(raw ?? "0").replace(",", "."));
+export default function Loading() {
+  return <PageSkeleton />;
 }
+</file>
 
-export async function createTransaction(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado.");
+<file path="src/app/transacoes/loading.tsx">
+import { PageSkeleton } from "@/components/ui/skeleton";
 
-  const type = String(formData.get("type") ?? "despesa") as TransactionType;
-  const amount = parseAmount(formData.get("amount"));
-  const occurredOn = String(formData.get("occurred_on") ?? "");
-  const accountId = String(formData.get("account_id") ?? "");
-  const transferAccountId = String(formData.get("transfer_account_id") ?? "") || null;
-  const categoryId = String(formData.get("category_id") ?? "") || null;
-  const description = String(formData.get("description") ?? "").trim() || null;
-
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error("O valor tem de ser maior que zero.");
-  if (!occurredOn) throw new Error("A data é obrigatória.");
-  if (!accountId) throw new Error("Escolhe a conta de origem/destino.");
-  if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
-    throw new Error("Escolhe uma conta de destino diferente da conta de origem.");
-  }
-
-  const { error } = await supabase.from("transactions").insert({
-    user_id: user.id,
-    type,
-    amount,
-    occurred_on: occurredOn,
-    account_id: accountId,
-    transfer_account_id: type === "transferencia" ? transferAccountId : null,
-    category_id: type === "transferencia" ? null : categoryId,
-    description,
-  });
-
-  if (error) throw new Error(error.message);
-  revalidatePath("/transacoes");
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
-  revalidatePath("/relatorios");
+export default function Loading() {
+  return <PageSkeleton />;
 }
+</file>
 
-export async function deleteTransaction(transactionId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("transactions").delete().eq("id", transactionId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/transacoes");
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
-  revalidatePath("/relatorios");
+<file path="src/app/error.tsx">
+"use client";
+
+import { useEffect } from "react";
+import { AlertTriangle, RotateCw } from "lucide-react";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
+  return (
+    <div className="min-h-[70vh] flex items-center justify-center px-6">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-loss-soft text-loss">
+          <AlertTriangle size={22} strokeWidth={1.75} />
+        </div>
+        <p className="font-display text-xl text-text mb-2">Algo correu mal</p>
+        <p className="text-sm text-text-muted mb-6 leading-relaxed">
+          Não foi possível carregar esta página. Pode ter sido uma falha temporária a ligar à
+          base de dados — tenta outra vez.
+        </p>
+        <button
+          onClick={() => reset()}
+          className="inline-flex items-center gap-2 rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90"
+        >
+          <RotateCw size={14} strokeWidth={1.75} />
+          Tentar novamente
+        </button>
+      </div>
+    </div>
+  );
 }
+</file>
 
-export async function createCategory(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado.");
+<file path="src/app/global-error.tsx">
+"use client";
 
-  const name = String(formData.get("name") ?? "").trim();
-  const kind = String(formData.get("kind") ?? "despesa") as "receita" | "despesa";
-  const color = String(formData.get("color") ?? "#8B93A1");
+import { useEffect } from "react";
 
-  if (!name) throw new Error("O nome da categoria é obrigatório.");
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
 
-  const { error } = await supabase.from("categories").insert({
-    user_id: user.id,
-    name,
-    kind,
-    color,
-  });
-
-  if (error) throw new Error(error.message);
-  revalidatePath("/transacoes");
+  return (
+    <html lang="pt-PT">
+      <body
+        style={{
+          background: "#0B0F14",
+          color: "#EDEFF2",
+          fontFamily: "ui-sans-serif, system-ui, sans-serif",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ maxWidth: 360 }}>
+          <p style={{ fontSize: 18, marginBottom: 8 }}>Erro inesperado</p>
+          <p style={{ fontSize: 14, color: "#8A93A3", marginBottom: 20, lineHeight: 1.5 }}>
+            A aplicação encontrou um problema grave ao carregar. Recarrega a página; se persistir,
+            os teus dados na Supabase continuam intactos.
+          </p>
+          <button
+            onClick={() => reset()}
+            style={{
+              background: "#D9A441",
+              color: "#0B0F14",
+              border: "none",
+              borderRadius: 8,
+              padding: "10px 18px",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </body>
+    </html>
+  );
 }
 </file>
 
@@ -708,6 +918,113 @@ import { redirect } from "next/navigation";
 
 export default function RootPage() {
   redirect("/login");
+}
+</file>
+
+<file path="src/components/accounts/edit-account-dialog.tsx">
+"use client";
+
+import { useState, useTransition } from "react";
+import { Pencil, X } from "lucide-react";
+import { toast } from "sonner";
+import { updateAccount } from "@/app/contas/actions";
+import type { Account } from "@/types/database";
+
+const TYPE_LABEL: Record<Account["type"], string> = {
+  banco: "Banco",
+  poupanca: "Poupança",
+  corretora: "Corretora",
+  numerario: "Numerário",
+};
+
+export function EditAccountDialog({ account }: { account: Account }) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      const result = await updateAccount(account.id, formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Conta atualizada.");
+      setOpen(false);
+    });
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        title="Editar conta"
+        className="text-text-faint hover:text-gold transition-colors"
+      >
+        <Pencil size={14} strokeWidth={1.75} />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+          <div className="relative w-full max-w-sm rounded-lg border border-line bg-surface p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-text">Editar Conta</p>
+              <button onClick={() => setOpen(false)} className="text-text-faint hover:text-text">
+                <X size={18} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <form action={handleSubmit} className="flex flex-col gap-3">
+              <input
+                name="name"
+                required
+                defaultValue={account.name}
+                placeholder="Nome"
+                className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+              />
+              <select
+                name="type"
+                defaultValue={account.type}
+                className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+              >
+                {(Object.keys(TYPE_LABEL) as Account["type"][]).map((t) => (
+                  <option key={t} value={t}>
+                    {TYPE_LABEL[t]}
+                  </option>
+                ))}
+              </select>
+              <input
+                name="institution"
+                defaultValue={account.institution ?? ""}
+                placeholder="Instituição (opcional)"
+                className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+              />
+              <p className="text-[11px] text-text-faint leading-relaxed">
+                O saldo não se edita aqui — é sempre calculado a partir dos movimentos. Para
+                corrigir um saldo, regista um movimento com a categoria &quot;Ajuste de Saldo&quot;.
+              </p>
+              <div className="flex justify-end gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm text-text-muted hover:text-text"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+                >
+                  {isPending ? "A guardar..." : "Guardar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 </file>
 
@@ -1033,6 +1350,45 @@ export function RefreshQuotesButton() {
     >
       <RefreshCw size={13} strokeWidth={1.75} className={isPending ? "animate-spin" : ""} />
       {isPending ? "A atualizar..." : "Atualizar cotações"}
+    </button>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/undo-import-button.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Undo2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteLastImport } from "@/app/portfolio/actions";
+
+export function UndoImportButton() {
+  const [isPending, startTransition] = useTransition();
+
+  function handleClick() {
+    if (
+      !confirm(
+        "Remover a última importação DEGIRO? Todas as transações que essa importação criou serão apagadas."
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteLastImport();
+      if (result.error) toast.error(result.error);
+      else toast.success(result.message ?? "Importação removida.");
+    });
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isPending}
+      className="flex items-center gap-1.5 text-xs text-text-faint hover:text-loss transition-colors disabled:opacity-50"
+    >
+      <Undo2 size={13} strokeWidth={1.75} />
+      {isPending ? "A remover..." : "Remover última importação"}
     </button>
   );
 }
@@ -1505,6 +1861,181 @@ export function CategoryBreakdownChart({ data }: { data: CategorySlice[] }) {
 }
 </file>
 
+<file path="src/components/reports/export-csv-button.tsx">
+"use client";
+
+import { Download } from "lucide-react";
+import type { Category, Transaction } from "@/types/database";
+
+function csvEscape(value: string): string {
+  if (/[";\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export function ExportCsvButton({
+  transactions,
+  categories,
+  periodLabel,
+}: {
+  transactions: Transaction[];
+  categories: Category[];
+  periodLabel: string;
+}) {
+  function handleExport() {
+    const categoryById = new Map(categories.map((c) => [c.id, c]));
+    const header = ["Data", "Tipo", "Valor", "Categoria", "Descrição"];
+    const lines = transactions.map((t) => {
+      const cat = t.category_id ? categoryById.get(t.category_id) : null;
+      return [
+        t.occurred_on,
+        t.type,
+        String(t.amount).replace(".", ","),
+        cat?.name ?? "",
+        t.description ?? "",
+      ]
+        .map(csvEscape)
+        .join(";");
+    });
+
+    // BOM (\uFEFF) para o Excel em PT-PT abrir os acentos corretamente.
+    const csv = "\uFEFF" + [header.join(";"), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `movimentos_${periodLabel}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <button
+      onClick={handleExport}
+      disabled={transactions.length === 0}
+      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-gold transition-colors disabled:opacity-40 disabled:hover:text-text-muted"
+    >
+      <Download size={13} strokeWidth={1.75} />
+      Exportar CSV
+    </button>
+  );
+}
+</file>
+
+<file path="src/components/reports/fees-summary.tsx">
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { FeesSummary, FeeTransactionRow } from "@/types/database";
+
+export function FeesSummaryCard({
+  summary,
+  transactions,
+}: {
+  summary: FeesSummary;
+  transactions: FeeTransactionRow[];
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+        <div className="rounded-lg border border-line-soft bg-surface-alt/40 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">Comissões Bancárias</p>
+          <p className="tabular text-lg text-text">{formatCurrency(summary.banking_fees)}</p>
+        </div>
+        <div className="rounded-lg border border-line-soft bg-surface-alt/40 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">Comissões de Investimento</p>
+          <p className="tabular text-lg text-text">{formatCurrency(summary.investment_fees)}</p>
+        </div>
+        <div className="rounded-lg border border-loss/30 bg-loss-soft/40 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">Total Pago</p>
+          <p className="tabular text-lg text-loss">{formatCurrency(summary.total_fees)}</p>
+        </div>
+      </div>
+
+      {transactions.length > 0 && (
+        <>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-text-faint hover:text-gold transition-colors"
+          >
+            {open ? <ChevronUp size={13} strokeWidth={1.75} /> : <ChevronDown size={13} strokeWidth={1.75} />}
+            {open ? "Esconder detalhe" : `Ver detalhe (${transactions.length} linha${transactions.length === 1 ? "" : "s"})`}
+          </button>
+
+          {open && (
+            <ul className="mt-3 flex flex-col max-h-72 overflow-y-auto">
+              {transactions.map((t, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-3 py-2 border-b border-line-soft last:border-0 text-xs"
+                >
+                  <div className="min-w-0">
+                    <p className="text-text truncate">{t.description}</p>
+                    <p className="text-text-faint mt-0.5">
+                      {formatDate(t.occurred_on)} · {t.source}
+                    </p>
+                  </div>
+                  <span className="tabular text-loss shrink-0">{formatCurrency(t.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/reports/reports-tabs.tsx">
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { cx } from "@/lib/format";
+
+export function ReportsTabs({
+  overview,
+  budgets,
+}: {
+  overview: ReactNode;
+  budgets: ReactNode;
+}) {
+  const [tab, setTab] = useState<"overview" | "budgets">("overview");
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-6 border-b border-line">
+        {(
+          [
+            { key: "overview" as const, label: "Visão Geral" },
+            { key: "budgets" as const, label: "Orçamentos" },
+          ]
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={cx(
+              "px-3 py-2 text-sm -mb-px border-b-2 transition-colors",
+              tab === t.key
+                ? "border-gold text-gold"
+                : "border-transparent text-text-muted hover:text-text"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === "overview" ? overview : budgets}
+    </div>
+  );
+}
+</file>
+
 <file path="src/components/transactions/category-quick-add.tsx">
 "use client";
 
@@ -1574,138 +2105,390 @@ export function CategoryQuickAdd() {
 }
 </file>
 
-<file path="src/components/transactions/transaction-form.tsx">
+<file path="src/components/transactions/category-rules-manager.tsx">
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { createTransaction } from "@/app/transacoes/actions";
+import { createCategoryRule, deleteCategoryRule } from "@/app/transacoes/actions";
+import type { Category, CategoryRule } from "@/types/database";
+
+export function CategoryRulesManager({
+  rules,
+  categories,
+}: {
+  rules: CategoryRule[];
+  categories: Category[];
+}) {
+  const [open, setOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  function handleCreate(formData: FormData) {
+    startTransition(async () => {
+      const result = await createCategoryRule(formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      formRef.current?.reset();
+      toast.success("Regra criada.");
+    });
+  }
+
+  function handleDelete(ruleId: string) {
+    startTransition(async () => {
+      const result = await deleteCategoryRule(ruleId);
+      if (result.error) toast.error(result.error);
+      else toast.success("Regra removida.");
+    });
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-line-soft">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs text-text-faint hover:text-gold transition-colors"
+      >
+        <Sparkles size={13} strokeWidth={1.75} />
+        {open ? "Fechar categorização automática" : "Categorização automática"}
+      </button>
+
+      {open && (
+        <div className="mt-3">
+          <p className="text-xs text-text-faint mb-3 leading-relaxed">
+            Sempre que a palavra-chave aparecer na descrição de um novo movimento, a categoria é
+            sugerida automaticamente no formulário (podes sempre mudar antes de guardar).
+          </p>
+
+          <form ref={formRef} action={handleCreate} className="flex flex-col sm:flex-row gap-2 mb-4">
+            <input
+              name="keyword"
+              required
+              placeholder="Palavra-chave (ex: continente, netflix, cepsa)"
+              className="flex-1 rounded-md border border-line bg-surface-alt px-3 py-2 text-xs outline-none focus:border-gold"
+            />
+            <select
+              name="category_id"
+              required
+              className="rounded-md border border-line bg-surface-alt px-3 py-2 text-xs outline-none focus:border-gold sm:w-56"
+            >
+              <option value="">Categoria a sugerir</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.kind})
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-md bg-gold px-3 py-2 text-xs font-medium text-ink hover:opacity-90 disabled:opacity-50 whitespace-nowrap"
+            >
+              Adicionar
+            </button>
+          </form>
+
+          {rules.length === 0 ? (
+            <p className="text-xs text-text-faint">Ainda não tens regras criadas.</p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {rules.map((r) => {
+                const cat = categoryById.get(r.category_id);
+                return (
+                  <li key={r.id} className="flex items-center justify-between gap-2 text-xs py-1">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="text-text truncate">&quot;{r.keyword}&quot;</span>
+                      <span className="text-text-faint">→</span>
+                      {cat && (
+                        <span
+                          className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: cat.color ?? "#8B93A1" }}
+                        />
+                      )}
+                      <span className="text-text-muted truncate">{cat?.name ?? "—"}</span>
+                    </span>
+                    <button
+                      onClick={() => handleDelete(r.id)}
+                      disabled={isPending}
+                      className="text-text-faint hover:text-loss disabled:opacity-50 shrink-0"
+                      title="Remover regra"
+                    >
+                      <Trash2 size={12} strokeWidth={1.75} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/transactions/edit-transaction-dialog.tsx">
+"use client";
+
+import { useState, useTransition } from "react";
+import { Pencil, X } from "lucide-react";
+import { toast } from "sonner";
+import { updateTransaction } from "@/app/transacoes/actions";
+import type { Account, Category, Transaction, TransactionType } from "@/types/database";
+
+export function EditTransactionDialog({
+  transaction,
+  accounts,
+  categories,
+}: {
+  transaction: Transaction;
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<TransactionType>(transaction.type);
+  const [isPending, startTransition] = useTransition();
+
+  const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
+
+  function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      const result = await updateTransaction(transaction.id, formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Movimento atualizado.");
+      setOpen(false);
+    });
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        title="Editar movimento"
+        className="text-text-faint hover:text-gold transition-colors shrink-0"
+      >
+        <Pencil size={14} strokeWidth={1.75} />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-lg border border-line bg-surface p-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-text">Editar Movimento</p>
+              <button onClick={() => setOpen(false)} className="text-text-faint hover:text-text">
+                <X size={18} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <form action={handleSubmit} className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                {(["despesa", "receita", "transferencia"] as const).map((t) => (
+                  <label
+                    key={t}
+                    className={`flex-1 text-center cursor-pointer rounded-md border px-3 py-2 text-sm capitalize transition-colors ${
+                      type === t
+                        ? "border-gold text-gold bg-surface-alt"
+                        : "border-line text-text-muted hover:text-text"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="type"
+                      value={t}
+                      checked={type === t}
+                      onChange={() => setType(t)}
+                      className="hidden"
+                    />
+                    {t === "transferencia" ? "Transferência" : t}
+                  </label>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  name="amount"
+                  required
+                  defaultValue={transaction.amount}
+                  placeholder="Valor"
+                  inputMode="decimal"
+                  className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+                />
+                <input
+                  name="occurred_on"
+                  type="date"
+                  required
+                  defaultValue={transaction.occurred_on}
+                  className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+                />
+                <select
+                  name="account_id"
+                  required
+                  defaultValue={transaction.account_id}
+                  className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+                >
+                  <option value="">{type === "transferencia" ? "Conta de origem" : "Conta"}</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+
+                {type === "transferencia" ? (
+                  <select
+                    name="transfer_account_id"
+                    required
+                    defaultValue={transaction.transfer_account_id ?? ""}
+                    className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+                  >
+                    <option value="">Conta de destino</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    name="category_id"
+                    defaultValue={transaction.category_id ?? ""}
+                    className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+                  >
+                    <option value="">Categoria (opcional)</option>
+                    {filteredCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <input
+                name="description"
+                defaultValue={transaction.description ?? ""}
+                placeholder="Descrição (opcional)"
+                className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+              />
+
+              <div className="flex justify-end gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm text-text-muted hover:text-text"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+                >
+                  {isPending ? "A guardar..." : "Guardar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+</file>
+
+<file path="src/components/transactions/transaction-filters.tsx">
+"use client";
+
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useState, useTransition } from "react";
+import { Search, X } from "lucide-react";
 import type { Account, Category } from "@/types/database";
 
-const TODAY = new Date().toISOString().slice(0, 10);
-
-export function TransactionForm({
+export function TransactionFilters({
   accounts,
   categories,
 }: {
   accounts: Account[];
   categories: Category[];
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [type, setType] = useState<"receita" | "despesa" | "transferencia">("despesa");
-  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [text, setText] = useState(searchParams.get("q") ?? "");
+  const [, startTransition] = useTransition();
 
-  const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
-
-  async function action(formData: FormData) {
-    startTransition(async () => {
-      try {
-        await createTransaction(formData);
-        formRef.current?.reset();
-        setType("despesa");
-        toast.success("Movimento registado.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao registar movimento.");
-      }
-    });
+  function updateParam(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) params.set(key, value);
+    else params.delete(key);
+    startTransition(() => router.push(`${pathname}?${params.toString()}`));
   }
 
+  const hasFilters = searchParams.get("q") || searchParams.get("account") || searchParams.get("category");
+
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        {(["despesa", "receita", "transferencia"] as const).map((t) => (
-          <label
-            key={t}
-            className={`flex-1 text-center cursor-pointer rounded-md border px-3 py-2 text-sm capitalize transition-colors ${
-              type === t
-                ? "border-gold text-gold bg-surface-alt"
-                : "border-line text-text-muted hover:text-text"
-            }`}
-          >
-            <input
-              type="radio"
-              name="type"
-              value={t}
-              checked={type === t}
-              onChange={() => setType(t)}
-              className="hidden"
-            />
-            {t === "transferencia" ? "Transferência" : t}
-          </label>
+    <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      <div className="relative flex-1">
+        <Search
+          size={14}
+          strokeWidth={1.75}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint"
+        />
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") updateParam("q", text.trim());
+          }}
+          onBlur={() => updateParam("q", text.trim())}
+          placeholder="Pesquisar por descrição..."
+          className="w-full rounded-md border border-line bg-surface-alt pl-8 pr-3 py-2 text-sm outline-none focus:border-gold"
+        />
+      </div>
+      <select
+        defaultValue={searchParams.get("account") ?? ""}
+        onChange={(e) => updateParam("account", e.target.value)}
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold sm:w-44"
+      >
+        <option value="">Todas as contas</option>
+        {accounts.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+          </option>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <input
-          name="amount"
-          required
-          placeholder="Valor"
-          inputMode="decimal"
-          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
-        />
-        <input
-          name="occurred_on"
-          type="date"
-          required
-          defaultValue={TODAY}
-          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
-        />
-        <select
-          name="account_id"
-          required
-          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
-        >
-          <option value="">{type === "transferencia" ? "Conta de origem" : "Conta"}</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-
-        {type === "transferencia" ? (
-          <select
-            name="transfer_account_id"
-            required
-            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
-          >
-            <option value="">Conta de destino</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <select
-            name="category_id"
-            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
-          >
-            <option value="">Categoria (opcional)</option>
-            {filteredCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      <div className="flex gap-3">
-        <input
-          name="description"
-          placeholder="Descrição (opcional)"
-          className="flex-1 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
-        />
+      </select>
+      <select
+        defaultValue={searchParams.get("category") ?? ""}
+        onChange={(e) => updateParam("category", e.target.value)}
+        className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold sm:w-44"
+      >
+        <option value="">Todas as categorias</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      {hasFilters && (
         <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+          onClick={() => {
+            setText("");
+            router.push(pathname);
+          }}
+          title="Limpar filtros"
+          className="flex items-center justify-center rounded-md border border-line px-3 py-2 text-text-faint hover:text-text hover:border-line-soft"
         >
-          {isPending ? "A guardar..." : "Registar"}
+          <X size={14} strokeWidth={1.75} />
         </button>
-      </div>
-    </form>
+      )}
+    </div>
   );
 }
 </file>
@@ -1735,6 +2518,31 @@ export function CardLabel({ className, ...props }: HTMLAttributes<HTMLParagraphE
       )}
       {...props}
     />
+  );
+}
+</file>
+
+<file path="src/components/ui/skeleton.tsx">
+import { clsx } from "clsx";
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={clsx("animate-pulse rounded-md bg-surface-alt", className)} />;
+}
+
+/** Esqueleto genérico de página: título + alguns cartões — usado nos loading.tsx de cada rota. */
+export function PageSkeleton({ cards = 3 }: { cards?: number }) {
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <Skeleton className="h-3 w-24 mb-3" />
+      <Skeleton className="h-9 w-64 mb-2" />
+      <Skeleton className="h-4 w-full max-w-md mb-8" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {Array.from({ length: cards }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        ))}
+      </div>
+      <Skeleton className="h-72 w-full rounded-lg" />
+    </div>
   );
 }
 </file>
@@ -2302,6 +3110,160 @@ export const NAV_ITEMS = [
 export const BOTTOM_NAV_ITEMS = NAV_ITEMS.filter((item) => item.href !== "/recorrentes");
 </file>
 
+<file path="supabase/004_regras_categorizacao_e_taxas.sql">
+-- =========================================================================
+-- 004: Categorização automática + Comissões e Taxas
+-- =========================================================================
+-- Idempotente. Corre no SQL Editor da Supabase, depois de schema.sql,
+-- 002_melhorias.sql e 003_correcoes_build.sql.
+-- =========================================================================
+
+-- -------------------------------------------------------------------------
+-- 1. REGRAS DE CATEGORIZAÇÃO AUTOMÁTICA
+-- -------------------------------------------------------------------------
+-- Cada regra associa uma palavra-chave a uma categoria. Quando o utilizador
+-- escreve a descrição de um movimento, procuramos (no lado do cliente, via
+-- RPC) se alguma palavra-chave das suas regras aparece no texto e sugerimos
+-- essa categoria automaticamente.
+create table if not exists public.category_rules (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  keyword     text not null,
+  category_id uuid not null references public.categories(id) on delete cascade,
+  priority    integer not null default 0,  -- regras com prioridade maior ganham em caso de empate
+  created_at  timestamptz not null default now(),
+  unique (user_id, keyword)
+);
+
+create index if not exists idx_category_rules_user on public.category_rules(user_id);
+
+alter table public.category_rules enable row level security;
+
+drop policy if exists "category_rules_select_own" on public.category_rules;
+create policy "category_rules_select_own" on public.category_rules for select using (auth.uid() = user_id);
+drop policy if exists "category_rules_insert_own" on public.category_rules;
+create policy "category_rules_insert_own" on public.category_rules for insert with check (auth.uid() = user_id);
+drop policy if exists "category_rules_update_own" on public.category_rules;
+create policy "category_rules_update_own" on public.category_rules for update using (auth.uid() = user_id);
+drop policy if exists "category_rules_delete_own" on public.category_rules;
+create policy "category_rules_delete_own" on public.category_rules for delete using (auth.uid() = user_id);
+
+-- Sugere uma categoria a partir do texto de descrição, procurando a
+-- palavra-chave mais longa (mais específica) que aparece no texto; em caso
+-- de empate no comprimento, ganha a de maior "priority".
+create or replace function public.suggest_category(p_user_id uuid, p_description text)
+returns uuid
+language sql
+stable
+as $$
+  select cr.category_id
+  from public.category_rules cr
+  where cr.user_id = p_user_id
+    and p_description is not null
+    and position(lower(cr.keyword) in lower(p_description)) > 0
+  order by length(cr.keyword) desc, cr.priority desc
+  limit 1;
+$$;
+
+-- -------------------------------------------------------------------------
+-- 2. COMISSÕES E TAXAS
+-- -------------------------------------------------------------------------
+-- Marca categorias de orçamento (não-investimento) como representando
+-- comissões/taxas (ex: "Comissões Bancárias"), para as podermos somar à
+-- parte à parte das comissões de bolsa (que já vivem em asset_transactions).
+alter table public.categories add column if not exists is_fee boolean not null default false;
+
+-- Marca a categoria por omissão já existente como sendo uma taxa.
+update public.categories set is_fee = true where name = 'Comissões Bancárias' and kind = 'despesa';
+
+-- Resumo agregado: comissões bancárias (orçamento) + comissões de
+-- investimento (compras/vendas/comissões avulsas na DEGIRO), a partir de
+-- uma data opcional (por omissão, desde sempre).
+create or replace function public.get_fees_summary(p_user_id uuid, p_from date default '1900-01-01')
+returns table(banking_fees numeric, investment_fees numeric, total_fees numeric)
+language sql
+stable
+as $$
+  select
+    b.banking_fees,
+    i.investment_fees,
+    b.banking_fees + i.investment_fees as total_fees
+  from
+    (
+      select coalesce(sum(t.amount), 0) as banking_fees
+      from public.transactions t
+      join public.categories c on c.id = t.category_id
+      where t.user_id = p_user_id
+        and c.is_fee = true
+        and t.type = 'despesa'
+        and t.occurred_on >= p_from
+    ) b,
+    (
+      select
+        coalesce(sum(coalesce(at.fees, 0)), 0)
+          + coalesce(sum(case when at.operation = 'comissao' then abs(at.total_value) else 0 end), 0)
+          as investment_fees
+      from public.asset_transactions at
+      where at.user_id = p_user_id
+        and coalesce(at.occurred_at, at.occurred_on::timestamptz) >= p_from::timestamptz
+    ) i;
+$$;
+
+-- Lista detalhada das linhas que compõem as comissões/taxas, para o
+-- utilizador poder ver exatamente de onde vem o total (em vez de só um
+-- número agregado).
+create or replace function public.get_fee_transactions(p_user_id uuid, p_from date default '1900-01-01')
+returns table(occurred_on date, source text, description text, amount numeric)
+language sql
+stable
+as $$
+  select t.occurred_on, 'Bancária'::text as source,
+         coalesce(t.description, c.name) as description, t.amount
+  from public.transactions t
+  join public.categories c on c.id = t.category_id
+  where t.user_id = p_user_id and c.is_fee = true and t.type = 'despesa' and t.occurred_on >= p_from
+
+  union all
+
+  select at.occurred_on, 'Investimento'::text as source,
+         coalesce(at.description, ass.name) as description, abs(at.total_value) as amount
+  from public.asset_transactions at
+  join public.assets ass on ass.id = at.asset_id
+  where at.user_id = p_user_id and at.operation = 'comissao'
+    and coalesce(at.occurred_at, at.occurred_on::timestamptz) >= p_from::timestamptz
+
+  union all
+
+  select at.occurred_on, 'Investimento (embutida)'::text as source,
+         ass.name || ' — ' || at.operation as description, at.fees as amount
+  from public.asset_transactions at
+  join public.assets ass on ass.id = at.asset_id
+  where at.user_id = p_user_id and coalesce(at.fees, 0) > 0
+    and coalesce(at.occurred_at, at.occurred_on::timestamptz) >= p_from::timestamptz
+
+  order by occurred_on desc;
+$$;
+</file>
+
+<file path="supabase/004_remover_importacao.sql">
+-- =========================================================================
+-- Liga cada transação de bolsa à importação DEGIRO que a criou.
+-- =========================================================================
+-- Com "on delete cascade", apagar a linha em csv_imports apaga
+-- automaticamente todas as asset_transactions que essa importação trouxe —
+-- sem isto não havia como saber quais linhas pertenciam a qual ficheiro,
+-- por isso não dava para desfazer uma importação específica.
+--
+-- Idempotente. Corre no SQL Editor da Supabase, depois de schema.sql e
+-- 003_correcoes_build.sql.
+-- =========================================================================
+
+alter table public.asset_transactions
+  add column if not exists import_id uuid references public.csv_imports(id) on delete cascade;
+
+create index if not exists idx_asset_tx_import on public.asset_transactions(import_id);
+</file>
+
 <file path="test-fixtures/degiro-conta.csv">
 Data,Hora,Data valor,Produto,ISIN,Descrição,FX,,Mutação,,Saldo,ID da ordem
 20-08-2026,08:30,20-08-2026,VANGUARD FTSE ALL-WORLD,IE00BK5BQT80,Dividendo,,EUR,"18,42",EUR,"1.240,10",
@@ -2492,6 +3454,180 @@ const eslintConfig = defineConfig([
 export default eslintConfig;
 </file>
 
+<file path="LEIA-ME-ALTERACOES.md">
+# Alterações aplicadas
+
+Copia estes ficheiros para o teu repositório, respeitando os mesmos
+caminhos (todos dentro de `src/`). Ficheiros novos são criados; os que já
+existiam no teu projeto ficam **substituídos por inteiro** — não é preciso
+fazer merge manual, já contêm o código original + as alterações.
+
+## UI/UX
+
+- **Tabela do Portefólio no telemóvel** (`components/portfolio/holdings-table.tsx`)
+  Abaixo de `md`, mostra cartões empilhados com os mesmos dados (peso, custo
+  médio, P/L, retorno total, dividendos, data da 1ª compra) em vez da tabela
+  com scroll horizontal. No desktop mantém-se a tabela igual a antes.
+
+- **Ecrãs de loading** (`app/*/loading.tsx` + `components/ui/skeleton.tsx`)
+  Adicionado `loading.tsx` a Dashboard, Contas, Movimentos, Relatórios,
+  Portefólio e Recorrentes, com um esqueleto genérico (`<PageSkeleton />`).
+  `/portfolio/importacoes` herda automaticamente o loading de `/portfolio`.
+
+- **Páginas de erro** (`app/error.tsx`, `app/global-error.tsx`)
+  `error.tsx` apanha falhas em qualquer rota (ex: Supabase em baixo) e
+  mostra um ecrã com a tua identidade visual e um botão "Tentar novamente".
+  `global-error.tsx` cobre o caso raro de o próprio `layout.tsx` falhar.
+
+- **Gestão de categorias** (`components/transactions/category-manager.tsx`,
+  integrado em `app/transacoes/page.tsx`)
+  Novo bloco "Categorias" na página de Movimentos: expande para editar
+  nome/cor de cada categoria e ligar/desligar "Excluir dos Relatórios"
+  (o campo `exclude_from_reports` que já existia na base de dados mas não
+  tinha interface), ou apagar a categoria (os movimentos ficam sem
+  categoria, nunca são apagados).
+
+## Funcionalidades
+
+1. **Editar transações** — `components/transactions/edit-transaction-dialog.tsx`
+   + `updateTransaction` em `app/transacoes/actions.ts`. Ícone de lápis em
+   cada linha da lista de Movimentos, ao lado do de eliminar.
+
+2. **Editar contas** — `components/accounts/edit-account-dialog.tsx` +
+   `updateAccount` em `app/contas/actions.ts`. Permite corrigir nome, tipo
+   e instituição (o saldo continua a não ser editável diretamente — é
+   sempre derivado dos movimentos, por desenho da tua base de dados).
+
+3. **Pesquisa/filtro em Movimentos** —
+   `components/transactions/transaction-filters.tsx`, integrado na página
+   via query string (`?q=...&account=...&category=...`). Com filtros
+   ativos, o limite de 100 linhas sobe para 500 para a pesquisa não ficar
+   escondida fora da primeira página.
+
+4. **Exportar CSV nos Relatórios** — `components/reports/export-csv-button.tsx`.
+   Gera o CSV inteiramente no browser (sem dependências novas), respeita o
+   período selecionado, e usa `;` como separador + vírgula decimal, pronto
+   a abrir no Excel em PT-PT.
+
+5. **Histórico de importações** — `app/portfolio/importacoes/page.tsx`,
+   com link a partir da página do Portefólio. Lista a tabela `csv_imports`
+   que já existia, mostrando ficheiro, data, linhas inseridas/duplicadas/
+   falhadas.
+
+## O que fica de fora desta ronda
+
+- **Categorização automática por regras** (`category_rules` /
+  `suggest_category`): essas tabelas/funções **não existem** no
+  `schema.sql` que me enviaste — não é só interface em falta, é preciso
+  desenhar o esquema (tabela de regras, função de sugestão) antes de dar
+  para construir a UI. Se quiseres, faço isso a seguir como próximo passo.
+
+## Notas
+
+- Nenhum SQL novo é necessário — tudo o que foi usado (`exclude_from_reports`,
+  `csv_imports`) já existe no teu `schema.sql` / `003_correcoes_build.sql`.
+- Não toquei em `package.json` — nenhuma destas alterações precisa de
+  dependências novas.
+</file>
+
+<file path="LEIA-ME-ATUALIZACAO.md">
+# Atualização: remover importação, comissões no portefólio, aba de orçamentos
+
+## Ordem para aplicar
+
+1. **Corre primeiro o SQL** no SQL Editor da Supabase:
+   `supabase/004_remover_importacao.sql`
+
+2. **Copia os ficheiros novos** para o teu projeto (mantendo os caminhos):
+   - `src/app/portfolio/actions.ts`
+   - `src/components/portfolio/undo-import-button.tsx`
+   - `src/components/reports/reports-tabs.tsx`
+
+3. **Substitui por inteiro** estes 3 ficheiros já existentes:
+   - `src/app/api/degiro/import/route.ts`
+   - `src/app/portfolio/page.tsx`
+   - `src/app/relatorios/page.tsx`
+
+## O que muda
+
+- **Remover última importação**: botão em Portefólio → "Importar Extrato
+  DEGIRO", ao lado do título. Apaga a importação DEGIRO mais recente e
+  todas as transações que ela criou (via `import_id` com cascade na base
+  de dados). Não reverte o `reconciled_balance` da conta automaticamente —
+  só é substituído na próxima importação.
+
+- **Comissões e Taxas Pagas**: novo quadrado (StatCard) na grelha do topo
+  da página de Portefólio, ao lado de "Dividendos Recebidos".
+
+- **Aba de Orçamentos**: a página de Relatórios passa a ter duas abas —
+  "Visão Geral" (o que já lá estava) e "Orçamentos" (o formulário e a
+  lista de orçamentos por categoria, que antes ficavam sempre visíveis no
+  fundo da página).
+</file>
+
+<file path="LEIA-ME-RONDA-2.md">
+# Ronda 2 — Categorização automática + Comissões e Taxas
+
+## Passo 1 — corre o SQL
+No SQL Editor da Supabase, corre `supabase/004_regras_categorizacao_e_taxas.sql`
+(depois de já teres corrido schema.sql, 002 e 003). É idempotente.
+
+O que cria:
+- Tabela `category_rules` (palavra-chave → categoria) + RLS.
+- Função `suggest_category(user_id, descricao)` — devolve o `category_id`
+  sugerido, se alguma regra tua bater com o texto.
+- Coluna `categories.is_fee` — marca uma categoria como "comissão/taxa".
+  A categoria por omissão "Comissões Bancárias" já fica marcada
+  automaticamente pelo próprio script.
+- Função `get_fees_summary(user_id, data_desde)` — soma comissões
+  bancárias (categorias `is_fee = true`) + comissões de investimento
+  (avulsas e embutidas nas transações da DEGIRO).
+- Função `get_fee_transactions(user_id, data_desde)` — lista linha a
+  linha de onde vêm essas comissões, para o detalhe expansível na UI.
+
+## Passo 2 — copia os ficheiros
+Mesma lógica da ronda anterior: substitui os ficheiros existentes,
+adiciona os novos, tudo dentro de `src/`.
+
+### Novo: Categorização automática
+- `components/transactions/category-rules-manager.tsx` — em Movimentos,
+  dentro do card "Categorias", secção "Categorização automática": cria
+  regras tipo `"continente" → Supermercado`, `"netflix" → Subscrições`.
+- `components/transactions/transaction-form.tsx` (substitui) — ao saíres
+  do campo de descrição, chama `suggest_category` via RPC e pré-seleciona
+  a categoria sugerida (continuas a poder mudá-la antes de guardar).
+- `app/transacoes/actions.ts` (substitui) — `createCategoryRule` /
+  `deleteCategoryRule`.
+- `app/transacoes/page.tsx` (substitui) — busca as regras e passa-as ao
+  gestor.
+
+### Novo: Comissões e Taxas
+- `components/reports/fees-summary.tsx` — cartões com Comissões
+  Bancárias / Comissões de Investimento / Total, mais uma lista
+  expansível linha a linha.
+- `app/relatorios/page.tsx` (substitui) — novo card "Comissões e Taxas
+  Pagas", respeitando o período selecionado no topo da página (1m/3m/
+  6m/12m/Ano Atual).
+- `components/transactions/category-manager.tsx` (substitui) — ao editar
+  uma categoria, agora também dá para ligar "É uma comissão/taxa", com
+  um selo vermelho "Taxa" na lista (para além do "Ajuste" já existente).
+  Assim, se tiveres outra categoria tipo "Comissões de Manutenção de
+  Conta" ou "Seguros Financeiros" que também queiras contar aqui, é só
+  marcá-la.
+- `app/transacoes/actions.ts` — `updateCategory` passa a gravar também
+  `is_fee`.
+- `types/database.ts` (substitui) — acrescenta `Category.is_fee`,
+  `CategoryRule`, `FeesSummary`, `FeeTransactionRow`.
+
+## Notas
+- A sugestão automática só sugere — nunca cria nem edita a transação
+  sozinha. Se escreveres uma descrição sem regra correspondente, o campo
+  de categoria simplesmente fica como estava.
+- As comissões de investimento já contavam para o `total_fees` por ativo
+  no Portefólio; este card agrega isso com as comissões bancárias do
+  orçamento, num só sítio, filtrado por período.
+</file>
+
 <file path="postcss.config.mjs">
 const config = {
   plugins: {
@@ -2644,189 +3780,6 @@ self.addEventListener("fetch", (event) => {
     fetch(request).catch(() => caches.match("/offline.html").then((r) => r ?? Response.error()))
   );
 });
-</file>
-
-<file path="src/app/api/degiro/import/route.ts">
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { hashFileContent, parseDegiroCsv } from "@/lib/degiro/parser";
-
-/**
- * POST /api/degiro/import
- * Body: { csvText: string, fileName: string, accountId: string }
- *
- * 1. Faz parse do CSV no servidor (fonte de verdade — nunca confiar apenas
- *    no parsing feito no browser).
- * 2. Garante que cada ISIN/produto tem uma linha correspondente em `assets`.
- * 3. Insere as `asset_transactions`, ignorando duplicados através da
- *    restrição única (user_id, source_hash).
- * 4. Regista um resumo em `csv_imports` para auditoria/histórico.
- */
-export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) {
-    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  }
-
-  const body = await req.json().catch(() => null);
-  const { csvText, fileName, accountId } = body ?? {};
-  if (!csvText || !fileName || !accountId) {
-    return NextResponse.json(
-      { error: "Faltam campos obrigatórios: csvText, fileName, accountId." },
-      { status: 400 }
-    );
-  }
-
-  const userId = auth.user.id;
-  const fileHash = await hashFileContent(csvText);
-
-  // Deteta re-upload do mesmo ficheiro exato antes de fazer qualquer trabalho.
-  const { data: existingImport } = await supabase
-    .from("csv_imports")
-    .select("id, created_at, rows_inserted")
-    .eq("user_id", userId)
-    .eq("file_hash", fileHash)
-    .maybeSingle();
-
-  if (existingImport) {
-    return NextResponse.json({
-      alreadyImported: true,
-      message: `Este ficheiro já foi importado em ${new Date(existingImport.created_at).toLocaleString("pt-PT")}.`,
-      previousImport: existingImport,
-    });
-  }
-
-  const parsed = await parseDegiroCsv(csvText);
-
-  if (parsed.rows.length === 0) {
-    return NextResponse.json(
-      { error: "Não foi possível extrair nenhuma transação válida do ficheiro.", warnings: parsed.warnings },
-      { status: 422 }
-    );
-  }
-
-  // --- 1. Upsert de ativos (por ISIN; fallback pelo nome do produto) ------
-  const assetIdByKey = new Map<string, string>();
-  const uniqueAssets = new Map<string, { isin: string | null; name: string; currency: string }>();
-  for (const row of parsed.rows) {
-    const key = row.isin ?? `name:${row.product}`;
-    if (!uniqueAssets.has(key)) {
-      uniqueAssets.set(key, { isin: row.isin, name: row.product, currency: row.currency });
-    }
-  }
-
-  for (const [key, asset] of uniqueAssets) {
-    if (asset.isin) {
-      const { data: existing } = await supabase
-        .from("assets")
-        .select("id")
-        .eq("isin", asset.isin)
-        .maybeSingle();
-
-      if (existing) {
-        assetIdByKey.set(key, existing.id);
-        continue;
-      }
-    }
-
-    const { data: inserted, error: insertErr } = await supabase
-      .from("assets")
-      .insert({ isin: asset.isin, name: asset.name, currency: asset.currency })
-      .select("id")
-      .single();
-
-    if (insertErr) {
-      // corrida entre pedidos concorrentes ou ISIN já existe -> tenta ler de novo
-      const { data: fallback } = await supabase
-        .from("assets")
-        .select("id")
-        .eq("isin", asset.isin ?? "")
-        .maybeSingle();
-      if (fallback) assetIdByKey.set(key, fallback.id);
-      continue;
-    }
-    assetIdByKey.set(key, inserted.id);
-  }
-
-  // --- 2. Inserção das transações (ignora duplicados pelo source_hash) ---
-  const rowsToInsert = parsed.rows.map((row) => {
-    const key = row.isin ?? `name:${row.product}`;
-    return {
-      user_id: userId,
-      account_id: accountId,
-      asset_id: assetIdByKey.get(key)!,
-      operation: row.operation,
-      occurred_on: row.date,
-      occurred_at: row.datetime,
-      quantity: row.quantity,
-      price: row.price,
-      local_value: row.localValue,
-      fees: row.fees,
-      total_value: row.totalValue,
-      currency: row.currency,
-      exchange_rate: row.exchangeRate,
-      description: row.description,
-      order_id: row.orderId,
-      source_hash: row.sourceHash,
-      source: "degiro",
-      raw_row: row.raw,
-    };
-  });
-
-  const { data: insertedRows, error: insertError } = await supabase
-    .from("asset_transactions")
-    .upsert(rowsToInsert, { onConflict: "user_id,source_hash", ignoreDuplicates: true })
-    .select("id");
-
-  if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
-  }
-
-  const rowsInserted = insertedRows?.length ?? 0;
-  const rowsDuplicated = rowsToInsert.length - rowsInserted;
-
-  await supabase.from("csv_imports").insert({
-    user_id: userId,
-    account_id: accountId,
-    file_name: fileName,
-    file_hash: fileHash,
-    rows_total: parsed.rows.length,
-    rows_inserted: rowsInserted,
-    rows_duplicated: rowsDuplicated,
-    rows_failed: parsed.skipped,
-  });
-
-  // --- 3. Reconcilia o saldo da conta com o valor que a própria DEGIRO
-  //         reportou (coluna "Saldo") na linha mais recente do ficheiro.
-  //         Isto garante que depósitos, levantamentos, cash sweeps e juros
-  //         — que não modelamos individualmente — continuam refletidos no
-  //         saldo livre da conta, sem termos de os tratar um a um.
-  let reconciledBalance: { balance: number; at: string } | null = null;
-  if (parsed.latestBalance) {
-    const { error: reconcileError } = await supabase.rpc("reconcile_account_balance", {
-      p_account_id: accountId,
-      p_balance: parsed.latestBalance.balance,
-      p_at: parsed.latestBalance.occurredAt,
-    });
-    if (reconcileError) {
-      console.error("Falha ao reconciliar saldo da conta:", reconcileError.message);
-    } else {
-      reconciledBalance = { balance: parsed.latestBalance.balance, at: parsed.latestBalance.occurredAt };
-    }
-  }
-
-  return NextResponse.json({
-    alreadyImported: false,
-    format: parsed.format,
-    rowsTotal: parsed.rows.length,
-    rowsInserted,
-    rowsDuplicated,
-    rowsSkipped: parsed.skipped,
-    warnings: parsed.warnings,
-    reconciledBalance,
-  });
-}
 </file>
 
 <file path="src/components/dashboard/stat-card.tsx">
@@ -3054,163 +4007,340 @@ export function PeriodFilter({ active }: { active: PeriodKey }) {
 }
 </file>
 
-<file path="src/components/transactions/transaction-list.tsx">
+<file path="src/components/transactions/category-manager.tsx">
 "use client";
 
-import { useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { deleteTransaction } from "@/app/transacoes/actions";
-import { formatCurrency, formatDate } from "@/lib/format";
-import type { Account, Category, Transaction } from "@/types/database";
+import { updateCategory, deleteCategory } from "@/app/transacoes/actions";
+import type { Category } from "@/types/database";
 
-interface Row extends Transaction {
-  accountName: string;
-  transferAccountName: string | null;
-  categoryName: string | null;
-  categoryColor: string | null;
-  excludedFromReports: boolean;
-}
-
-function monthLabel(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  const label = d.toLocaleDateString("pt-PT", { month: "long", year: "numeric" });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-export function TransactionList({
-  transactions,
-  accounts,
-  categories,
-}: {
-  transactions: Transaction[];
-  accounts: Account[];
-  categories: Category[];
-}) {
-  const accountById = new Map(accounts.map((a) => [a.id, a]));
-  const categoryById = new Map(categories.map((c) => [c.id, c]));
-
-  const rows: Row[] = transactions.map((t) => {
-    const cat = t.category_id ? categoryById.get(t.category_id) : null;
-    return {
-      ...t,
-      accountName: accountById.get(t.account_id)?.name ?? "—",
-      transferAccountName: t.transfer_account_id
-        ? accountById.get(t.transfer_account_id)?.name ?? "—"
-        : null,
-      categoryName: cat?.name ?? null,
-      categoryColor: cat?.color ?? null,
-      excludedFromReports: cat?.exclude_from_reports ?? false,
-    };
-  });
-
-  if (rows.length === 0) {
-    return <p className="text-sm text-text-muted py-6 text-center">Ainda não há movimentos registados.</p>;
-  }
-
-  // Agrupa por mês (assume que `rows` já vem ordenado por data decrescente).
-  const groups: { label: string; rows: Row[] }[] = [];
-  for (const row of rows) {
-    const label = monthLabel(row.occurred_on);
-    const last = groups[groups.length - 1];
-    if (last && last.label === label) {
-      last.rows.push(row);
-    } else {
-      groups.push({ label, rows: [row] });
-    }
-  }
+export function CategoryManager({ categories }: { categories: Category[] }) {
+  const [open, setOpen] = useState(false);
+  const income = categories.filter((c) => c.kind === "receita");
+  const expense = categories.filter((c) => c.kind === "despesa");
 
   return (
-    <div className="flex flex-col gap-6">
-      {groups.map((group) => {
-        const income = group.rows
-          .filter((r) => r.type === "receita" && !r.excludedFromReports)
-          .reduce((sum, r) => sum + Number(r.amount), 0);
-        const expense = group.rows
-          .filter((r) => r.type === "despesa" && !r.excludedFromReports)
-          .reduce((sum, r) => sum + Number(r.amount), 0);
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="text-xs text-text-faint hover:text-gold transition-colors"
+      >
+        {open ? "Fechar gestão de categorias" : "Gerir categorias"}
+      </button>
 
-        return (
-          <div key={group.label}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint">{group.label}</p>
-              <p className="text-xs tabular text-text-faint">
-                {income > 0 && <span className="text-gain">+{formatCurrency(income)}</span>}
-                {income > 0 && expense > 0 && <span className="mx-1">·</span>}
-                {expense > 0 && <span className="text-loss">-{formatCurrency(expense)}</span>}
-              </p>
-            </div>
-            <ul className="flex flex-col">
-              {group.rows.map((t) => (
-                <TransactionRow key={t.id} row={t} />
+      {open && (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-2">Despesas</p>
+            <ul className="flex flex-col gap-1.5">
+              {expense.map((c) => (
+                <CategoryRow key={c.id} category={c} />
               ))}
             </ul>
           </div>
-        );
-      })}
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-2">Receitas</p>
+            <ul className="flex flex-col gap-1.5">
+              {income.map((c) => (
+                <CategoryRow key={c.id} category={c} />
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function TransactionRow({ row }: { row: Row }) {
+function CategoryRow({ category }: { category: Category }) {
+  const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  function handleSave(formData: FormData) {
+    startTransition(async () => {
+      const result = await updateCategory(category.id, formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Categoria atualizada.");
+      setEditing(false);
+    });
+  }
+
   function handleDelete() {
-    if (!confirm("Eliminar este movimento?")) return;
+    if (
+      !confirm(
+        `Apagar a categoria "${category.name}"? Os movimentos que a usam ficam sem categoria, mas não são apagados.`
+      )
+    )
+      return;
+    startTransition(async () => {
+      const result = await deleteCategory(category.id);
+      if (result.error) toast.error(result.error);
+      else toast.success("Categoria apagada.");
+    });
+  }
+
+  if (editing) {
+    return (
+      <li className="rounded-md border border-line-soft bg-surface-alt/50 px-3 py-2">
+        <form action={handleSave} className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              name="color"
+              defaultValue={category.color ?? "#8B93A1"}
+              className="h-7 w-9 shrink-0 rounded border border-line bg-transparent"
+            />
+            <input
+              name="name"
+              defaultValue={category.name}
+              required
+              className="flex-1 min-w-0 rounded-md border border-line bg-surface px-2 py-1.5 text-xs outline-none focus:border-gold"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-[11px] text-text-muted">
+            <input
+              type="checkbox"
+              name="exclude_from_reports"
+              defaultChecked={category.exclude_from_reports}
+              className="accent-gold"
+            />
+            Excluir dos Relatórios (categorias de ajuste)
+          </label>
+          <label className="flex items-center gap-2 text-[11px] text-text-muted">
+            <input
+              type="checkbox"
+              name="is_fee"
+              defaultChecked={category.is_fee}
+              className="accent-gold"
+            />
+            É uma comissão/taxa (conta para o resumo de Comissões e Taxas)
+          </label>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="text-text-faint hover:text-text"
+              title="Cancelar"
+            >
+              <X size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="text-gold hover:opacity-80 disabled:opacity-50"
+              title="Guardar"
+            >
+              <Check size={14} strokeWidth={1.75} />
+            </button>
+          </div>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center justify-between gap-2 text-sm py-1">
+      <span className="flex items-center gap-2 min-w-0">
+        <span
+          className="inline-block h-2 w-2 rounded-full shrink-0"
+          style={{ backgroundColor: category.color ?? "#8B93A1" }}
+        />
+        <span className="text-text truncate">{category.name}</span>
+        {category.exclude_from_reports && (
+          <span className="text-[10px] uppercase tracking-wide text-text-faint border border-line-soft rounded px-1.5 py-0.5 shrink-0">
+            Ajuste
+          </span>
+        )}
+        {category.is_fee && (
+          <span className="text-[10px] uppercase tracking-wide text-loss border border-loss/40 rounded px-1.5 py-0.5 shrink-0">
+            Taxa
+          </span>
+        )}
+      </span>
+      <span className="flex items-center gap-2 shrink-0">
+        <button onClick={() => setEditing(true)} className="text-text-faint hover:text-gold" title="Editar">
+          <Pencil size={13} strokeWidth={1.75} />
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={isPending}
+          className="text-text-faint hover:text-loss disabled:opacity-50"
+          title="Apagar"
+        >
+          <Trash2 size={13} strokeWidth={1.75} />
+        </button>
+      </span>
+    </li>
+  );
+}
+</file>
+
+<file path="src/components/transactions/transaction-form.tsx">
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { createTransaction } from "@/app/transacoes/actions";
+import { createClient } from "@/lib/supabase/client";
+import type { Account, Category } from "@/types/database";
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+export function TransactionForm({
+  accounts,
+  categories,
+}: {
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [type, setType] = useState<"receita" | "despesa" | "transferencia">("despesa");
+  const [suggestedCategoryId, setSuggestedCategoryId] = useState<string>("");
+  const [isPending, startTransition] = useTransition();
+
+  const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
+
+  // Sempre que o utilizador sai do campo de descrição, pergunta à base de
+  // dados (função `suggest_category`, criada em 004_regras_categorizacao_e_taxas.sql)
+  // se alguma regra corresponde ao texto, e pré-seleciona essa categoria.
+  // O utilizador pode sempre mudar antes de guardar — isto é só um atalho.
+  async function handleDescriptionBlur(description: string) {
+    const text = description.trim();
+    if (!text) return;
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("suggest_category", { p_description: text });
+    if (!error && data) {
+      const suggested = filteredCategories.find((c) => c.id === data);
+      if (suggested) setSuggestedCategoryId(data as string);
+    }
+  }
+
+  async function action(formData: FormData) {
     startTransition(async () => {
       try {
-        await deleteTransaction(row.id);
-        toast.success("Movimento eliminado.");
+        await createTransaction(formData);
+        formRef.current?.reset();
+        setType("despesa");
+        setSuggestedCategoryId("");
+        toast.success("Movimento registado.");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao eliminar movimento.");
+        toast.error(err instanceof Error ? err.message : "Erro ao registar movimento.");
       }
     });
   }
 
-  const sign = row.type === "receita" ? "+" : row.type === "despesa" ? "-" : "";
-  const toneClass =
-    row.type === "receita" ? "text-gain" : row.type === "despesa" ? "text-loss" : "text-text";
-
   return (
-    <li className="flex items-center justify-between gap-3 py-3 border-b border-line-soft last:border-0">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          {row.categoryColor && (
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: row.categoryColor }}
+    <form ref={formRef} action={action} className="flex flex-col gap-3">
+      <div className="flex gap-2">
+        {(["despesa", "receita", "transferencia"] as const).map((t) => (
+          <label
+            key={t}
+            className={`flex-1 text-center cursor-pointer rounded-md border px-3 py-2 text-sm capitalize transition-colors ${
+              type === t
+                ? "border-gold text-gold bg-surface-alt"
+                : "border-line text-text-muted hover:text-text"
+            }`}
+          >
+            <input
+              type="radio"
+              name="type"
+              value={t}
+              checked={type === t}
+              onChange={() => {
+                setType(t);
+                setSuggestedCategoryId("");
+              }}
+              className="hidden"
             />
-          )}
-          <p className="text-sm text-text truncate">
-            {row.description ||
-              row.categoryName ||
-              (row.type === "transferencia" ? "Transferência" : row.type === "receita" ? "Receita" : "Despesa")}
-          </p>
-          {row.excludedFromReports && (
-            <span className="text-[10px] uppercase tracking-wide text-text-faint border border-line-soft rounded px-1.5 py-0.5 shrink-0">
-              Ajuste
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-text-faint mt-0.5">
-          {formatDate(row.occurred_on)} · {row.accountName}
-          {row.transferAccountName ? ` → ${row.transferAccountName}` : ""}
-          {row.categoryName ? ` · ${row.categoryName}` : ""}
-        </p>
+            {t === "transferencia" ? "Transferência" : t}
+          </label>
+        ))}
       </div>
-      <span className={`tabular text-sm shrink-0 ${toneClass}`}>
-        {sign}
-        {formatCurrency(row.amount)}
-      </span>
-      <button
-        onClick={handleDelete}
-        disabled={isPending}
-        className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
-        title="Eliminar"
-      >
-        <Trash2 size={14} strokeWidth={1.75} />
-      </button>
-    </li>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <input
+          name="amount"
+          required
+          placeholder="Valor"
+          inputMode="decimal"
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+        <input
+          name="occurred_on"
+          type="date"
+          required
+          defaultValue={TODAY}
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+        />
+        <select
+          name="account_id"
+          required
+          className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+        >
+          <option value="">{type === "transferencia" ? "Conta de origem" : "Conta"}</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
+        {type === "transferencia" ? (
+          <select
+            name="transfer_account_id"
+            required
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          >
+            <option value="">Conta de destino</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <select
+            name="category_id"
+            value={suggestedCategoryId}
+            onChange={(e) => setSuggestedCategoryId(e.target.value)}
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          >
+            <option value="">Categoria (opcional)</option>
+            {filteredCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        <input
+          name="description"
+          placeholder="Descrição (opcional) — ex: Continente, Netflix..."
+          onBlur={(e) => handleDescriptionBlur(e.target.value)}
+          className="flex-1 rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-ink hover:opacity-90 disabled:opacity-50"
+        >
+          {isPending ? "A guardar..." : "Registar"}
+        </button>
+      </div>
+      {suggestedCategoryId && (
+        <p className="text-[11px] text-text-faint -mt-1">
+          Categoria sugerida automaticamente com base numa regra tua — muda-a se não for a certa.
+        </p>
+      )}
+    </form>
   );
 }
 </file>
@@ -3400,141 +4530,195 @@ export default nextConfig;
 }
 </file>
 
-<file path="src/app/contas/actions.ts">
-"use server";
-
-import { revalidatePath } from "next/cache";
+<file path="src/app/api/degiro/import/route.ts">
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { AccountType } from "@/types/database";
+import { hashFileContent, parseDegiroCsv } from "@/lib/degiro/parser";
 
-export async function createAccount(formData: FormData) {
+/**
+ * POST /api/degiro/import
+ * Body: { csvText: string, fileName: string, accountId: string }
+ *
+ * 1. Faz parse do CSV no servidor (fonte de verdade — nunca confiar apenas
+ *    no parsing feito no browser).
+ * 2. Garante que cada ISIN/produto tem uma linha correspondente em `assets`.
+ * 3. Insere as `asset_transactions`, ignorando duplicados através da
+ *    restrição única (user_id, source_hash), e liga-as a esta importação
+ *    via `import_id` — assim é possível desfazer a importação inteira mais
+ *    tarde apagando só a linha em `csv_imports` (cascade trata do resto).
+ * 4. Regista um resumo em `csv_imports` para auditoria/histórico.
+ */
+export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado.");
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
 
-  const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "banco") as AccountType;
-  const institution = String(formData.get("institution") ?? "").trim() || null;
-  const openingBalance = Number(String(formData.get("opening_balance") ?? "0").replace(",", "."));
-  const currency = String(formData.get("currency") ?? "EUR");
+  const body = await req.json().catch(() => null);
+  const { csvText, fileName, accountId } = body ?? {};
+  if (!csvText || !fileName || !accountId) {
+    return NextResponse.json(
+      { error: "Faltam campos obrigatórios: csvText, fileName, accountId." },
+      { status: 400 }
+    );
+  }
 
-  if (!name) throw new Error("O nome da conta é obrigatório.");
+  const userId = auth.user.id;
+  const fileHash = await hashFileContent(csvText);
 
-  const { error } = await supabase.from("accounts").insert({
-    user_id: user.id,
-    name,
-    type,
-    institution,
-    opening_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
-    current_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
-    currency,
+  // Deteta re-upload do mesmo ficheiro exato antes de fazer qualquer trabalho.
+  const { data: existingImport } = await supabase
+    .from("csv_imports")
+    .select("id, created_at, rows_inserted")
+    .eq("user_id", userId)
+    .eq("file_hash", fileHash)
+    .maybeSingle();
+
+  if (existingImport) {
+    return NextResponse.json({
+      alreadyImported: true,
+      message: `Este ficheiro já foi importado em ${new Date(existingImport.created_at).toLocaleString("pt-PT")}.`,
+      previousImport: existingImport,
+    });
+  }
+
+  const parsed = await parseDegiroCsv(csvText);
+
+  if (parsed.rows.length === 0) {
+    return NextResponse.json(
+      { error: "Não foi possível extrair nenhuma transação válida do ficheiro.", warnings: parsed.warnings },
+      { status: 422 }
+    );
+  }
+
+  // Id gerado antecipadamente para conseguirmos ligar já as transações a
+  // esta importação (ver rowsToInsert abaixo) mesmo antes de inserirmos a
+  // linha em csv_imports.
+  const importId = crypto.randomUUID();
+
+  // --- 1. Upsert de ativos (por ISIN; fallback pelo nome do produto) ------
+  const assetIdByKey = new Map<string, string>();
+  const uniqueAssets = new Map<string, { isin: string | null; name: string; currency: string }>();
+  for (const row of parsed.rows) {
+    const key = row.isin ?? `name:${row.product}`;
+    if (!uniqueAssets.has(key)) {
+      uniqueAssets.set(key, { isin: row.isin, name: row.product, currency: row.currency });
+    }
+  }
+
+  for (const [key, asset] of uniqueAssets) {
+    if (asset.isin) {
+      const { data: existing } = await supabase
+        .from("assets")
+        .select("id")
+        .eq("isin", asset.isin)
+        .maybeSingle();
+
+      if (existing) {
+        assetIdByKey.set(key, existing.id);
+        continue;
+      }
+    }
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from("assets")
+      .insert({ isin: asset.isin, name: asset.name, currency: asset.currency })
+      .select("id")
+      .single();
+
+    if (insertErr) {
+      // corrida entre pedidos concorrentes ou ISIN já existe -> tenta ler de novo
+      const { data: fallback } = await supabase
+        .from("assets")
+        .select("id")
+        .eq("isin", asset.isin ?? "")
+        .maybeSingle();
+      if (fallback) assetIdByKey.set(key, fallback.id);
+      continue;
+    }
+    assetIdByKey.set(key, inserted.id);
+  }
+
+  // --- 2. Inserção das transações (ignora duplicados pelo source_hash) ---
+  const rowsToInsert = parsed.rows.map((row) => {
+    const key = row.isin ?? `name:${row.product}`;
+    return {
+      user_id: userId,
+      account_id: accountId,
+      asset_id: assetIdByKey.get(key)!,
+      import_id: importId,
+      operation: row.operation,
+      occurred_on: row.date,
+      occurred_at: row.datetime,
+      quantity: row.quantity,
+      price: row.price,
+      local_value: row.localValue,
+      fees: row.fees,
+      total_value: row.totalValue,
+      currency: row.currency,
+      exchange_rate: row.exchangeRate,
+      description: row.description,
+      order_id: row.orderId,
+      source_hash: row.sourceHash,
+      source: "degiro",
+      raw_row: row.raw,
+    };
   });
 
-  if (error) throw new Error(error.message);
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
-}
+  const { data: insertedRows, error: insertError } = await supabase
+    .from("asset_transactions")
+    .upsert(rowsToInsert, { onConflict: "user_id,source_hash", ignoreDuplicates: true })
+    .select("id");
 
-export async function archiveAccount(accountId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("accounts").update({ is_archived: true }).eq("id", accountId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/contas");
-  revalidatePath("/dashboard");
-}
-</file>
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
 
-<file path="src/app/contas/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { AccountForm } from "@/components/accounts/account-form";
-import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
-import { Card, CardLabel } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/format";
-import type { Account } from "@/types/database";
+  const rowsInserted = insertedRows?.length ?? 0;
+  const rowsDuplicated = rowsToInsert.length - rowsInserted;
 
-const TYPE_LABEL: Record<Account["type"], string> = {
-  banco: "Banco",
-  poupanca: "Poupança",
-  corretora: "Corretora",
-  numerario: "Numerário",
-};
+  await supabase.from("csv_imports").insert({
+    id: importId,
+    user_id: userId,
+    account_id: accountId,
+    file_name: fileName,
+    file_hash: fileHash,
+    rows_total: parsed.rows.length,
+    rows_inserted: rowsInserted,
+    rows_duplicated: rowsDuplicated,
+    rows_failed: parsed.skipped,
+  });
 
-export default async function ContasPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // --- 3. Reconcilia o saldo da conta com o valor que a própria DEGIRO
+  //         reportou (coluna "Saldo") na linha mais recente do ficheiro.
+  //         Isto garante que depósitos, levantamentos, cash sweeps e juros
+  //         — que não modelamos individualmente — continuam refletidos no
+  //         saldo livre da conta, sem termos de os tratar um a um.
+  let reconciledBalance: { balance: number; at: string } | null = null;
+  if (parsed.latestBalance) {
+    const { error: reconcileError } = await supabase.rpc("reconcile_account_balance", {
+      p_account_id: accountId,
+      p_balance: parsed.latestBalance.balance,
+      p_at: parsed.latestBalance.occurredAt,
+    });
+    if (reconcileError) {
+      console.error("Falha ao reconciliar saldo da conta:", reconcileError.message);
+    } else {
+      reconciledBalance = { balance: parsed.latestBalance.balance, at: parsed.latestBalance.occurredAt };
+    }
+  }
 
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("user_id", user!.id)
-    .eq("is_archived", false)
-    .order("type")
-    .order("name");
-
-  const list: Account[] = accounts ?? [];
-  const total = list.reduce((sum, a) => sum + Number(a.current_balance), 0);
-
-  return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
-      <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
-          Liquidez
-        </p>
-        <h1 className="font-display text-3xl text-text">Contas</h1>
-        <p className="text-sm text-text-muted mt-2">
-          Bancos, corretoras e numerário. Os saldos atualizam-se automaticamente com as
-          receitas, despesas e transações de investimento que registares.
-        </p>
-      </header>
-
-      <Card className="mb-8">
-        <CardLabel className="mb-3">Nova Conta</CardLabel>
-        <AccountForm />
-      </Card>
-
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <CardLabel>As Tuas Contas</CardLabel>
-          <span className="tabular text-sm text-text-muted">
-            Total: <span className="text-text font-medium">{formatCurrency(total)}</span>
-          </span>
-        </div>
-
-        {list.length === 0 ? (
-          <p className="text-sm text-text-muted py-6 text-center">
-            Ainda não tens contas. Cria a primeira acima.
-          </p>
-        ) : (
-          <ul className="flex flex-col">
-            {list.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between py-3 border-b border-line-soft last:border-0"
-              >
-                <div>
-                  <p className="text-sm text-text">{a.name}</p>
-                  <p className="text-xs text-text-faint mt-0.5">
-                    {TYPE_LABEL[a.type]}
-                    {a.institution ? ` · ${a.institution}` : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="tabular text-sm text-text">
-                    {formatCurrency(Number(a.current_balance), a.currency)}
-                  </span>
-                  <ArchiveAccountButton accountId={a.id} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </div>
-  );
+  return NextResponse.json({
+    alreadyImported: false,
+    format: parsed.format,
+    rowsTotal: parsed.rows.length,
+    rowsInserted,
+    rowsDuplicated,
+    rowsSkipped: parsed.skipped,
+    warnings: parsed.warnings,
+    reconciledBalance,
+  });
 }
 </file>
 
@@ -3628,85 +4812,232 @@ export default function LoginPage() {
 }
 </file>
 
-<file path="src/app/transacoes/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { TransactionForm } from "@/components/transactions/transaction-form";
-import { TransactionList } from "@/components/transactions/transaction-list";
-import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
-import { Card, CardLabel } from "@/components/ui/card";
-import type { Account, Category, Transaction } from "@/types/database";
+<file path="src/app/transacoes/actions.ts">
+"use server";
 
-export default async function TransacoesPage() {
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import type { TransactionType } from "@/types/database";
+
+function parseAmount(raw: FormDataEntryValue | null): number {
+  return Number(String(raw ?? "0").replace(",", "."));
+}
+
+function revalidateTransactionPaths() {
+  revalidatePath("/transacoes");
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
+}
+
+export async function createTransaction(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
 
-  // Gera automaticamente qualquer movimento recorrente que já esteja
-  // vencido (renda, salário, subscrições...) antes de mostrar a lista.
-  await supabase.rpc("apply_due_recurring_transactions", { p_user_id: user!.id });
+  const type = String(formData.get("type") ?? "despesa") as TransactionType;
+  const amount = parseAmount(formData.get("amount"));
+  const occurredOn = String(formData.get("occurred_on") ?? "");
+  const accountId = String(formData.get("account_id") ?? "");
+  const transferAccountId = String(formData.get("transfer_account_id") ?? "") || null;
+  const categoryId = String(formData.get("category_id") ?? "") || null;
+  const description = String(formData.get("description") ?? "").trim() || null;
 
-  const [{ data: accounts }, { data: categories }, { data: transactions }] = await Promise.all([
-    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
-    supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
-    supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user!.id)
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(100),
-  ]);
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("O valor tem de ser maior que zero.");
+  if (!occurredOn) throw new Error("A data é obrigatória.");
+  if (!accountId) throw new Error("Escolhe a conta de origem/destino.");
+  if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
+    throw new Error("Escolhe uma conta de destino diferente da conta de origem.");
+  }
 
-  const accountsList: Account[] = accounts ?? [];
-  const categoriesList: Category[] = categories ?? [];
-  const transactionsList: Transaction[] = transactions ?? [];
+  const { error } = await supabase.from("transactions").insert({
+    user_id: user.id,
+    type,
+    amount,
+    occurred_on: occurredOn,
+    account_id: accountId,
+    transfer_account_id: type === "transferencia" ? transferAccountId : null,
+    category_id: type === "transferencia" ? null : categoryId,
+    description,
+  });
 
-  return (
-    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
-          <h1 className="font-display text-3xl text-text">Movimentos</h1>
-          <p className="text-sm text-text-muted mt-2">
-            Regista receitas, despesas e transferências entre contas. Os saldos das contas
-            envolvidas atualizam-se de imediato.
-          </p>
-        </div>
-        <a
-          href="/recorrentes"
-          className="shrink-0 text-xs text-gold underline underline-offset-2 whitespace-nowrap"
-        >
-          Ver recorrências
-        </a>
-      </header>
+  if (error) throw new Error(error.message);
+  revalidateTransactionPaths();
+}
 
-      {accountsList.length === 0 ? (
-        <Card className="mb-8">
-          <p className="text-sm text-text-muted">
-            Precisas de pelo menos uma conta antes de registares movimentos.{" "}
-            <a href="/contas" className="text-gold underline underline-offset-2">
-              Cria uma conta
-            </a>
-            .
-          </p>
-        </Card>
-      ) : (
-        <Card className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <CardLabel>Novo Movimento</CardLabel>
-            <CategoryQuickAdd />
-          </div>
-          <TransactionForm accounts={accountsList} categories={categoriesList} />
-        </Card>
-      )}
+/** Edita um movimento existente. Devolve { error } em vez de rebentar, para uso em formulários com useTransition. */
+export async function updateTransaction(
+  transactionId: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
 
-      <Card>
-        <CardLabel className="mb-3">Últimos 100 Movimentos</CardLabel>
-        <TransactionList transactions={transactionsList} accounts={accountsList} categories={categoriesList} />
-      </Card>
-    </div>
-  );
+  const type = String(formData.get("type") ?? "despesa") as TransactionType;
+  const amount = parseAmount(formData.get("amount"));
+  const occurredOn = String(formData.get("occurred_on") ?? "");
+  const accountId = String(formData.get("account_id") ?? "");
+  const transferAccountId = String(formData.get("transfer_account_id") ?? "") || null;
+  const categoryId = String(formData.get("category_id") ?? "") || null;
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "O valor tem de ser maior que zero." };
+  if (!occurredOn) return { error: "A data é obrigatória." };
+  if (!accountId) return { error: "Escolhe a conta de origem/destino." };
+  if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
+    return { error: "Escolhe uma conta de destino diferente da conta de origem." };
+  }
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({
+      type,
+      amount,
+      occurred_on: occurredOn,
+      account_id: accountId,
+      transfer_account_id: type === "transferencia" ? transferAccountId : null,
+      category_id: type === "transferencia" ? null : categoryId,
+      description,
+    })
+    .eq("id", transactionId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidateTransactionPaths();
+  return {};
+}
+
+export async function deleteTransaction(transactionId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("transactions").delete().eq("id", transactionId);
+  if (error) throw new Error(error.message);
+  revalidateTransactionPaths();
+}
+
+export async function createCategory(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "despesa") as "receita" | "despesa";
+  const color = String(formData.get("color") ?? "#8B93A1");
+
+  if (!name) throw new Error("O nome da categoria é obrigatório.");
+
+  const { error } = await supabase.from("categories").insert({
+    user_id: user.id,
+    name,
+    kind,
+    color,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/transacoes");
+}
+
+/** Edita nome, cor e a exclusão dos Relatórios de uma categoria existente. */
+export async function updateCategory(
+  categoryId: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const color = String(formData.get("color") ?? "#8B93A1");
+  const excludeFromReports = formData.get("exclude_from_reports") === "on";
+  const isFee = formData.get("is_fee") === "on";
+
+  if (!name) return { error: "O nome da categoria é obrigatório." };
+
+  const { error } = await supabase
+    .from("categories")
+    .update({ name, color, exclude_from_reports: excludeFromReports, is_fee: isFee })
+    .eq("id", categoryId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/transacoes");
+  revalidatePath("/relatorios");
+  revalidatePath("/recorrentes");
+  return {};
+}
+
+/**
+ * Apaga uma categoria. As transações que a usavam ficam "Sem categoria"
+ * (category_id passa a null via `on delete set null` no schema), nunca são
+ * apagadas.
+ */
+export async function deleteCategory(categoryId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase.from("categories").delete().eq("id", categoryId).eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/transacoes");
+  revalidatePath("/relatorios");
+  revalidatePath("/recorrentes");
+  return {};
+}
+
+/**
+ * Cria uma regra de categorização automática: sempre que "keyword" aparecer
+ * na descrição de um movimento, a categoria é sugerida automaticamente
+ * (ver função SQL `suggest_category`, chamada a partir do formulário).
+ */
+export async function createCategoryRule(formData: FormData): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const keyword = String(formData.get("keyword") ?? "").trim();
+  const categoryId = String(formData.get("category_id") ?? "");
+
+  if (!keyword) return { error: "Escreve uma palavra-chave (ex: 'continente', 'netflix')." };
+  if (!categoryId) return { error: "Escolhe a categoria a sugerir." };
+
+  const { error } = await supabase.from("category_rules").insert({
+    user_id: user.id,
+    keyword: keyword.toLowerCase(),
+    category_id: categoryId,
+  });
+
+  if (error) {
+    return {
+      error: error.code === "23505" ? "Já existe uma regra com essa palavra-chave." : error.message,
+    };
+  }
+  revalidatePath("/transacoes");
+  return {};
+}
+
+export async function deleteCategoryRule(ruleId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase.from("category_rules").delete().eq("id", ruleId).eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/transacoes");
+  return {};
 }
 </file>
 
@@ -3865,6 +5196,177 @@ export function ArchiveAccountButton({ accountId }: { accountId: string }) {
     >
       <Archive size={15} strokeWidth={1.75} />
     </button>
+  );
+}
+</file>
+
+<file path="src/components/transactions/transaction-list.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteTransaction } from "@/app/transacoes/actions";
+import { EditTransactionDialog } from "@/components/transactions/edit-transaction-dialog";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { Account, Category, Transaction } from "@/types/database";
+
+interface Row extends Transaction {
+  accountName: string;
+  transferAccountName: string | null;
+  categoryName: string | null;
+  categoryColor: string | null;
+  excludedFromReports: boolean;
+}
+
+function monthLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  const label = d.toLocaleDateString("pt-PT", { month: "long", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export function TransactionList({
+  transactions,
+  accounts,
+  categories,
+}: {
+  transactions: Transaction[];
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  const rows: Row[] = transactions.map((t) => {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    return {
+      ...t,
+      accountName: accountById.get(t.account_id)?.name ?? "—",
+      transferAccountName: t.transfer_account_id
+        ? accountById.get(t.transfer_account_id)?.name ?? "—"
+        : null,
+      categoryName: cat?.name ?? null,
+      categoryColor: cat?.color ?? null,
+      excludedFromReports: cat?.exclude_from_reports ?? false,
+    };
+  });
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-text-muted py-6 text-center">Nenhum movimento encontrado.</p>;
+  }
+
+  // Agrupa por mês (assume que `rows` já vem ordenado por data decrescente).
+  const groups: { label: string; rows: Row[] }[] = [];
+  for (const row of rows) {
+    const label = monthLabel(row.occurred_on);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) {
+      last.rows.push(row);
+    } else {
+      groups.push({ label, rows: [row] });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {groups.map((group) => {
+        const income = group.rows
+          .filter((r) => r.type === "receita" && !r.excludedFromReports)
+          .reduce((sum, r) => sum + Number(r.amount), 0);
+        const expense = group.rows
+          .filter((r) => r.type === "despesa" && !r.excludedFromReports)
+          .reduce((sum, r) => sum + Number(r.amount), 0);
+
+        return (
+          <div key={group.label}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint">{group.label}</p>
+              <p className="text-xs tabular text-text-faint">
+                {income > 0 && <span className="text-gain">+{formatCurrency(income)}</span>}
+                {income > 0 && expense > 0 && <span className="mx-1">·</span>}
+                {expense > 0 && <span className="text-loss">-{formatCurrency(expense)}</span>}
+              </p>
+            </div>
+            <ul className="flex flex-col">
+              {group.rows.map((t) => (
+                <TransactionRow key={t.id} row={t} accounts={accounts} categories={categories} />
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TransactionRow({
+  row,
+  accounts,
+  categories,
+}: {
+  row: Row;
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete() {
+    if (!confirm("Eliminar este movimento?")) return;
+    startTransition(async () => {
+      try {
+        await deleteTransaction(row.id);
+        toast.success("Movimento eliminado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao eliminar movimento.");
+      }
+    });
+  }
+
+  const sign = row.type === "receita" ? "+" : row.type === "despesa" ? "-" : "";
+  const toneClass =
+    row.type === "receita" ? "text-gain" : row.type === "despesa" ? "text-loss" : "text-text";
+
+  return (
+    <li className="flex items-center justify-between gap-3 py-3 border-b border-line-soft last:border-0">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {row.categoryColor && (
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: row.categoryColor }}
+            />
+          )}
+          <p className="text-sm text-text truncate">
+            {row.description ||
+              row.categoryName ||
+              (row.type === "transferencia" ? "Transferência" : row.type === "receita" ? "Receita" : "Despesa")}
+          </p>
+          {row.excludedFromReports && (
+            <span className="text-[10px] uppercase tracking-wide text-text-faint border border-line-soft rounded px-1.5 py-0.5 shrink-0">
+              Ajuste
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-text-faint mt-0.5">
+          {formatDate(row.occurred_on)} · {row.accountName}
+          {row.transferAccountName ? ` → ${row.transferAccountName}` : ""}
+          {row.categoryName ? ` · ${row.categoryName}` : ""}
+        </p>
+      </div>
+      <span className={`tabular text-sm shrink-0 ${toneClass}`}>
+        {sign}
+        {formatCurrency(row.amount)}
+      </span>
+      <EditTransactionDialog transaction={row} accounts={accounts} categories={categories} />
+      <button
+        onClick={handleDelete}
+        disabled={isPending}
+        className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
+        title="Eliminar"
+      >
+        <Trash2 size={14} strokeWidth={1.75} />
+      </button>
+    </li>
   );
 }
 </file>
@@ -4305,6 +5807,180 @@ export const config = {
 };
 </file>
 
+<file path="src/app/contas/actions.ts">
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import type { AccountType } from "@/types/database";
+
+export async function createAccount(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? "banco") as AccountType;
+  const institution = String(formData.get("institution") ?? "").trim() || null;
+  const openingBalance = Number(String(formData.get("opening_balance") ?? "0").replace(",", "."));
+  const currency = String(formData.get("currency") ?? "EUR");
+
+  if (!name) throw new Error("O nome da conta é obrigatório.");
+
+  const { error } = await supabase.from("accounts").insert({
+    user_id: user.id,
+    name,
+    type,
+    institution,
+    opening_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
+    current_balance: Number.isFinite(openingBalance) ? openingBalance : 0,
+    currency,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Edita nome, tipo e instituição de uma conta existente.
+ * Não permite editar o saldo diretamente aqui — o saldo é sempre derivado
+ * das transações (e, se aplicável, do ponto de reconciliação DEGIRO), por
+ * isso corrigir um saldo deve ser feito com um movimento de "Ajuste de
+ * Saldo" em Movimentos, nunca escrevendo por cima do valor calculado.
+ */
+export async function updateAccount(accountId: string, formData: FormData): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? "banco") as AccountType;
+  const institution = String(formData.get("institution") ?? "").trim() || null;
+
+  if (!name) return { error: "O nome da conta é obrigatório." };
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({ name, type, institution })
+    .eq("id", accountId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+  revalidatePath("/transacoes");
+  revalidatePath("/portfolio");
+  return {};
+}
+
+export async function archiveAccount(accountId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("accounts").update({ is_archived: true }).eq("id", accountId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+}
+</file>
+
+<file path="src/app/contas/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { AccountForm } from "@/components/accounts/account-form";
+import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
+import { EditAccountDialog } from "@/components/accounts/edit-account-dialog";
+import { Card, CardLabel } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format";
+import type { Account } from "@/types/database";
+
+const TYPE_LABEL: Record<Account["type"], string> = {
+  banco: "Banco",
+  poupanca: "Poupança",
+  corretora: "Corretora",
+  numerario: "Numerário",
+};
+
+export default async function ContasPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("user_id", user!.id)
+    .eq("is_archived", false)
+    .order("type")
+    .order("name");
+
+  const list: Account[] = accounts ?? [];
+  const total = list.reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
+          Liquidez
+        </p>
+        <h1 className="font-display text-3xl text-text">Contas</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Bancos, corretoras e numerário. Os saldos atualizam-se automaticamente com as
+          receitas, despesas e transações de investimento que registares.
+        </p>
+      </header>
+
+      <Card className="mb-8">
+        <CardLabel className="mb-3">Nova Conta</CardLabel>
+        <AccountForm />
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <CardLabel>As Tuas Contas</CardLabel>
+          <span className="tabular text-sm text-text-muted">
+            Total: <span className="text-text font-medium">{formatCurrency(total)}</span>
+          </span>
+        </div>
+
+        {list.length === 0 ? (
+          <p className="text-sm text-text-muted py-6 text-center">
+            Ainda não tens contas. Cria a primeira acima.
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {list.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center justify-between py-3 border-b border-line-soft last:border-0"
+              >
+                <div>
+                  <p className="text-sm text-text">{a.name}</p>
+                  <p className="text-xs text-text-faint mt-0.5">
+                    {TYPE_LABEL[a.type]}
+                    {a.institution ? ` · ${a.institution}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="tabular text-sm text-text">
+                    {formatCurrency(Number(a.current_balance), a.currency)}
+                  </span>
+                  <EditAccountDialog account={a} />
+                  <ArchiveAccountButton accountId={a.id} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+</file>
+
 <file path="src/components/accounts/account-form.tsx">
 "use client";
 
@@ -4366,122 +6042,6 @@ export function AccountForm() {
       </button>
       <input type="hidden" name="currency" value="EUR" />
     </form>
-  );
-}
-</file>
-
-<file path="src/components/portfolio/holdings-table.tsx">
-import { formatCurrency, formatPercent } from "@/lib/format";
-
-export interface PositionRow {
-  asset_id: string;
-  name: string;
-  symbol: string | null;
-  isin: string | null;
-  quantity_held: number;
-  net_invested: number;
-  total_dividends: number;
-  total_fees: number;
-  first_purchase_at: string | null;
-  currentPrice: number | null;
-  marketValue: number;
-}
-
-function formatMonthYear(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
-}
-
-export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
-  if (positions.length === 0) {
-    return (
-      <p className="text-sm text-text-muted py-6 text-center">
-        Ainda sem posições. Importa um extrato da DEGIRO acima.
-      </p>
-    );
-  }
-
-  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
-  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
-
-  return (
-    <div>
-      <p className="sm:hidden text-xs text-text-faint mb-2">← Desliza para o lado para ver mais →</p>
-      <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
-        <table className="w-full text-sm min-w-[860px]">
-          <thead>
-            <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
-              <th className="py-2 pr-4 font-medium">Ativo</th>
-              <th className="py-2 pr-4 font-medium text-right">Qtd.</th>
-              <th className="py-2 pr-4 font-medium text-right">Custo Médio</th>
-              <th className="py-2 pr-4 font-medium text-right">Preço Atual</th>
-              <th className="py-2 pr-4 font-medium text-right">Valor Atual</th>
-              <th className="py-2 pr-4 font-medium text-right">Peso</th>
-              <th className="py-2 pr-4 font-medium text-right">Lucro/Prejuízo</th>
-              <th className="py-2 pr-4 font-medium text-right">Dividendos</th>
-              <th className="py-2 pr-4 font-medium text-right">Retorno Total</th>
-              <th className="py-2 font-medium text-right">Desde</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p) => {
-              const pnl = p.marketValue - p.net_invested;
-              const pnlPct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
-              const totalReturn = pnl + p.total_dividends;
-              const totalReturnPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
-              const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
-              const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
-              return (
-                <tr key={p.asset_id} className="border-b border-line-soft last:border-0">
-                  <td className="py-2.5 pr-4">
-                    <p className="text-text">{p.name}</p>
-                    <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                    {formatCurrency(avgCost)}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text">
-                    {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text">
-                    {formatCurrency(p.marketValue)}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                    {(weight * 100).toFixed(1)}%
-                  </td>
-                  <td
-                    className={`py-2.5 pr-4 text-right tabular ${
-                      pnl >= 0 ? "text-gain" : "text-loss"
-                    }`}
-                  >
-                    {formatCurrency(pnl)}
-                    <span className="text-xs ml-1 opacity-70">({formatPercent(pnlPct)})</span>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                    {formatCurrency(p.total_dividends)}
-                  </td>
-                  <td
-                    className={`py-2.5 pr-4 text-right tabular ${
-                      totalReturn >= 0 ? "text-gain" : "text-loss"
-                    }`}
-                    title="Lucro/prejuízo + dividendos recebidos"
-                  >
-                    {formatCurrency(totalReturn)}
-                    <span className="text-xs ml-1 opacity-70">({formatPercent(totalReturnPct)})</span>
-                  </td>
-                  <td className="py-2.5 text-right tabular text-text-faint text-xs">
-                    {formatMonthYear(p.first_purchase_at)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }
 </file>
@@ -4723,185 +6283,272 @@ enviar um link de reposição de password a partir daí, se preferires).
   Row Level Security.
 </file>
 
-<file path="src/types/database.ts">
-// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql +
-// 003_correcoes_build.sql.
-// Para gerar automaticamente a partir do teu projeto real, corre:
-//   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
+<file path="src/app/transacoes/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { TransactionForm } from "@/components/transactions/transaction-form";
+import { TransactionList } from "@/components/transactions/transaction-list";
+import { TransactionFilters } from "@/components/transactions/transaction-filters";
+import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
+import { CategoryManager } from "@/components/transactions/category-manager";
+import { CategoryRulesManager } from "@/components/transactions/category-rules-manager";
+import { Card, CardLabel } from "@/components/ui/card";
+import type { Account, Category, CategoryRule, Transaction } from "@/types/database";
 
-export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
-export type CategoryKind = "receita" | "despesa";
-export type TransactionType = "receita" | "despesa" | "transferencia";
-export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
-export type RecurrenceFrequency = "diaria" | "semanal" | "mensal" | "anual";
+export default async function TransacoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; account?: string; category?: string }>;
+}) {
+  const { q, account, category } = await searchParams;
 
-export interface Account {
-  id: string;
-  user_id: string;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Gera automaticamente qualquer movimento recorrente que já esteja
+  // vencido (renda, salário, subscrições...) antes de mostrar a lista.
+  await supabase.rpc("apply_due_recurring_transactions", { p_user_id: user!.id });
+
+  let query = supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", user!.id)
+    .order("occurred_on", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  // Sem filtros: mantém o limite original de 100 para não sobrecarregar a
+  // página; com filtros, alarga-se para a pesquisa realmente encontrar o
+  // movimento pretendido em vez de ficar escondido fora da 1ª página.
+  const hasFilters = Boolean(q || account || category);
+  query = query.limit(hasFilters ? 500 : 100);
+
+  if (account) query = query.eq("account_id", account);
+  if (category) query = query.eq("category_id", category);
+  if (q) query = query.ilike("description", `%${q}%`);
+
+  const [{ data: accounts }, { data: categories }, { data: rules }, { data: transactions }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
+    supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
+    supabase.from("category_rules").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
+    query,
+  ]);
+
+  const accountsList: Account[] = accounts ?? [];
+  const categoriesList: Category[] = categories ?? [];
+  const rulesList: CategoryRule[] = rules ?? [];
+  const transactionsList: Transaction[] = transactions ?? [];
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
+          <h1 className="font-display text-3xl text-text">Movimentos</h1>
+          <p className="text-sm text-text-muted mt-2">
+            Regista receitas, despesas e transferências entre contas. Os saldos das contas
+            envolvidas atualizam-se de imediato.
+          </p>
+        </div>
+        <a
+          href="/recorrentes"
+          className="shrink-0 text-xs text-gold underline underline-offset-2 whitespace-nowrap"
+        >
+          Ver recorrências
+        </a>
+      </header>
+
+      {accountsList.length === 0 ? (
+        <Card className="mb-8">
+          <p className="text-sm text-text-muted">
+            Precisas de pelo menos uma conta antes de registares movimentos.{" "}
+            <a href="/contas" className="text-gold underline underline-offset-2">
+              Cria uma conta
+            </a>
+            .
+          </p>
+        </Card>
+      ) : (
+        <Card className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <CardLabel>Novo Movimento</CardLabel>
+            <CategoryQuickAdd />
+          </div>
+          <TransactionForm accounts={accountsList} categories={categoriesList} />
+        </Card>
+      )}
+
+      <Card className="mb-8">
+        <CardLabel className="mb-3">Categorias</CardLabel>
+        <CategoryManager categories={categoriesList} />
+        <CategoryRulesManager rules={rulesList} categories={categoriesList} />
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <CardLabel>{hasFilters ? "Movimentos Filtrados" : "Últimos 100 Movimentos"}</CardLabel>
+        </div>
+        <TransactionFilters accounts={accountsList} categories={categoriesList} />
+        <TransactionList transactions={transactionsList} accounts={accountsList} categories={categoriesList} />
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/holdings-table.tsx">
+import { formatCurrency, formatPercent } from "@/lib/format";
+
+export interface PositionRow {
+  asset_id: string;
   name: string;
-  type: AccountType;
-  currency: string;
-  institution: string | null;
-  opening_balance: number;
-  current_balance: number;
-  is_archived: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Category {
-  id: string;
-  user_id: string;
-  name: string;
-  kind: CategoryKind;
-  color: string | null;
-  icon: string | null;
-  is_default: boolean;
-  /** Categorias "ajuste" — ficam de fora dos totais de receitas/despesas nos relatórios. */
-  exclude_from_reports: boolean;
-  created_at: string;
-}
-
-export interface Transaction {
-  id: string;
-  user_id: string;
-  type: TransactionType;
-  amount: number;
-  occurred_on: string;
-  account_id: string;
-  transfer_account_id: string | null;
-  category_id: string | null;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Asset {
-  id: string;
-  isin: string | null;
   symbol: string | null;
-  name: string;
-  currency: string;
-  created_at: string;
-}
-
-export interface AssetTransaction {
-  id: string;
-  user_id: string;
-  account_id: string;
-  asset_id: string;
-  operation: AssetOperation;
-  occurred_on: string;
-  occurred_at: string | null;
-  quantity: number | null;
-  price: number | null;
-  local_value: number | null;
-  fees: number | null;
-  total_value: number;
-  currency: string | null;
-  exchange_rate: number | null;
-  description: string | null;
-  order_id: string | null;
-  source_hash: string;
-  source: string;
-  raw_row: Record<string, string> | null;
-  created_at: string;
-}
-
-export interface AssetQuote {
-  asset_id: string;
-  price: number;
-  currency: string;
-  fetched_at: string;
-}
-
-export interface CsvImport {
-  id: string;
-  user_id: string;
-  account_id: string | null;
-  file_name: string;
-  file_hash: string;
-  rows_total: number;
-  rows_inserted: number;
-  rows_duplicated: number;
-  rows_failed: number;
-  created_at: string;
-}
-
-export interface PortfolioPosition {
-  user_id: string;
-  asset_id: string;
-  name: string;
-  symbol: string | null;
   isin: string | null;
-  currency: string;
   quantity_held: number;
   net_invested: number;
   total_dividends: number;
-  /** Comissões pagas neste ativo (embutidas nas compras/vendas + linhas avulsas). */
   total_fees: number;
-  /** Data da primeira compra deste ativo, ou null se nunca houve uma. */
   first_purchase_at: string | null;
+  currentPrice: number | null;
+  marketValue: number;
 }
 
-export interface NetWorthSnapshot {
-  id: string;
-  user_id: string;
-  snapshot_date: string;
-  total_net_worth: number;
-  cash_in_banks: number;
-  cash_in_savings: number;
-  cash_in_brokers: number;
-  physical_cash: number;
-  portfolio_value: number;
-  portfolio_cost: number;
-  created_at: string;
+function formatMonthYear(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
 }
 
-export interface RecurringTransaction {
-  id: string;
-  user_id: string;
-  type: TransactionType;
-  amount: number;
-  account_id: string;
-  transfer_account_id: string | null;
-  category_id: string | null;
-  description: string | null;
-  frequency: RecurrenceFrequency;
-  interval_count: number;
-  start_date: string;
-  end_date: string | null;
-  next_occurrence: string;
-  is_active: boolean;
-  created_at: string;
+function computeDerived(p: PositionRow, totalValue: number) {
+  const pnl = p.marketValue - p.net_invested;
+  const pnlPct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
+  const totalReturn = pnl + p.total_dividends;
+  const totalReturnPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
+  const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
+  const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
+  return { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight };
 }
 
-export interface Budget {
-  id: string;
-  user_id: string;
-  category_id: string;
-  monthly_limit: number;
-  created_at: string;
-}
+export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
+  if (positions.length === 0) {
+    return (
+      <p className="text-sm text-text-muted py-6 text-center">
+        Ainda sem posições. Importa um extrato da DEGIRO acima.
+      </p>
+    );
+  }
 
-export interface BudgetStatus {
-  user_id: string;
-  category_id: string;
-  category_name: string;
-  category_color: string | null;
-  monthly_limit: number;
-  spent_this_month: number;
-}
+  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
+  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
 
-export interface RealizedPnlRow {
-  asset_id: string;
-  realized_pnl: number;
-}
+  return (
+    <div>
+      {/* --- Vista de cartões: telemóvel (< md) --- */}
+      <ul className="md:hidden flex flex-col gap-3">
+        {sorted.map((p) => {
+          const { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight } = computeDerived(p, totalValue);
+          return (
+            <li key={p.asset_id} className="rounded-lg border border-line-soft bg-surface-alt/40 p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-text truncate">{p.name}</p>
+                  <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
+                </div>
+                <span className="tabular text-sm text-text shrink-0">{formatCurrency(p.marketValue)}</span>
+              </div>
 
-// Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
-// Substitui por `supabase gen types` quando ligares a um projeto real.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Database = any;
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                <div>
+                  <p className="text-text-faint">Qtd. / Custo Médio</p>
+                  <p className="tabular text-text-muted mt-0.5">
+                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })} · {formatCurrency(avgCost)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-text-faint">Peso na carteira</p>
+                  <p className="tabular text-text-muted mt-0.5">{(weight * 100).toFixed(1)}%</p>
+                </div>
+                <div>
+                  <p className="text-text-faint">Lucro / Prejuízo</p>
+                  <p className={`tabular mt-0.5 ${pnl >= 0 ? "text-gain" : "text-loss"}`}>
+                    {formatCurrency(pnl)} <span className="opacity-70">({formatPercent(pnlPct)})</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-text-faint">Retorno Total</p>
+                  <p className={`tabular mt-0.5 ${totalReturn >= 0 ? "text-gain" : "text-loss"}`}>
+                    {formatCurrency(totalReturn)} <span className="opacity-70">({formatPercent(totalReturnPct)})</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-line-soft text-[11px] text-text-faint">
+                <span>Dividendos: <span className="text-text-muted tabular">{formatCurrency(p.total_dividends)}</span></span>
+                <span>Desde {formatMonthYear(p.first_purchase_at)}</span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* --- Vista de tabela: desktop (>= md) --- */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm min-w-[860px]">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
+              <th className="py-2 pr-4 font-medium">Ativo</th>
+              <th className="py-2 pr-4 font-medium text-right">Qtd.</th>
+              <th className="py-2 pr-4 font-medium text-right">Custo Médio</th>
+              <th className="py-2 pr-4 font-medium text-right">Preço Atual</th>
+              <th className="py-2 pr-4 font-medium text-right">Valor Atual</th>
+              <th className="py-2 pr-4 font-medium text-right">Peso</th>
+              <th className="py-2 pr-4 font-medium text-right">Lucro/Prejuízo</th>
+              <th className="py-2 pr-4 font-medium text-right">Dividendos</th>
+              <th className="py-2 pr-4 font-medium text-right">Retorno Total</th>
+              <th className="py-2 font-medium text-right">Desde</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((p) => {
+              const { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight } = computeDerived(p, totalValue);
+              return (
+                <tr key={p.asset_id} className="border-b border-line-soft last:border-0">
+                  <td className="py-2.5 pr-4">
+                    <p className="text-text">{p.name}</p>
+                    <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
+                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{formatCurrency(avgCost)}</td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text">
+                    {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text">{formatCurrency(p.marketValue)}</td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{(weight * 100).toFixed(1)}%</td>
+                  <td className={`py-2.5 pr-4 text-right tabular ${pnl >= 0 ? "text-gain" : "text-loss"}`}>
+                    {formatCurrency(pnl)}
+                    <span className="text-xs ml-1 opacity-70">({formatPercent(pnlPct)})</span>
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{formatCurrency(p.total_dividends)}</td>
+                  <td
+                    className={`py-2.5 pr-4 text-right tabular ${totalReturn >= 0 ? "text-gain" : "text-loss"}`}
+                    title="Lucro/prejuízo + dividendos recebidos"
+                  >
+                    {formatCurrency(totalReturn)}
+                    <span className="text-xs ml-1 opacity-70">({formatPercent(totalReturnPct)})</span>
+                  </td>
+                  <td className="py-2.5 text-right tabular text-text-faint text-xs">
+                    {formatMonthYear(p.first_purchase_at)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 </file>
 
 <file path="supabase/schema.sql">
@@ -5553,255 +7200,6 @@ export default async function DashboardPage() {
 }
 </file>
 
-<file path="src/app/portfolio/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { Card, CardLabel } from "@/components/ui/card";
-import { DegiroUpload } from "@/components/portfolio/degiro-upload";
-import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
-import { HoldingsTable } from "@/components/portfolio/holdings-table";
-import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
-import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
-import { StatCard } from "@/components/dashboard/stat-card";
-import { formatPercent } from "@/lib/format";
-import { getNetWorthBreakdown } from "@/lib/data/net-worth";
-import type { Account, RealizedPnlRow } from "@/types/database";
-
-const PALETTE = [
-  "var(--color-gold)",
-  "var(--color-gain)",
-  "var(--color-info)",
-  "#B48CE0",
-  "#F2789F",
-  "#5EC8D8",
-  "#D9A441",
-];
-
-export default async function PortfolioPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [{ data: accounts }, breakdown, { data: realizedRows }] = await Promise.all([
-    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
-    getNetWorthBreakdown(supabase, user!.id),
-    supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
-  ]);
-
-  const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
-  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
-
-  const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
-  const performancePct =
-    breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
-  const totalRealizedPnl = ((realizedRows ?? []) as RealizedPnlRow[]).reduce(
-    (sum, r) => sum + Number(r.realized_pnl),
-    0
-  );
-
-  const compositionSlices: DonutSlice[] = [...breakdown.positions]
-    .sort((a, b) => b.marketValue - a.marketValue)
-    .map((p, i) => ({
-      name: p.name,
-      value: p.marketValue,
-      color: PALETTE[i % PALETTE.length],
-    }));
-
-  return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
-        <h1 className="font-display text-3xl text-text">Portefólio</h1>
-        <p className="text-sm text-text-muted mt-2">
-          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
-          acompanha o valor atual e o lucro ou prejuízo de cada posição.
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-        <StatCard label="Capital investido" value={breakdown.portfolioCost} />
-        <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
-        <StatCard
-          label="Lucro / Prejuízo (não realizado)"
-          value={breakdown.portfolioPnl}
-          tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
-        />
-        <StatCard
-          label="Lucro Realizado"
-          value={totalRealizedPnl}
-          tone={totalRealizedPnl >= 0 ? "gain" : "loss"}
-          hint="Ganhos/perdas já vendidos, custo médio"
-        />
-        <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
-        <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
-      </div>
-
-      <Card className="mb-8">
-        <CardLabel className="mb-3">Importar Extrato DEGIRO</CardLabel>
-        <DegiroUpload brokerAccounts={brokerAccounts} />
-      </Card>
-
-      {breakdown.positions.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="lg:col-span-3">
-            <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
-            <DonutChart slices={compositionSlices} />
-          </Card>
-
-          <Card className="lg:col-span-2 flex flex-col justify-between">
-            <div>
-              <CardLabel className="mb-3">Desempenho Global</CardLabel>
-              <p
-                className={`font-display text-4xl tabular ${
-                  performancePct >= 0 ? "text-gain" : "text-loss"
-                }`}
-              >
-                {formatPercent(performancePct)}
-              </p>
-              <p className="text-xs text-text-faint mt-2">
-                Lucro/prejuízo não realizado face ao capital investido.
-              </p>
-            </div>
-            <div className="mt-6">
-              <PerformanceHighlights positions={breakdown.positions} />
-            </div>
-          </Card>
-        </div>
-      )}
-
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <CardLabel>Posições Atuais</CardLabel>
-          <RefreshQuotesButton />
-        </div>
-        <HoldingsTable positions={breakdown.positions} />
-      </Card>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/relatorios/page.tsx">
-import { createClient } from "@/lib/supabase/server";
-import { Card, CardLabel } from "@/components/ui/card";
-import { PeriodFilter } from "@/components/reports/period-filter";
-import { BudgetForm } from "@/components/reports/budget-form";
-import { BudgetList } from "@/components/reports/budget-list";
-import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
-import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
-import { StatCard } from "@/components/dashboard/stat-card";
-import type { BudgetStatus, Category, Transaction } from "@/types/database";
-
-function groupByCategory(
-  rows: Transaction[],
-  categoryById: Map<string, Category>
-): DonutSlice[] {
-  const map = new Map<string, DonutSlice>();
-  for (const t of rows) {
-    const cat = t.category_id ? categoryById.get(t.category_id) : null;
-    const key = cat?.id ?? "sem_categoria";
-    const name = cat?.name ?? "Sem categoria";
-    const color = cat?.color ?? "#57616F";
-    const existing = map.get(key);
-    if (existing) {
-      existing.value += Number(t.amount);
-    } else {
-      map.set(key, { name, value: Number(t.amount), color });
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => b.value - a.value);
-}
-
-export default async function RelatoriosPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ period?: string }>;
-}) {
-  const { period: periodParam } = await searchParams;
-  const period = (periodParam ?? "3m") as PeriodKey;
-  const { from } = resolvePeriodRange(period);
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [{ data: transactions }, { data: categories }, { data: budgetStatuses }] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user!.id)
-      .gte("occurred_on", from)
-      .order("occurred_on", { ascending: false }),
-    supabase.from("categories").select("*").eq("user_id", user!.id),
-    supabase.from("budget_status").select("*").eq("user_id", user!.id),
-  ]);
-
-  const transactionsList: Transaction[] = transactions ?? [];
-  const categoriesList: Category[] = categories ?? [];
-  const categoryById = new Map(categoriesList.map((c) => [c.id, c]));
-  const budgetStatusesList: BudgetStatus[] = budgetStatuses ?? [];
-
-  const expenses = transactionsList.filter((t) => t.type === "despesa");
-  const income = transactionsList.filter((t) => t.type === "receita");
-
-  const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
-  const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
-
-  const expensesByCategory = groupByCategory(expenses, categoryById);
-  const incomeByCategory = groupByCategory(income, categoryById);
-
-  return (
-    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
-          <h1 className="font-display text-3xl text-text">Relatórios</h1>
-        </div>
-        <PeriodFilter active={period} />
-      </header>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <StatCard label="Receitas no período" value={totalIncome} tone="gain" />
-        <StatCard label="Despesas no período" value={totalExpenses} tone="loss" />
-        <StatCard label="Balanço" value={totalIncome - totalExpenses} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
-          <DonutChart
-            slices={expensesByCategory}
-            emptyMessage="Sem despesas registadas neste período."
-          />
-        </Card>
-
-        <Card>
-          <CardLabel className="mb-4">Receitas por Categoria</CardLabel>
-          <DonutChart
-            slices={incomeByCategory}
-            emptyMessage="Sem receitas registadas neste período."
-          />
-        </Card>
-      </div>
-
-      <Card>
-        <CardLabel className="mb-1">Orçamentos Mensais</CardLabel>
-        <p className="text-xs text-text-faint mb-4">
-          Define um limite de gasto por categoria e acompanha o consumo do mês atual.
-        </p>
-        <div className="mb-5">
-          <BudgetForm categories={categoriesList} />
-        </div>
-        <div className="ledger-rule pt-4">
-          <BudgetList statuses={budgetStatusesList} />
-        </div>
-      </Card>
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/layout.tsx">
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
@@ -5907,6 +7305,476 @@ export function NavSidebar() {
         Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
       </div>
     </aside>
+  );
+}
+</file>
+
+<file path="src/types/database.ts">
+// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql +
+// 003_correcoes_build.sql + 004_regras_categorizacao_e_taxas.sql.
+// Para gerar automaticamente a partir do teu projeto real, corre:
+//   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
+
+export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
+export type CategoryKind = "receita" | "despesa";
+export type TransactionType = "receita" | "despesa" | "transferencia";
+export type AssetOperation = "compra" | "venda" | "dividendo" | "comissao" | "outro";
+export type RecurrenceFrequency = "diaria" | "semanal" | "mensal" | "anual";
+
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  institution: string | null;
+  opening_balance: number;
+  current_balance: number;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Category {
+  id: string;
+  user_id: string;
+  name: string;
+  kind: CategoryKind;
+  color: string | null;
+  icon: string | null;
+  is_default: boolean;
+  /** Categorias "ajuste" — ficam de fora dos totais de receitas/despesas nos relatórios. */
+  exclude_from_reports: boolean;
+  /** Marca esta categoria como representando uma comissão/taxa (ex: "Comissões Bancárias"). */
+  is_fee: boolean;
+  created_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  occurred_on: string;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Asset {
+  id: string;
+  isin: string | null;
+  symbol: string | null;
+  name: string;
+  currency: string;
+  created_at: string;
+}
+
+export interface AssetTransaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  asset_id: string;
+  operation: AssetOperation;
+  occurred_on: string;
+  occurred_at: string | null;
+  quantity: number | null;
+  price: number | null;
+  local_value: number | null;
+  fees: number | null;
+  total_value: number;
+  currency: string | null;
+  exchange_rate: number | null;
+  description: string | null;
+  order_id: string | null;
+  source_hash: string;
+  source: string;
+  raw_row: Record<string, string> | null;
+  created_at: string;
+}
+
+export interface AssetQuote {
+  asset_id: string;
+  price: number;
+  currency: string;
+  fetched_at: string;
+}
+
+export interface CsvImport {
+  id: string;
+  user_id: string;
+  account_id: string | null;
+  file_name: string;
+  file_hash: string;
+  rows_total: number;
+  rows_inserted: number;
+  rows_duplicated: number;
+  rows_failed: number;
+  created_at: string;
+}
+
+export interface PortfolioPosition {
+  user_id: string;
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  isin: string | null;
+  currency: string;
+  quantity_held: number;
+  net_invested: number;
+  total_dividends: number;
+  /** Comissões pagas neste ativo (embutidas nas compras/vendas + linhas avulsas). */
+  total_fees: number;
+  /** Data da primeira compra deste ativo, ou null se nunca houve uma. */
+  first_purchase_at: string | null;
+}
+
+export interface NetWorthSnapshot {
+  id: string;
+  user_id: string;
+  snapshot_date: string;
+  total_net_worth: number;
+  cash_in_banks: number;
+  cash_in_savings: number;
+  cash_in_brokers: number;
+  physical_cash: number;
+  portfolio_value: number;
+  portfolio_cost: number;
+  created_at: string;
+}
+
+export interface RecurringTransaction {
+  id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  account_id: string;
+  transfer_account_id: string | null;
+  category_id: string | null;
+  description: string | null;
+  frequency: RecurrenceFrequency;
+  interval_count: number;
+  start_date: string;
+  end_date: string | null;
+  next_occurrence: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Budget {
+  id: string;
+  user_id: string;
+  category_id: string;
+  monthly_limit: number;
+  created_at: string;
+}
+
+export interface BudgetStatus {
+  user_id: string;
+  category_id: string;
+  category_name: string;
+  category_color: string | null;
+  monthly_limit: number;
+  spent_this_month: number;
+}
+
+export interface RealizedPnlRow {
+  asset_id: string;
+  realized_pnl: number;
+}
+
+/** Regra de categorização automática: se `keyword` aparecer na descrição, sugere `category_id`. */
+export interface CategoryRule {
+  id: string;
+  user_id: string;
+  keyword: string;
+  category_id: string;
+  priority: number;
+  created_at: string;
+}
+
+export interface FeesSummary {
+  banking_fees: number;
+  investment_fees: number;
+  total_fees: number;
+}
+
+export interface FeeTransactionRow {
+  occurred_on: string;
+  source: "Bancária" | "Investimento" | "Investimento (embutida)";
+  description: string;
+  amount: number;
+}
+
+// Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
+// Substitui por `supabase gen types` quando ligares a um projeto real.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Database = any;
+</file>
+
+<file path="src/app/portfolio/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { DegiroUpload } from "@/components/portfolio/degiro-upload";
+import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
+import { UndoImportButton } from "@/components/portfolio/undo-import-button";
+import { HoldingsTable } from "@/components/portfolio/holdings-table";
+import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
+import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { formatPercent } from "@/lib/format";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import type { Account, RealizedPnlRow } from "@/types/database";
+
+const PALETTE = [
+  "var(--color-gold)",
+  "var(--color-gain)",
+  "var(--color-info)",
+  "#B48CE0",
+  "#F2789F",
+  "#5EC8D8",
+  "#D9A441",
+];
+
+export default async function PortfolioPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: accounts }, breakdown, { data: realizedRows }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
+    getNetWorthBreakdown(supabase, user!.id),
+    supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
+  ]);
+
+  const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
+  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+  const totalFees = breakdown.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
+  const performancePct =
+    breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
+  const totalRealizedPnl = ((realizedRows ?? []) as RealizedPnlRow[]).reduce(
+    (sum, r) => sum + Number(r.realized_pnl),
+    0
+  );
+
+  const compositionSlices: DonutSlice[] = [...breakdown.positions]
+    .sort((a, b) => b.marketValue - a.marketValue)
+    .map((p, i) => ({
+      name: p.name,
+      value: p.marketValue,
+      color: PALETTE[i % PALETTE.length],
+    }));
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
+        <h1 className="font-display text-3xl text-text">Portefólio</h1>
+        <p className="text-sm text-text-muted mt-2">
+          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
+          acompanha o valor atual e o lucro ou prejuízo de cada posição.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
+        <StatCard label="Capital investido" value={breakdown.portfolioCost} />
+        <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
+        <StatCard
+          label="Lucro / Prejuízo (não realizado)"
+          value={breakdown.portfolioPnl}
+          tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
+        />
+        <StatCard
+          label="Lucro Realizado"
+          value={totalRealizedPnl}
+          tone={totalRealizedPnl >= 0 ? "gain" : "loss"}
+          hint="Ganhos/perdas já vendidos, custo médio"
+        />
+        <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
+        <StatCard label="Comissões e Taxas Pagas" value={totalFees} tone="loss" />
+        <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
+      </div>
+
+      <Card className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <CardLabel>Importar Extrato DEGIRO</CardLabel>
+          <UndoImportButton />
+        </div>
+        <DegiroUpload brokerAccounts={brokerAccounts} />
+      </Card>
+
+      {breakdown.positions.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+          <Card className="lg:col-span-3">
+            <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
+            <DonutChart slices={compositionSlices} />
+          </Card>
+
+          <Card className="lg:col-span-2 flex flex-col justify-between">
+            <div>
+              <CardLabel className="mb-3">Desempenho Global</CardLabel>
+              <p
+                className={`font-display text-4xl tabular ${
+                  performancePct >= 0 ? "text-gain" : "text-loss"
+                }`}
+              >
+                {formatPercent(performancePct)}
+              </p>
+              <p className="text-xs text-text-faint mt-2">
+                Lucro/prejuízo não realizado face ao capital investido.
+              </p>
+            </div>
+            <div className="mt-6">
+              <PerformanceHighlights positions={breakdown.positions} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <CardLabel>Posições Atuais</CardLabel>
+          <RefreshQuotesButton />
+        </div>
+        <HoldingsTable positions={breakdown.positions} />
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/relatorios/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardLabel } from "@/components/ui/card";
+import { PeriodFilter } from "@/components/reports/period-filter";
+import { BudgetForm } from "@/components/reports/budget-form";
+import { BudgetList } from "@/components/reports/budget-list";
+import { ReportsTabs } from "@/components/reports/reports-tabs";
+import { resolvePeriodRange, type PeriodKey } from "@/lib/reports/period";
+import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
+import { StatCard } from "@/components/dashboard/stat-card";
+import type { BudgetStatus, Category, Transaction } from "@/types/database";
+
+function groupByCategory(
+  rows: Transaction[],
+  categoryById: Map<string, Category>
+): DonutSlice[] {
+  const map = new Map<string, DonutSlice>();
+  for (const t of rows) {
+    const cat = t.category_id ? categoryById.get(t.category_id) : null;
+    const key = cat?.id ?? "sem_categoria";
+    const name = cat?.name ?? "Sem categoria";
+    const color = cat?.color ?? "#57616F";
+    const existing = map.get(key);
+    if (existing) {
+      existing.value += Number(t.amount);
+    } else {
+      map.set(key, { name, value: Number(t.amount), color });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.value - a.value);
+}
+
+export default async function RelatoriosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const { period: periodParam } = await searchParams;
+  const period = (periodParam ?? "3m") as PeriodKey;
+  const { from } = resolvePeriodRange(period);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: transactions }, { data: categories }, { data: budgetStatuses }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user!.id)
+      .gte("occurred_on", from)
+      .order("occurred_on", { ascending: false }),
+    supabase.from("categories").select("*").eq("user_id", user!.id),
+    supabase.from("budget_status").select("*").eq("user_id", user!.id),
+  ]);
+
+  const transactionsList: Transaction[] = transactions ?? [];
+  const categoriesList: Category[] = categories ?? [];
+  const categoryById = new Map(categoriesList.map((c) => [c.id, c]));
+  const budgetStatusesList: BudgetStatus[] = budgetStatuses ?? [];
+
+  const expenses = transactionsList.filter((t) => t.type === "despesa");
+  const income = transactionsList.filter((t) => t.type === "receita");
+
+  const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalIncome = income.reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const expensesByCategory = groupByCategory(expenses, categoryById);
+  const incomeByCategory = groupByCategory(income, categoryById);
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 md:px-10 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Análise</p>
+        <h1 className="font-display text-3xl text-text">Relatórios</h1>
+      </header>
+
+      <ReportsTabs
+        overview={
+          <>
+            <div className="mb-6">
+              <PeriodFilter active={period} />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <StatCard label="Receitas no período" value={totalIncome} tone="gain" />
+              <StatCard label="Despesas no período" value={totalExpenses} tone="loss" />
+              <StatCard label="Balanço" value={totalIncome - totalExpenses} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardLabel className="mb-4">Despesas por Categoria</CardLabel>
+                <DonutChart
+                  slices={expensesByCategory}
+                  emptyMessage="Sem despesas registadas neste período."
+                />
+              </Card>
+
+              <Card>
+                <CardLabel className="mb-4">Receitas por Categoria</CardLabel>
+                <DonutChart
+                  slices={incomeByCategory}
+                  emptyMessage="Sem receitas registadas neste período."
+                />
+              </Card>
+            </div>
+          </>
+        }
+        budgets={
+          <Card>
+            <CardLabel className="mb-1">Orçamentos Mensais</CardLabel>
+            <p className="text-xs text-text-faint mb-4">
+              Define um limite de gasto por categoria e acompanha o consumo do mês atual.
+            </p>
+            <div className="mb-5">
+              <BudgetForm categories={categoriesList} />
+            </div>
+            <div className="ledger-rule pt-4">
+              <BudgetList statuses={budgetStatusesList} />
+            </div>
+          </Card>
+        }
+      />
+    </div>
   );
 }
 </file>

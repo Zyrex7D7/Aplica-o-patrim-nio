@@ -3,6 +3,7 @@ import { Card, CardLabel } from "@/components/ui/card";
 import { DegiroUpload } from "@/components/portfolio/degiro-upload";
 import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
 import { UndoImportButton } from "@/components/portfolio/undo-import-button";
+import { WipeImportsButton } from "@/components/portfolio/wipe-imports-button";
 import { HoldingsTable } from "@/components/portfolio/holdings-table";
 import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
 import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
@@ -84,9 +85,12 @@ export default async function PortfolioPage() {
       </div>
 
       <Card className="mb-8">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <CardLabel>Importar Extrato DEGIRO</CardLabel>
-          <UndoImportButton />
+          <div className="flex items-center gap-4">
+            <UndoImportButton />
+            <WipeImportsButton />
+          </div>
         </div>
         <DegiroUpload brokerAccounts={brokerAccounts} />
       </Card>
