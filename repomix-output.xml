@@ -40,6 +40,20 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+mnt/
+  user-data/
+    outputs/
+      v2/
+        src/
+          app/
+            mais/
+              page.tsx
+            noticias/
+              page.tsx
+            portfolio/
+              page.tsx
+            radar/
+              page.tsx
 public/
   icons/
     icon-128.png
@@ -134,6 +148,8 @@ src/
       degiro-upload.tsx
       holdings-table.tsx
       performance-highlights.tsx
+      portfolio-projections.tsx
+      portfolio-tabs.tsx
       refresh-quotes-button.tsx
       undo-import-button.tsx
       wipe-imports-button.tsx
@@ -176,6 +192,7 @@ src/
       quotes.ts
     reports/
       period.ts
+      projections.ts
     supabase/
       client.ts
       server.ts
@@ -192,23 +209,420 @@ test-fixtures/
   degiro-transacoes.csv
   run-test.ts
 .gitignore
+005_cotacoes_eur.sql
+006_radar.sql
 AGENTS.md
 CLAUDE.md
 eslint.config.mjs
+globals.css
+hero-card.tsx
+holdings-table.tsx
+layout.tsx
 LEIA-ME-ALTERACOES.md
 LEIA-ME-ATUALIZACAO.md
 LEIA-ME-PATCH.md
+LEIA-ME-PROJECOES.md
 LEIA-ME-RONDA-2.md
+LEIA-ME-RONDA-3.md
+LEIA-ME-V2.md
 LEIA-ME.md
+net-worth.ts
 next.config.ts
 package.json
+page.tsx
 postcss.config.mjs
+quotes.ts
 README.md
+route.ts
+ticker.ts
+top-movers.tsx
 tsconfig.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="mnt/user-data/outputs/v2/src/app/mais/page.tsx">
+import Link from "next/link";
+import { ChevronRight, FileClock, LogOut, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, PieChart, Repeat, Wallet } from "lucide-react";
+import { signOut } from "./actions";
+
+const ITEMS: { href: string; label: string; hint: string; icon: LucideIcon }[] = [
+  { href: "/contas", label: "Contas", hint: "Bancos, poupança, corretoras e numerário", icon: Wallet },
+  { href: "/transacoes", label: "Movimentos", hint: "Receitas, despesas e transferências", icon: ArrowLeftRight },
+  { href: "/recorrentes", label: "Recorrências", hint: "Renda, salário e subscrições automáticas", icon: Repeat },
+  { href: "/relatorios", label: "Relatórios", hint: "Despesas por categoria e orçamentos", icon: PieChart },
+  { href: "/portfolio/importacoes", label: "Importações DEGIRO", hint: "Histórico de extratos carregados", icon: FileClock },
+];
+
+export default function MaisPage() {
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <h1 className="text-3xl font-extrabold text-text">Mais</h1>
+      <ul className="flex flex-col gap-3">
+        {ITEMS.map(({ href, label, hint, icon: Icon }) => (
+          <li key={href}>
+            <Link href={href} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-soft text-gold">
+                <Icon size={22} />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-bold text-text">{label}</span>
+                <span className="block text-sm text-text-muted">{hint}</span>
+              </span>
+              <ChevronRight size={18} className="text-text-faint" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <form action={signOut}>
+        <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3.5 text-sm font-semibold text-text-muted">
+          <LogOut size={16} />
+          Terminar sessão
+        </button>
+      </form>
+    </div>
+  );
+}
+</file>
+
+<file path="mnt/user-data/outputs/v2/src/app/noticias/page.tsx">
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { getNews, type NewsItem } from "@/lib/market/quotes";
+import { shortTicker } from "@/lib/ticker";
+import { formatPercent, cx } from "@/lib/format";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
+
+type Tab = "carteira" | "radar" | "mercado";
+const TABS: { key: Tab; label: string }[] = [
+  { key: "carteira", label: "Carteira" },
+  { key: "radar", label: "Radar" },
+  { key: "mercado", label: "Mercado" },
+];
+
+interface Entry extends NewsItem {
+  ticker: string | null;
+  dayPct: number | null;
+  weight: number | null;
+  roi: number | null;
+}
+
+function timeAgo(ms: number): string {
+  const mins = Math.max(1, Math.round((Date.now() - ms) / 60000));
+  if (mins < 60) return `há ${mins} min`;
+  const h = Math.round(mins / 60);
+  if (h < 24) return `há ${h} h`;
+  const d = Math.round(h / 24);
+  return `há ${d} ${d === 1 ? "dia" : "dias"}`;
+}
+
+export default async function NoticiasPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab: tabParam } = await searchParams;
+  const tab: Tab = tabParam === "radar" || tabParam === "mercado" ? tabParam : "carteira";
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let entries: Entry[] = [];
+
+  if (tab === "carteira") {
+    const b = await getNetWorthBreakdown(supabase, user!.id);
+    const top = [...b.positions].filter((p) => p.symbol).sort((a, c) => c.marketValue - a.marketValue).slice(0, 8);
+    const results = await Promise.all(top.map((p) => getNews(p.symbol!, 2)));
+    entries = top.flatMap((p, i) =>
+      results[i].map((n) => ({
+        ...n,
+        ticker: shortTicker(p.symbol, p.name),
+        dayPct: p.dayChangePct,
+        weight: b.portfolioValue > 0 ? p.marketValue / b.portfolioValue : null,
+        roi: p.net_invested !== 0 ? (p.marketValue - p.net_invested) / Math.abs(p.net_invested) : null,
+      }))
+    );
+  } else if (tab === "radar") {
+    const { data: watch } = await supabase.from("watchlist").select("symbol, name").eq("user_id", user!.id).limit(8);
+    const list = (watch ?? []) as { symbol: string; name: string }[];
+    const results = await Promise.all(list.map((w) => getNews(w.symbol, 2)));
+    entries = list.flatMap((w, i) =>
+      results[i].map((n) => ({ ...n, ticker: shortTicker(w.symbol, w.name), dayPct: null, weight: null, roi: null }))
+    );
+  } else {
+    const news = await getNews("stock market", 12);
+    entries = news.map((n) => ({ ...n, ticker: null, dayPct: null, weight: null, roi: null }));
+  }
+
+  const seen = new Set<string>();
+  entries = entries
+    .filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)))
+    .sort((a, b) => b.publishedAt - a.publishedAt);
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <header>
+        <h1 className="text-3xl font-extrabold text-text">Notícias</h1>
+        <p className="text-text-muted mt-1">As tuas posições nas notícias</p>
+      </header>
+
+      <div className="grid grid-cols-3 rounded-2xl bg-surface-alt p-1.5">
+        {TABS.map((t) => (
+          <Link
+            key={t.key}
+            href={`/noticias?tab=${t.key}`}
+            className={cx(
+              "rounded-xl py-2.5 text-center text-sm font-semibold transition-colors",
+              tab === t.key ? "bg-ink text-text" : "text-text-muted"
+            )}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+
+      {entries.length === 0 ? (
+        <p className="text-sm text-text-muted py-10 text-center">
+          {tab === "radar"
+            ? "Adiciona ativos ao Radar para ver as notícias deles aqui."
+            : "Sem notícias de momento. Confirma que as posições têm cotações atualizadas."}
+        </p>
+      ) : (
+        <ul className="flex flex-col">
+          {entries.map((e) => (
+            <li key={e.id} className="py-5 border-b border-line-soft last:border-0">
+              {e.ticker && (
+                <div className="flex items-center gap-3 mb-3">
+                  <TickerAvatar ticker={e.ticker} size={32} />
+                  <p className="font-bold text-text">{e.ticker}</p>
+                </div>
+              )}
+              <a href={e.link} target="_blank" rel="noopener noreferrer" className="block text-lg font-semibold text-text leading-snug">
+                {e.title}
+              </a>
+              {(e.dayPct !== null || e.weight !== null || e.roi !== null) && (
+                <p className="text-sm text-text-muted mt-2 flex flex-wrap gap-x-2">
+                  {e.dayPct !== null && (
+                    <span className={cx("tabular font-semibold", e.dayPct >= 0 ? "text-gain" : "text-loss")}>{formatPercent(e.dayPct)}</span>
+                  )}
+                  {e.weight !== null && <span>· {(e.weight * 100).toFixed(0)}% da carteira</span>}
+                  {e.roi !== null && (
+                    <span className={cx("tabular", e.roi >= 0 ? "text-gain" : "text-loss")}>· ROI {formatPercent(e.roi)}</span>
+                  )}
+                </p>
+              )}
+              <p className="text-sm text-text-faint mt-2 flex items-center gap-1.5">
+                {e.publisher} · {timeAgo(e.publishedAt)} <ExternalLink size={13} />
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="mnt/user-data/outputs/v2/src/app/portfolio/page.tsx">
+import Link from "next/link";
+import { ChevronDown } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { getQuote } from "@/lib/market/quotes";
+import { DegiroUpload } from "@/components/portfolio/degiro-upload";
+import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
+import { UndoImportButton } from "@/components/portfolio/undo-import-button";
+import { WipeImportsButton } from "@/components/portfolio/wipe-imports-button";
+import { HoldingsTable, type ClosedRow } from "@/components/portfolio/holdings-table";
+import { StatCard } from "@/components/dashboard/stat-card";
+import type { Account, RealizedPnlRow } from "@/types/database";
+
+export default async function PortfolioPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: accounts }, b, { data: realizedRows }, { data: closedPositions }, sp500] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
+    getNetWorthBreakdown(supabase, user!.id),
+    supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
+    supabase.from("portfolio_positions").select("*").eq("user_id", user!.id).lte("quantity_held", 0.0000001),
+    getQuote("^GSPC"),
+  ]);
+
+  const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
+  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const totalFees = b.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
+
+  const realized = (realizedRows ?? []) as RealizedPnlRow[];
+  const realizedById = new Map(realized.map((r) => [r.asset_id, Number(r.realized_pnl)]));
+  const totalRealized = realized.reduce((s, r) => s + Number(r.realized_pnl), 0);
+
+  const closed: ClosedRow[] = (closedPositions ?? []).map(
+    (p: { asset_id: string; name: string; symbol: string | null; total_dividends: number }) => ({
+      asset_id: p.asset_id,
+      name: p.name,
+      symbol: p.symbol,
+      realizedPnl: realizedById.get(p.asset_id) ?? 0,
+      total_dividends: Number(p.total_dividends),
+    })
+  );
+
+  const hasQuotes = b.positions.some((p) => p.dayChangeEur !== null);
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <div className="flex justify-end">
+        <RefreshQuotesButton />
+      </div>
+
+      <HoldingsTable
+        positions={b.positions}
+        closed={closed}
+        portfolioDayPct={hasQuotes ? b.dayChangePct : null}
+        benchmarkPct={sp500?.changePercent != null ? sp500.changePercent / 100 : null}
+      />
+
+      <details className="group rounded-3xl border border-line bg-surface mt-2">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Estatísticas da carteira
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+          <StatCard label="Capital investido" value={b.portfolioCost} />
+          <StatCard label="Valor atual" value={b.portfolioValue} tone="gold" />
+          <StatCard label="Lucro não realizado" value={b.portfolioPnl} tone={b.portfolioPnl >= 0 ? "gain" : "loss"} />
+          <StatCard label="Lucro realizado" value={totalRealized} tone={totalRealized >= 0 ? "gain" : "loss"} />
+          <StatCard label="Dividendos" value={b.totalDividends} tone="gain" />
+          <StatCard label="Comissões e taxas" value={totalFees} tone="loss" />
+          <StatCard label="Saldo livre" value={freeCash} />
+        </div>
+      </details>
+
+      <details className="group rounded-3xl border border-line bg-surface">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Importar extrato DEGIRO
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-5 pb-5 flex flex-col gap-4">
+          <DegiroUpload brokerAccounts={brokerAccounts} />
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <UndoImportButton />
+            <WipeImportsButton />
+            <Link href="/portfolio/importacoes" className="text-xs text-gold">
+              Ver histórico de importações
+            </Link>
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+</file>
+
+<file path="mnt/user-data/outputs/v2/src/app/radar/page.tsx">
+import { createClient } from "@/lib/supabase/server";
+import { getQuote } from "@/lib/market/quotes";
+import { shortTicker } from "@/lib/ticker";
+import { formatCurrency, formatPercent, cx } from "@/lib/format";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
+import { WatchlistAdd } from "@/components/radar/watchlist-add";
+import { RemoveWatchButton } from "@/components/radar/remove-watch-button";
+
+interface WatchRow {
+  id: string;
+  symbol: string;
+  name: string;
+  currency: string;
+  added_price: number | null;
+  added_at: string;
+}
+
+const tone = (v: number) => (v > 0 ? "text-gain" : v < 0 ? "text-loss" : "text-text-muted");
+
+export default async function RadarPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: watch }, { data: held }] = await Promise.all([
+    supabase.from("watchlist").select("*").eq("user_id", user!.id).order("added_at", { ascending: false }),
+    supabase.from("portfolio_positions").select("symbol, quantity_held").eq("user_id", user!.id).gt("quantity_held", 0.0000001),
+  ]);
+
+  const rows: WatchRow[] = watch ?? [];
+  const owned = new Set((held ?? []).map((h: { symbol: string | null }) => (h.symbol ?? "").split(".")[0].toUpperCase()));
+  const quotes = await Promise.all(rows.map((r) => getQuote(r.symbol)));
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <WatchlistAdd />
+      <p className="text-sm text-text-muted">{rows.length} {rows.length === 1 ? "título" : "títulos"} em observação</p>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-text-muted py-10 text-center">
+          O Radar é a tua lista de ativos a acompanhar. Escreve um ticker acima, por exemplo TSLA ou BTC-USD.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {rows.map((r, i) => {
+            const q = quotes[i];
+            const t = shortTicker(r.symbol, r.name);
+            const dayPct = q?.changePercent != null ? q.changePercent / 100 : null;
+            const dayAbs = q && dayPct !== null ? q.price - q.price / (1 + dayPct) : null;
+            const sincePct = q && r.added_price ? q.price / Number(r.added_price) - 1 : null;
+            return (
+              <li
+                key={r.id}
+                className={cx(
+                  "rounded-2xl border border-line bg-surface p-4 border-l-4",
+                  dayPct === null ? "border-l-line" : dayPct >= 0 ? "border-l-gain" : "border-l-loss"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <TickerAvatar ticker={t} />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 text-lg font-extrabold text-text leading-tight">
+                      {t}
+                      {owned.has(t) && (
+                        <span className="rounded-md bg-gold-soft px-2 py-0.5 text-[11px] font-bold text-gold">JÁ TENS</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-text-muted truncate">{r.name}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={cx("tabular text-lg font-bold", dayPct === null ? "text-text" : tone(dayPct))}>
+                      {q ? formatCurrency(q.price, q.currency) : "—"}
+                    </p>
+                    {dayPct !== null && dayAbs !== null && (
+                      <p className={cx("tabular text-sm font-semibold", tone(dayPct))}>
+                        {formatPercent(dayPct)} <span className="opacity-60">·</span> {formatCurrency(dayAbs, q!.currency)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm text-text-muted">
+                  <span>Segues desde {new Date(r.added_at).toLocaleDateString("pt-PT")}</span>
+                  <span className="flex items-center gap-3">
+                    {sincePct !== null && (
+                      <span className={cx("tabular font-semibold", tone(sincePct))}>{formatPercent(sincePct)}</span>
+                    )}
+                    <RemoveWatchButton id={r.id} />
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+</file>
 
 <file path="public/file.svg">
 <svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
@@ -1261,6 +1675,244 @@ export function PerformanceHighlights({ positions }: { positions: PositionRow[] 
           </span>
         </p>
       </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/portfolio-projections.tsx">
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
+import { formatCurrency } from "@/lib/format";
+import { buildProjection, buildScenarios, DEFAULT_MODERATE_RATE } from "@/lib/reports/projections";
+
+const YEAR_OPTIONS = [5, 10, 20, 30];
+
+const SCENARIO_LABEL: Record<"conservador" | "moderado" | "otimista", string> = {
+  conservador: "Conservador",
+  moderado: "Moderado",
+  otimista: "Otimista",
+};
+
+export function PortfolioProjections({
+  currentValue,
+  estimatedAnnualRatePct,
+}: {
+  currentValue: number;
+  estimatedAnnualRatePct: number | null;
+}) {
+  const [monthlyContribution, setMonthlyContribution] = useState(0);
+  const [years, setYears] = useState(10);
+  const [moderateRate, setModerateRate] = useState(
+    estimatedAnnualRatePct !== null ? Math.round(estimatedAnnualRatePct * 10) / 10 : DEFAULT_MODERATE_RATE
+  );
+
+  const rates = useMemo(() => buildScenarios(moderateRate), [moderateRate]);
+  const data = useMemo(
+    () => buildProjection(currentValue, monthlyContribution, rates, years),
+    [currentValue, monthlyContribution, rates, years]
+  );
+
+  const final = data[data.length - 1];
+
+  if (currentValue <= 0) {
+    return (
+      <p className="text-sm text-text-muted py-6 text-center">
+        Ainda não tens posições no portefólio — importa um extrato da DEGIRO para veres projeções.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] uppercase tracking-[0.1em] text-text-faint">
+            Investimento mensal adicional
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={monthlyContribution}
+            onChange={(e) => {
+              const n = Number(e.target.value.replace(",", "."));
+              setMonthlyContribution(Number.isFinite(n) ? Math.max(0, n) : 0);
+            }}
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] uppercase tracking-[0.1em] text-text-faint">
+            Horizonte temporal
+          </span>
+          <select
+            value={years}
+            onChange={(e) => setYears(Number(e.target.value))}
+            className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold"
+          >
+            {YEAR_OPTIONS.map((y) => (
+              <option key={y} value={y}>
+                {y} anos
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] uppercase tracking-[0.1em] text-text-faint">
+            Retorno anual esperado (cenário moderado)
+          </span>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={moderateRate}
+              onChange={(e) => {
+                const n = Number(e.target.value.replace(",", "."));
+                setModerateRate(Number.isFinite(n) ? n : 0);
+              }}
+              className="w-full rounded-md border border-line bg-surface-alt px-3 py-2 pr-7 text-sm outline-none focus:border-gold tabular"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-faint">%</span>
+          </div>
+        </label>
+      </div>
+
+      <p className="text-[11px] text-text-faint leading-relaxed">
+        {estimatedAnnualRatePct !== null
+          ? `Sugestão calculada a partir da evolução recente do teu portefólio (~${estimatedAnnualRatePct.toFixed(1)}%/ano). `
+          : "Ainda não há histórico suficiente para estimar uma taxa a partir dos teus dados — foi usada uma média de referência do mercado de ações (7%/ano). "}
+        Os cenários conservador e otimista usam -3 e +3 pontos percentuais em torno do valor
+        moderado. Ajusta os valores acima como quiseres — isto é uma simulação, não uma promessa de
+        retorno.
+      </p>
+
+      <ResponsiveContainer width="100%" height={280}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line-soft)" vertical={false} />
+          <XAxis
+            dataKey="year"
+            tickFormatter={(y) => `Ano ${y}`}
+            tick={{ fill: "var(--color-text-faint)", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tickFormatter={(v) => formatCurrency(Number(v))}
+            tick={{ fill: "var(--color-text-faint)", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            width={90}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "var(--color-surface-alt)",
+              border: "1px solid var(--color-line)",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+            labelFormatter={(y) => `Ano ${y}`}
+            formatter={(value, name) => [
+              formatCurrency(Number(value)),
+              SCENARIO_LABEL[name as "conservador" | "moderado" | "otimista"],
+            ]}
+          />
+          <Legend
+            formatter={(value) => (
+              <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>
+                {SCENARIO_LABEL[value as "conservador" | "moderado" | "otimista"]}
+              </span>
+            )}
+          />
+          <Line type="monotone" dataKey="conservador" stroke="var(--color-loss)" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="moderado" stroke="var(--color-gold)" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="otimista" stroke="var(--color-gain)" strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-lg border border-loss/30 bg-loss-soft/40 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">
+            Conservador ({rates.conservador.toFixed(1)}%/ano)
+          </p>
+          <p className="tabular text-lg text-loss">{formatCurrency(final.conservador)}</p>
+        </div>
+        <div className="rounded-lg border border-gold/30 bg-gold-soft/40 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">
+            Moderado ({rates.moderado.toFixed(1)}%/ano)
+          </p>
+          <p className="tabular text-lg text-gold">{formatCurrency(final.moderado)}</p>
+        </div>
+        <div className="rounded-lg border border-gain/30 bg-gain-soft/40 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.1em] text-text-faint mb-1">
+            Otimista ({rates.otimista.toFixed(1)}%/ano)
+          </p>
+          <p className="tabular text-lg text-gain">{formatCurrency(final.otimista)}</p>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-text-faint leading-relaxed ledger-rule pt-3">
+        Estas projeções assumem uma taxa de retorno constante e investimentos mensais constantes —
+        na realidade os mercados sobem e descem de forma irregular, e a taxa sugerida é calculada a
+        partir de um histórico ainda curto. Serve para teres uma noção de ordem de grandeza, nunca
+        como garantia de resultado nem como aconselhamento financeiro.
+      </p>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/portfolio/portfolio-tabs.tsx">
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { cx } from "@/lib/format";
+
+export function PortfolioTabs({
+  overview,
+  projections,
+}: {
+  overview: ReactNode;
+  projections: ReactNode;
+}) {
+  const [tab, setTab] = useState<"overview" | "projections">("overview");
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-6 border-b border-line">
+        {(
+          [
+            { key: "overview" as const, label: "Visão Geral" },
+            { key: "projections" as const, label: "Projeções" },
+          ]
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={cx(
+              "px-3 py-2 text-sm -mb-px border-b-2 transition-colors",
+              tab === t.key
+                ? "border-gold text-gold"
+                : "border-transparent text-text-muted hover:text-text"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === "overview" ? overview : projections}
     </div>
   );
 }
@@ -2547,6 +3199,113 @@ export function resolvePeriodRange(period: string): { from: string; label: strin
 }
 </file>
 
+<file path="src/lib/reports/projections.ts">
+import type { NetWorthSnapshot } from "@/types/database";
+
+export interface ProjectionPoint {
+  year: number;
+  conservador: number;
+  moderado: number;
+  otimista: number;
+}
+
+/** Taxa por omissão quando ainda não há histórico suficiente para estimar (média histórica de referência do mercado de ações). */
+export const DEFAULT_MODERATE_RATE = 7;
+
+/**
+ * Estima a taxa de crescimento anualizada do portefólio a partir do
+ * histórico de snapshots de património (net_worth_snapshots.portfolio_value),
+ * que já é capturado todos os dias pela função `capture_net_worth_snapshot`.
+ *
+ * Atenção: isto NÃO é uma taxa de retorno "pura" de mercado — o valor do
+ * portefólio também sobe quando compras novas ações, por isso esta taxa
+ * mistura performance de mercado com novo capital investido. É só uma
+ * estimativa aproximada para sugerir um ponto de partida, nunca uma
+ * previsão garantida.
+ */
+export function estimateAnnualGrowthRate(
+  snapshots: Pick<NetWorthSnapshot, "snapshot_date" | "portfolio_value">[]
+): number | null {
+  const valid = snapshots
+    .filter((s) => Number(s.portfolio_value) > 0)
+    .sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date));
+
+  if (valid.length < 2) return null;
+
+  const first = valid[0];
+  const last = valid[valid.length - 1];
+  const days =
+    (new Date(last.snapshot_date).getTime() - new Date(first.snapshot_date).getTime()) / 86_400_000;
+
+  // Precisamos de pelo menos ~2 semanas de histórico para a taxa não ficar
+  // completamente instável (1 dia de diferença extrapolado para um ano dá
+  // valores absurdos).
+  if (days < 14) return null;
+
+  const totalReturn =
+    (Number(last.portfolio_value) - Number(first.portfolio_value)) / Number(first.portfolio_value);
+  const years = days / 365;
+  const cagr = Math.pow(1 + totalReturn, 1 / years) - 1;
+
+  // Limita a um intervalo plausível — evita mostrar projeções absurdas a
+  // partir de janelas de dados muito curtas ou muito voláteis.
+  return Math.max(-30, Math.min(30, cagr * 100));
+}
+
+/** Constrói os 3 cenários (-3pp / base / +3pp) a partir de uma taxa "moderada". */
+export function buildScenarios(
+  baseRatePct: number
+): { conservador: number; moderado: number; otimista: number } {
+  const moderado = Math.max(0, baseRatePct);
+  return {
+    conservador: Math.max(0, moderado - 3),
+    moderado,
+    otimista: moderado + 3,
+  };
+}
+
+/**
+ * Projeta a evolução do valor do portefólio ano a ano, assumindo uma taxa
+ * de retorno anual constante e um investimento mensal constante — ambas
+ * simplificações. Na vida real nem o mercado nem os teus depósitos são
+ * constantes; isto serve para teres uma ordem de grandeza, não uma
+ * garantia de resultado.
+ */
+function projectValue(
+  initialValue: number,
+  monthlyContribution: number,
+  annualRatePct: number,
+  years: number
+): number[] {
+  const monthlyRate = Math.pow(1 + annualRatePct / 100, 1 / 12) - 1;
+  const values: number[] = [initialValue];
+  let value = initialValue;
+  for (let month = 1; month <= years * 12; month++) {
+    value = value * (1 + monthlyRate) + monthlyContribution;
+    if (month % 12 === 0) values.push(value);
+  }
+  return values;
+}
+
+export function buildProjection(
+  initialValue: number,
+  monthlyContribution: number,
+  rates: { conservador: number; moderado: number; otimista: number },
+  years: number
+): ProjectionPoint[] {
+  const conservador = projectValue(initialValue, monthlyContribution, rates.conservador, years);
+  const moderado = projectValue(initialValue, monthlyContribution, rates.moderado, years);
+  const otimista = projectValue(initialValue, monthlyContribution, rates.otimista, years);
+
+  return Array.from({ length: years + 1 }, (_, i) => ({
+    year: i,
+    conservador: conservador[i],
+    moderado: moderado[i],
+    otimista: otimista[i],
+  }));
+}
+</file>
+
 <file path="src/lib/supabase/client.ts">
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
@@ -2752,6 +3511,105 @@ yarn-error.log*
 next-env.d.ts
 </file>
 
+<file path="005_cotacoes_eur.sql">
+-- =========================================================================
+-- 005 — Cotações alinhadas com a DEGIRO
+-- =========================================================================
+-- 1) assets.exchange        -> bolsa de referência da DEGIRO (EAM, XET, NDQ...)
+-- 2) asset_quotes           -> preço já convertido para EUR, fecho anterior
+--                              e variação diária (para "variação do dia")
+-- 3) política UPDATE em assets -> sem ela, o símbolo Yahoo descoberto nunca
+--    era gravado e a app voltava a procurá-lo em todas as atualizações.
+-- 4) capture_net_worth_snapshot passa a usar o preço em EUR.
+-- Idempotente.
+-- =========================================================================
+
+alter table public.assets add column if not exists exchange text;
+
+alter table public.asset_quotes add column if not exists price_eur numeric(18,6);
+alter table public.asset_quotes add column if not exists previous_close_eur numeric(18,6);
+alter table public.asset_quotes add column if not exists change_percent numeric(10,4);
+
+drop policy if exists "assets_update_authenticated" on public.assets;
+create policy "assets_update_authenticated" on public.assets
+  for update using (auth.role() = 'authenticated');
+
+create or replace function public.capture_net_worth_snapshot(p_user_id uuid)
+returns void language plpgsql as $$
+declare
+  v_cash_banks numeric(18,2);
+  v_cash_savings numeric(18,2);
+  v_cash_brokers numeric(18,2);
+  v_cash_physical numeric(18,2);
+  v_portfolio_value numeric(18,2);
+  v_portfolio_cost numeric(18,2);
+begin
+  select coalesce(sum(current_balance), 0) into v_cash_banks
+  from public.accounts where user_id = p_user_id and type = 'banco' and is_archived = false;
+
+  select coalesce(sum(current_balance), 0) into v_cash_savings
+  from public.accounts where user_id = p_user_id and type = 'poupanca' and is_archived = false;
+
+  select coalesce(sum(current_balance), 0) into v_cash_brokers
+  from public.accounts where user_id = p_user_id and type = 'corretora' and is_archived = false;
+
+  select coalesce(sum(current_balance), 0) into v_cash_physical
+  from public.accounts where user_id = p_user_id and type = 'numerario' and is_archived = false;
+
+  select
+    coalesce(sum(coalesce(q.price_eur, case when q.currency = 'EUR' then q.price end, pp.net_invested / nullif(pp.quantity_held, 0)) * pp.quantity_held), 0),
+    coalesce(sum(pp.net_invested), 0)
+  into v_portfolio_value, v_portfolio_cost
+  from public.portfolio_positions pp
+  left join public.asset_quotes q on q.asset_id = pp.asset_id
+  where pp.user_id = p_user_id and pp.quantity_held > 0.0000001;
+
+  insert into public.net_worth_snapshots (
+    user_id, snapshot_date, total_net_worth,
+    cash_in_banks, cash_in_savings, cash_in_brokers, physical_cash,
+    portfolio_value, portfolio_cost
+  ) values (
+    p_user_id, current_date,
+    v_cash_banks + v_cash_savings + v_cash_brokers + v_cash_physical + v_portfolio_value,
+    v_cash_banks, v_cash_savings, v_cash_brokers, v_cash_physical,
+    v_portfolio_value, v_portfolio_cost
+  )
+  on conflict (user_id, snapshot_date) do update set
+    total_net_worth = excluded.total_net_worth,
+    cash_in_banks = excluded.cash_in_banks,
+    cash_in_savings = excluded.cash_in_savings,
+    cash_in_brokers = excluded.cash_in_brokers,
+    physical_cash = excluded.physical_cash,
+    portfolio_value = excluded.portfolio_value,
+    portfolio_cost = excluded.portfolio_cost;
+end;
+$$;
+</file>
+
+<file path="006_radar.sql">
+-- Radar: lista de ativos em observação (watchlist). Idempotente.
+create table if not exists public.watchlist (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  symbol       text not null,
+  name         text not null,
+  currency     text not null default 'EUR',
+  added_price  numeric(18,6),
+  added_at     timestamptz not null default now(),
+  unique (user_id, symbol)
+);
+
+create index if not exists idx_watchlist_user on public.watchlist(user_id);
+alter table public.watchlist enable row level security;
+
+drop policy if exists "watchlist_select_own" on public.watchlist;
+create policy "watchlist_select_own" on public.watchlist for select using (auth.uid() = user_id);
+drop policy if exists "watchlist_insert_own" on public.watchlist;
+create policy "watchlist_insert_own" on public.watchlist for insert with check (auth.uid() = user_id);
+drop policy if exists "watchlist_delete_own" on public.watchlist;
+create policy "watchlist_delete_own" on public.watchlist for delete using (auth.uid() = user_id);
+</file>
+
 <file path="AGENTS.md">
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -2787,6 +3645,326 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
+</file>
+
+<file path="globals.css">
+@import "tailwindcss";
+
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
+
+/*
+ * Tema "Capital" — azul-marinho profundo, cartões bem arredondados,
+ * um único azul de destaque, verde/vermelho só para ganhos/perdas.
+ * (--color-gold mantém o nome por compatibilidade, mas agora é o azul.)
+ */
+:root {
+  --color-ink:          #0A0F1F;
+  --color-surface:      #101829;
+  --color-surface-alt:  #18223A;
+  --color-line:         #22304D;
+  --color-line-soft:    #1A2540;
+  --color-text:         #EEF2FA;
+  --color-text-muted:   #8D9AB5;
+  --color-text-faint:   #5F6E8D;
+  --color-gold:         #4C8DF6;
+  --color-gold-soft:    #14264D;
+  --color-gain:         #2FD27F;
+  --color-gain-soft:    #0F2D26;
+  --color-loss:         #F0646B;
+  --color-loss-soft:    #34171D;
+  --color-info:         #6C9BD1;
+
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-body);
+  --font-mono: var(--font-body);
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-line: var(--color-line);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-gold: var(--color-gold);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-gain: var(--color-gain);
+  --color-gain-soft: var(--color-gain-soft);
+  --color-loss: var(--color-loss);
+  --color-loss-soft: var(--color-loss-soft);
+  --color-info: var(--color-info);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.ledger-rule { border-top: 1px solid var(--color-line); }
+
+details > summary::-webkit-details-marker { display: none; }
+
+::selection { background: var(--color-gold); color: var(--color-ink); }
+
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</file>
+
+<file path="hero-card.tsx">
+import { formatCurrency, formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+
+function tone(value: number): string {
+  return value > 0 ? "text-gain" : value < 0 ? "text-loss" : "text-text-muted";
+}
+
+/**
+ * Cartão principal: um número grande (património), a variação do dia logo
+ * por baixo, e dois indicadores secundários. Tudo o que importa à primeira
+ * vista, sem abrir nada.
+ */
+export function HeroCard({
+  totalNetWorth,
+  dayChangeEur,
+  dayChangePct,
+  hasQuotes,
+  totalReturnEur,
+  totalReturnPct,
+  dividends,
+  lastQuoteAt,
+}: {
+  totalNetWorth: number;
+  dayChangeEur: number;
+  dayChangePct: number;
+  hasQuotes: boolean;
+  totalReturnEur: number;
+  totalReturnPct: number;
+  dividends: number;
+  lastQuoteAt: string | null;
+}) {
+  const topLine = !hasQuotes ? "bg-line" : dayChangeEur >= 0 ? "bg-gain" : "bg-loss";
+
+  return (
+    <section className="relative overflow-hidden rounded-2xl border border-line bg-surface">
+      <div className={cx("h-0.5 w-full", topLine)} />
+      <div className="p-5 sm:p-7">
+        <p className="text-sm text-text-muted">Património</p>
+        <p className="font-display text-4xl sm:text-5xl md:text-6xl tabular text-text mt-1 break-words">
+          {formatCurrency(totalNetWorth)}
+        </p>
+
+        <div className="mt-5">
+          <p className="text-sm text-text-muted">Hoje</p>
+          {hasQuotes ? (
+            <p className={cx("tabular text-xl sm:text-2xl mt-0.5", tone(dayChangeEur))}>
+              {formatPercent(dayChangePct)}
+              <span className="text-text-faint mx-2">·</span>
+              {formatSignedCurrency(dayChangeEur)}
+            </p>
+          ) : (
+            <p className="text-sm text-text-faint mt-1">
+              Sem cotações ainda. Em Portefólio, toca em &quot;Atualizar cotações&quot;.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-line-soft pt-5">
+          <div className="min-w-0">
+            <p className="text-sm text-text-muted">Retorno total</p>
+            <p className={cx("tabular text-lg sm:text-xl mt-0.5", tone(totalReturnEur))}>
+              {formatPercent(totalReturnPct)}
+            </p>
+            <p className={cx("tabular text-sm", tone(totalReturnEur))}>{formatSignedCurrency(totalReturnEur)}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm text-text-muted">Dividendos recebidos</p>
+            <p className="tabular text-lg sm:text-xl mt-0.5 text-text">{formatCurrency(dividends)}</p>
+            {lastQuoteAt && (
+              <p className="text-xs text-text-faint mt-1">
+                Cotações de {new Date(lastQuoteAt).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="holdings-table.tsx">
+import { formatCurrency, formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+import { shortTicker } from "@/lib/ticker";
+
+export interface PositionRow {
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  isin: string | null;
+  quantity_held: number;
+  net_invested: number;
+  total_dividends: number;
+  total_fees: number;
+  first_purchase_at: string | null;
+  currentPrice: number | null;
+  marketValue: number;
+  dayChangePct?: number | null;
+  dayChangeEur?: number | null;
+}
+
+function formatMonthYear(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
+}
+
+const tone = (v: number) => (v > 0 ? "text-gain" : v < 0 ? "text-loss" : "text-text-muted");
+
+/**
+ * Um cartão por posição. Em cima: ticker, nome e valor atual. À direita, o
+ * que interessa: retorno total (grande) e variação de hoje (pequena).
+ * A barra lateral é verde ou vermelha conforme o retorno total.
+ */
+export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
+  if (positions.length === 0) {
+    return (
+      <p className="text-sm text-text-muted py-6 text-center">
+        Ainda sem posições. Importa um extrato da DEGIRO acima.
+      </p>
+    );
+  }
+
+  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
+  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
+
+  return (
+    <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {sorted.map((p) => {
+        const pnl = p.marketValue - p.net_invested;
+        const totalReturn = pnl + p.total_dividends;
+        const totalReturnPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
+        const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
+        const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
+        const up = totalReturn >= 0;
+
+        return (
+          <li
+            key={p.asset_id}
+            className={cx(
+              "rounded-xl border border-line bg-surface p-4 border-l-4",
+              up ? "border-l-gain" : "border-l-loss"
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-text">{shortTicker(p.symbol, p.name)}</p>
+                <p className="text-xs text-text-faint truncate">{p.name}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="tabular text-base text-text">{formatCurrency(p.marketValue)}</p>
+                <p className={cx("tabular text-sm", tone(totalReturn))}>{formatPercent(totalReturnPct)}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <p className="text-xs text-text-faint tabular">
+                {p.currentPrice !== null ? `${formatCurrency(p.currentPrice)} · ` : ""}
+                {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })} un.
+              </p>
+              {p.dayChangePct != null && p.dayChangeEur != null ? (
+                <p className={cx("tabular text-xs", tone(p.dayChangeEur))}>
+                  Hoje {formatPercent(p.dayChangePct)} · {formatSignedCurrency(p.dayChangeEur)}
+                </p>
+              ) : (
+                <p className="text-xs text-text-faint">Sem cotação</p>
+              )}
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-line-soft grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <p className="text-text-faint">Custo médio</p>
+                <p className="tabular text-text-muted">{formatCurrency(avgCost)}</p>
+              </div>
+              <div>
+                <p className="text-text-faint">Lucro</p>
+                <p className={cx("tabular", tone(totalReturn))}>{formatSignedCurrency(totalReturn)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-text-faint">Peso · desde</p>
+                <p className="tabular text-text-muted">
+                  {(weight * 100).toFixed(1)}% · {formatMonthYear(p.first_purchase_at)}
+                </p>
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+</file>
+
+<file path="layout.tsx">
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import { NavSidebar } from "@/components/nav-sidebar";
+import { MobileHeader } from "@/components/mobile-header";
+import { BottomNav } from "@/components/bottom-nav";
+import { RegisterServiceWorker } from "@/components/register-sw";
+import { getHeaderSummary } from "@/lib/data/header-summary";
+import { Toaster } from "sonner";
+
+export const metadata: Metadata = {
+  title: "Meu Capital — Património & Finanças Pessoais",
+  description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Meu Capital" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0A0F1F",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const summary = await getHeaderSummary();
+
+  return (
+    <html lang="pt-PT" className="h-full antialiased overflow-x-hidden">
+      <body className="min-h-full bg-ink text-text font-sans overflow-x-hidden">
+        <div className="flex min-h-screen">
+          <NavSidebar />
+          <main className="flex-1 min-w-0 pt-[calc(60px+env(safe-area-inset-top))] pb-[calc(72px+env(safe-area-inset-bottom))] md:pt-0 md:pb-0">
+            {children}
+          </main>
+        </div>
+        <MobileHeader summary={summary} />
+        <BottomNav />
+        <RegisterServiceWorker />
+        <Toaster theme="dark" position="top-center" richColors />
+      </body>
+    </html>
+  );
+}
 </file>
 
 <file path="LEIA-ME-ALTERACOES.md">
@@ -2954,6 +4132,81 @@ npm run dev
    contagens corretas.
 </file>
 
+<file path="LEIA-ME-PROJECOES.md">
+# Dinheiro Total nas Corretoras + Aba de Projeções
+
+## Como aplicar
+
+Copia estes ficheiros para o teu projeto, respeitando os mesmos caminhos
+(todos dentro de `src/`). Ficheiros novos são criados; `src/app/portfolio/page.tsx`
+já existia e fica **substituído por inteiro**.
+
+```
+src/
+├── lib/
+│   └── reports/
+│       └── projections.ts                       novo
+├── components/
+│   └── portfolio/
+│       ├── portfolio-projections.tsx             novo
+│       └── portfolio-tabs.tsx                    novo
+└── app/
+    └── portfolio/
+        └── page.tsx                              substituir
+```
+
+Não é preciso correr nenhum SQL novo — tudo usa dados que já tens
+(`net_worth_snapshots`, `portfolio_positions`, etc.).
+
+## O que muda
+
+### 1. Dinheiro Total nas Corretoras
+Logo abaixo do cabeçalho da página de Portefólio, um número grande em
+destaque (estilo igual ao total do Dashboard) com a soma de:
+- Valor atual de todas as ações que tens (`breakdown.portfolioValue`)
+- Saldo livre em todas as contas do tipo "Corretora" que ainda não
+  investiste (`freeCash`)
+
+### 2. Aba "Projeções"
+A página de Portefólio passa a ter duas abas — "Visão Geral" (o que já lá
+estava: composição, desempenho, posições) e "Projeções" (novo).
+
+Na aba de Projeções:
+- **3 cenários** — Conservador, Moderado e Otimista, com uma taxa de
+  retorno anual moderada como ponto de partida e ±3 pontos percentuais
+  para os outros dois.
+- **Taxa sugerida automaticamente**, calculada a partir do teu histórico
+  real em `net_worth_snapshots.portfolio_value` (a mesma tabela que já
+  alimenta o gráfico de "Evolução do Património" no Dashboard). Se ainda
+  não tiveres pelo menos ~2 semanas de histórico, usa-se uma taxa de
+  referência de 7%/ano (média histórica genérica do mercado de ações).
+- **Podes ajustar tudo**: investimento mensal adicional, horizonte
+  temporal (5/10/20/30 anos) e a própria taxa moderada.
+- **Gráfico de linhas** com os 3 cenários e os valores finais projetados.
+
+## Avisos importantes (e porque estão na própria UI)
+
+- A taxa estimada a partir do teu histórico **não é uma taxa de retorno
+  pura de mercado** — o valor do portefólio também sobe quando compras
+  novas ações, por isso mistura performance real com capital novo
+  investido. É só uma sugestão de ponto de partida.
+- As projeções assumem uma taxa de retorno **constante** e um
+  investimento mensal **constante** — simplificações que a vida real não
+  respeita (os mercados sobem e descem de forma irregular).
+- Isto é uma ferramenta de simulação para teres uma noção de ordem de
+  grandeza, não uma previsão garantida nem aconselhamento financeiro.
+
+## Testar
+
+```bash
+npm run dev
+```
+Abre Portefólio → confirma que aparece o valor total em destaque no topo,
+e que a aba "Projeções" mostra o gráfico e os 3 cenários. Experimenta
+mudar o investimento mensal, o horizonte e a taxa — o gráfico e os totais
+por baixo devem atualizar-se de imediato.
+</file>
+
 <file path="LEIA-ME-RONDA-2.md">
 # Ronda 2 — Categorização automática + Comissões e Taxas
 
@@ -3017,6 +4270,223 @@ adiciona os novos, tudo dentro de `src/`.
   orçamento, num só sítio, filtrado por período.
 </file>
 
+<file path="LEIA-ME-RONDA-3.md">
+# Ronda 3 — Cotações alinhadas com a DEGIRO + interface mais simples
+
+## Passo 1 — SQL
+No SQL Editor da Supabase corre `supabase/005_cotacoes_eur.sql` (idempotente).
+
+## Passo 2 — copia estes ficheiros (substituem por inteiro)
+- `src/lib/market/quotes.ts`
+- `src/app/api/quotes/route.ts`
+- `src/lib/data/net-worth.ts`
+- `src/app/dashboard/page.tsx`
+- `src/components/portfolio/holdings-table.tsx`
+
+Novos:
+- `src/lib/ticker.ts`
+- `src/components/dashboard/hero-card.tsx`
+- `src/components/dashboard/top-movers.tsx`
+
+## Passo 3 — 3 edições pequenas para guardar a bolsa da DEGIRO
+
+### `src/lib/degiro/parser.ts`
+1. Em `ParsedDegiroRow`, junta o campo:
+```ts
+  exchange: string | null;
+```
+2. Em `HEADER_ALIASES`, junta:
+```ts
+  exchange: ["bolsa de referencia", "bolsa de valores", "reference exchange"],
+```
+3. Dentro do ciclo `for`, logo a seguir a `const isin = ...`:
+```ts
+    const exchange = cols.exchange !== undefined ? raw[cols.exchange]?.trim() || null : null;
+```
+e no `rows.push({ ... })` junta `exchange,`.
+
+### `src/app/api/degiro/import/route.ts`
+1. No tipo de `uniqueAssets`, junta `exchange: string | null` e ao fazer
+   `uniqueAssets.set(key, {...})` junta `exchange: row.exchange`.
+2. No `.insert({ isin: asset.isin, name: asset.name, currency: asset.currency })`
+   junta `exchange: asset.exchange`.
+3. Depois de `assetIdByKey.set(key, existing.id); continue;` (ativo já existente),
+   antes do `continue`, junta:
+```ts
+        if (asset.exchange) {
+          await supabase.from("assets").update({ exchange: asset.exchange }).eq("id", existing.id).is("exchange", null);
+        }
+```
+
+## Passo 4 — refazer a escolha dos símbolos
+Os símbolos já resolvidos antes ficam como estão (podem ser da bolsa errada).
+Depois de reimportares o CSV de **Transações** (é esse que traz a bolsa; o
+"Estado de Conta" não traz), corre no SQL Editor:
+```sql
+update public.assets set symbol = null;
+```
+e carrega em "Atualizar cotações" no Portefólio. Os símbolos voltam a ser
+escolhidos com a bolsa certa.
+
+## Notas
+- Os preços passam a ser convertidos para EUR (antes, ações em USD eram
+  tratadas como se fossem EUR).
+- A rota também falhava a gravar o símbolo descoberto (faltava a política
+  UPDATE em `assets`) — corrigido no SQL.
+- A variação "Hoje" usa o fecho anterior da mesma listagem.
+</file>
+
+<file path="LEIA-ME-V2.md">
+# Redesenho completo ao estilo sharpyield
+
+## 1. SQL (Supabase → SQL Editor, por esta ordem)
+1. `supabase/005_cotacoes_eur.sql`  (cotações em EUR, fecho anterior, bolsa do ativo)
+2. `supabase/006_radar.sql`         (tabela do Radar)
+
+## 2. Copiar ficheiros (substituem/criam; mesmos caminhos dentro de `src/`)
+Substituem:
+- `app/globals.css`, `app/layout.tsx`, `app/dashboard/page.tsx`, `app/portfolio/page.tsx`
+- `app/api/quotes/route.ts`
+- `components/ui/card.tsx`, `components/bottom-nav.tsx`, `components/mobile-header.tsx`
+- `components/portfolio/holdings-table.tsx`
+- `lib/nav-items.ts`, `lib/data/net-worth.ts`, `lib/market/quotes.ts`
+
+Novos:
+- `app/radar/{page.tsx,actions.ts}`, `app/noticias/page.tsx`, `app/mais/{page.tsx,actions.ts}`
+- `components/ui/ticker-avatar.tsx`
+- `components/radar/{watchlist-add.tsx,remove-watch-button.tsx}`
+- `components/dashboard/{record-card,return-chart,weight-treemap,best-worst}.tsx`
+  (e `hero-card.tsx` + `top-movers.tsx`, que substituem os da ronda anterior)
+- `lib/ticker.ts`, `lib/data/header-summary.ts`
+
+Podes apagar `components/mobile-nav.tsx` (já não é usado).
+
+## 3. Bolsa da DEGIRO no parser (ver LEIA-ME-RONDA-3.md do patch anterior, passo 3 e 4)
+
+## Notas
+- O tema agora é azul-marinho; `text-gold`/`bg-gold` passaram a ser o azul de destaque.
+- Sem logos reais das empresas: usei quadrados com as iniciais do ticker.
+- "Mercado aberto/encerrado" é uma aproximação por horário (dias úteis, 07–21h UTC).
+- "Retorno total acumulado" e "Máximo histórico" usam os snapshots diários, por isso
+  só têm histórico a partir do dia em que a app começou a guardá-los.
+- Alocação setorial não está incluída: não temos o setor de cada ativo guardado.
+</file>
+
+<file path="net-worth.ts">
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Account, PortfolioPosition } from "@/types/database";
+
+export type EnrichedPosition = PortfolioPosition & {
+  /** Preço atual em EUR (null se ainda não houver cotação). */
+  currentPrice: number | null;
+  marketValue: number;
+  /** Variação do dia em fração (0.0153 = +1,53%), null se não houver fecho anterior. */
+  dayChangePct: number | null;
+  /** Variação do dia em EUR para a quantidade detida. */
+  dayChangeEur: number | null;
+};
+
+export interface NetWorthBreakdown {
+  totalNetWorth: number;
+  cashInBanks: number;
+  cashInSavings: number;
+  cashInBrokers: number;
+  physicalCash: number;
+  portfolioValue: number;
+  portfolioCost: number;
+  portfolioPnl: number;
+  /** Soma dos dividendos recebidos em todas as posições. */
+  totalDividends: number;
+  /** Variação do dia do portefólio inteiro, em EUR e em fração. */
+  dayChangeEur: number;
+  dayChangePct: number;
+  /** Momento da cotação mais recente, ou null se nunca foram atualizadas. */
+  lastQuoteAt: string | null;
+  accounts: Account[];
+  positions: EnrichedPosition[];
+}
+
+interface QuoteRow {
+  asset_id: string;
+  price: number;
+  currency: string;
+  price_eur: number | null;
+  previous_close_eur: number | null;
+  fetched_at: string;
+}
+
+export async function getNetWorthBreakdown(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  userId: string
+): Promise<NetWorthBreakdown> {
+  const [{ data: accounts }, { data: positions }, { data: quotes }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("user_id", userId).eq("is_archived", false),
+    supabase.from("portfolio_positions").select("*").eq("user_id", userId),
+    supabase.from("asset_quotes").select("*"),
+  ]);
+
+  const quoteByAsset = new Map<string, QuoteRow>((quotes ?? []).map((q: QuoteRow) => [q.asset_id, q]));
+
+  const activePositions = (positions ?? []).filter((p: PortfolioPosition) => p.quantity_held > 0.0000001);
+
+  const enrichedPositions: EnrichedPosition[] = activePositions.map((p: PortfolioPosition) => {
+    const q = quoteByAsset.get(p.asset_id);
+    // Preço em EUR: o convertido, ou o preço original se a moeda já for EUR.
+    const priceEur = q ? q.price_eur ?? (q.currency === "EUR" ? Number(q.price) : null) : null;
+    const prevEur = q?.previous_close_eur ?? null;
+
+    const marketValue = priceEur !== null ? priceEur * p.quantity_held : p.net_invested;
+    const dayChangeEur =
+      priceEur !== null && prevEur !== null ? (priceEur - Number(prevEur)) * p.quantity_held : null;
+    const dayChangePct =
+      priceEur !== null && prevEur !== null && Number(prevEur) !== 0 ? priceEur / Number(prevEur) - 1 : null;
+
+    return { ...p, currentPrice: priceEur, marketValue, dayChangePct, dayChangeEur };
+  });
+
+  const portfolioValue = enrichedPositions.reduce((sum, p) => sum + p.marketValue, 0);
+  const portfolioCost = activePositions.reduce((sum: number, p: PortfolioPosition) => sum + p.net_invested, 0);
+  const totalDividends = enrichedPositions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+
+  const dayChangeEur = enrichedPositions.reduce((sum, p) => sum + (p.dayChangeEur ?? 0), 0);
+  const valueYesterday = portfolioValue - dayChangeEur;
+  const dayChangePct = valueYesterday !== 0 ? dayChangeEur / valueYesterday : 0;
+
+  const lastQuoteAt =
+    (quotes ?? []).reduce<string | null>(
+      (latest, q: QuoteRow) => (!latest || q.fetched_at > latest ? q.fetched_at : latest),
+      null
+    ) ?? null;
+
+  const accountsList: Account[] = accounts ?? [];
+  const sumBy = (type: Account["type"]) =>
+    accountsList.filter((a) => a.type === type).reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  const cashInBanks = sumBy("banco");
+  const cashInSavings = sumBy("poupanca");
+  const cashInBrokers = sumBy("corretora");
+  const physicalCash = sumBy("numerario");
+
+  return {
+    totalNetWorth: cashInBanks + cashInSavings + cashInBrokers + physicalCash + portfolioValue,
+    cashInBanks,
+    cashInSavings,
+    cashInBrokers,
+    physicalCash,
+    portfolioValue,
+    portfolioCost,
+    portfolioPnl: portfolioValue - portfolioCost,
+    totalDividends,
+    dayChangeEur,
+    dayChangePct,
+    lastQuoteAt,
+    accounts: accountsList,
+    positions: enrichedPositions,
+  };
+}
+</file>
+
 <file path="postcss.config.mjs">
 const config = {
   plugins: {
@@ -3025,6 +4495,320 @@ const config = {
 };
 
 export default config;
+</file>
+
+<file path="quotes.ts">
+import YahooFinance from "yahoo-finance2";
+
+const yahooFinance = new YahooFinance();
+
+/**
+ * Cotações via Yahoo Finance, alinhadas com a bolsa que a DEGIRO usa.
+ *
+ * Problema original: o mesmo ISIN é negociado em várias bolsas e moedas
+ * (ex: VWCE em Xetra, Amesterdão e Milão; ações US em USD). Pesquisar só por
+ * ISIN devolvia uma listagem qualquer e o preço era tratado como EUR.
+ *
+ * Agora:
+ *   1. A bolsa de referência da DEGIRO (EAM, XET, NDQ...) é convertida para
+ *      o código de bolsa do Yahoo e escolhemos a listagem dessa bolsa.
+ *   2. O preço é convertido para EUR (a DEGIRO mostra tudo em EUR).
+ *   3. Guardamos o fecho anterior para calcular a variação do dia.
+ */
+
+/** Código de bolsa da DEGIRO -> códigos de bolsa equivalentes no Yahoo. */
+const DEGIRO_TO_YAHOO_EXCHANGE: Record<string, string[]> = {
+  EAM: ["AMS"],
+  XET: ["GER"],
+  TDG: ["GER"],
+  FRA: ["FRA"],
+  EPA: ["PAR"],
+  MIL: ["MIL"],
+  LSE: ["LSE"],
+  EBR: ["BRU"],
+  ELI: ["LIS"],
+  MAD: ["MCE"],
+  SWX: ["EBS"],
+  CPH: ["CPH"],
+  STO: ["STO"],
+  HEL: ["HEL"],
+  OSL: ["OSL"],
+  VIE: ["VIE"],
+  NDQ: ["NMS", "NGM", "NCM"],
+  NSY: ["NYQ", "PCX", "ASE", "BTS"],
+  ASE: ["ASE", "PCX"],
+};
+
+/** Quando não sabemos a bolsa, preferimos listagens europeias em EUR. */
+const FALLBACK_PRIORITY = ["AMS", "GER", "PAR", "MIL", "LIS", "MCE", "BRU", "NMS", "NYQ", "LSE"];
+
+export interface ResolvedSymbol {
+  symbol: string;
+  shortname?: string;
+  exchange?: string;
+}
+
+export async function resolveSymbolFromIsin(
+  isinOrName: string,
+  degiroExchange?: string | null
+): Promise<ResolvedSymbol | null> {
+  try {
+    const result = await yahooFinance.search(isinOrName, { quotesCount: 15 });
+    const candidates = (result.quotes ?? []).filter(
+      (q): q is typeof q & { symbol: string; exchange?: string } =>
+        "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
+    );
+    if (candidates.length === 0) return null;
+
+    const exchangeOf = (q: { exchange?: unknown }) => (typeof q.exchange === "string" ? q.exchange : "");
+
+    let best: (typeof candidates)[number] | undefined;
+
+    const wanted = degiroExchange ? DEGIRO_TO_YAHOO_EXCHANGE[degiroExchange.trim().toUpperCase()] : undefined;
+    if (wanted) {
+      best = candidates.find((q) => wanted.includes(exchangeOf(q)));
+    }
+    if (!best) {
+      best = [...candidates].sort((a, b) => {
+        const ia = FALLBACK_PRIORITY.indexOf(exchangeOf(a));
+        const ib = FALLBACK_PRIORITY.indexOf(exchangeOf(b));
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      })[0];
+    }
+    if (!best) return null;
+
+    return {
+      symbol: best.symbol,
+      shortname: "shortname" in best && typeof best.shortname === "string" ? best.shortname : undefined,
+      exchange: exchangeOf(best) || undefined,
+    };
+  } catch (err) {
+    console.error(`Falha ao resolver símbolo para "${isinOrName}":`, err);
+    return null;
+  }
+}
+
+export interface LiveQuote {
+  symbol: string;
+  /** Preço na moeda original da listagem (GBp já convertido para GBP). */
+  price: number;
+  currency: string;
+  /** Preço convertido para EUR (null se não foi possível obter o câmbio). */
+  priceEur: number | null;
+  previousCloseEur: number | null;
+  /** Variação do dia em %, ex: 1.53 significa +1,53%. */
+  changePercent: number | null;
+  marketState: string | null;
+}
+
+/** Câmbio moeda -> EUR, com cache partilhado durante um pedido. */
+async function getFxToEur(currency: string, cache: Map<string, number | null>): Promise<number | null> {
+  if (currency === "EUR") return 1;
+  if (cache.has(currency)) return cache.get(currency) ?? null;
+  try {
+    const fx = await yahooFinance.quote(`${currency}EUR=X`);
+    const rate = fx?.regularMarketPrice ?? null;
+    cache.set(currency, rate);
+    return rate;
+  } catch (err) {
+    console.error(`Falha ao obter câmbio ${currency}/EUR:`, err);
+    cache.set(currency, null);
+    return null;
+  }
+}
+
+export async function getQuote(
+  symbol: string,
+  fxCache: Map<string, number | null> = new Map()
+): Promise<LiveQuote | null> {
+  try {
+    const q = await yahooFinance.quote(symbol);
+    if (!q || q.regularMarketPrice === undefined) return null;
+
+    // Londres cota em pence (GBp): dividir por 100 para libras.
+    let currency = q.currency ?? "EUR";
+    let divisor = 1;
+    if (currency === "GBp" || currency === "GBX") {
+      currency = "GBP";
+      divisor = 100;
+    }
+
+    const price = q.regularMarketPrice / divisor;
+    const prev = q.regularMarketPreviousClose !== undefined ? q.regularMarketPreviousClose / divisor : null;
+    const fx = await getFxToEur(currency, fxCache);
+
+    return {
+      symbol,
+      price,
+      currency,
+      priceEur: fx !== null ? price * fx : null,
+      previousCloseEur: fx !== null && prev !== null ? prev * fx : null,
+      changePercent: q.regularMarketChangePercent ?? null,
+      marketState: q.marketState ?? null,
+    };
+  } catch (err) {
+    console.error(`Falha ao obter cotação para "${symbol}":`, err);
+    return null;
+  }
+}
+</file>
+
+<file path="route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getQuote, resolveSymbolFromIsin } from "@/lib/market/quotes";
+
+/**
+ * GET /api/quotes
+ * Atualiza o cache `asset_quotes` para todas as posições abertas do
+ * utilizador. Usa a bolsa de referência da DEGIRO (assets.exchange) para
+ * escolher a mesma listagem que ele vê na corretora, e guarda o preço já
+ * convertido para EUR + fecho anterior (variação do dia).
+ */
+export async function GET(_req: NextRequest) {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
+
+  const { data: positions, error } = await supabase
+    .from("portfolio_positions")
+    .select("asset_id, symbol, isin, name, quantity_held")
+    .eq("user_id", auth.user.id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const open = (positions ?? []).filter((p: { quantity_held: number }) => Number(p.quantity_held) > 0.0000001);
+  const assetIds = open.map((p: { asset_id: string }) => p.asset_id);
+
+  const { data: assetRows } = await supabase.from("assets").select("id, exchange").in("id", assetIds);
+  const exchangeById = new Map<string, string | null>(
+    (assetRows ?? []).map((a: { id: string; exchange: string | null }) => [a.id, a.exchange])
+  );
+
+  const fxCache = new Map<string, number | null>();
+  const now = new Date().toISOString();
+
+  const results = await Promise.all(
+    open.map(
+      async (pos: { asset_id: string; symbol: string | null; isin: string | null; name: string }) => {
+        let symbol = pos.symbol;
+        let newSymbol: string | null = null;
+
+        if (!symbol) {
+          const resolved = await resolveSymbolFromIsin(pos.isin ?? pos.name, exchangeById.get(pos.asset_id));
+          if (resolved) {
+            symbol = resolved.symbol;
+            newSymbol = resolved.symbol;
+          }
+        }
+        if (!symbol) return null;
+
+        const quote = await getQuote(symbol, fxCache);
+        if (!quote) return null;
+
+        return {
+          newSymbol,
+          row: {
+            asset_id: pos.asset_id,
+            price: quote.price,
+            currency: quote.currency,
+            price_eur: quote.priceEur,
+            previous_close_eur: quote.previousCloseEur,
+            change_percent: quote.changePercent,
+            fetched_at: now,
+          },
+        };
+      }
+    )
+  );
+
+  const ok = results.filter((r): r is NonNullable<typeof r> => r !== null);
+
+  for (const r of ok) {
+    if (r.newSymbol) {
+      await supabase.from("assets").update({ symbol: r.newSymbol }).eq("id", r.row.asset_id);
+    }
+  }
+
+  const updates = ok.map((r) => r.row);
+  if (updates.length > 0) {
+    const { error: upsertError } = await supabase.from("asset_quotes").upsert(updates, { onConflict: "asset_id" });
+    if (upsertError) {
+      return NextResponse.json({ error: upsertError.message }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({
+    updated: updates.length,
+    failed: open.length - updates.length,
+    quotes: updates,
+  });
+}
+</file>
+
+<file path="ticker.ts">
+/**
+ * Ticker curto para mostrar na UI: "VWCE.DE" -> "VWCE", "AAPL" -> "AAPL".
+ * Sem símbolo, usa a primeira palavra do nome (máx. 6 caracteres).
+ */
+export function shortTicker(symbol: string | null, name: string): string {
+  if (symbol) return symbol.split(".")[0].toUpperCase();
+  const first = name.trim().split(/\s+/)[0] ?? name;
+  return first.slice(0, 6).toUpperCase();
+}
+</file>
+
+<file path="top-movers.tsx">
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+import { shortTicker } from "@/lib/ticker";
+import type { EnrichedPosition } from "@/lib/data/net-worth";
+
+/** Posições que mais mexeram hoje (em €), com ticker, % e valor. */
+export function TopMovers({ positions }: { positions: EnrichedPosition[] }) {
+  const movers = positions
+    .filter((p) => p.dayChangeEur !== null && p.dayChangePct !== null)
+    .sort((a, b) => Math.abs(b.dayChangeEur ?? 0) - Math.abs(a.dayChangeEur ?? 0))
+    .slice(0, 5);
+
+  if (movers.length === 0) return null;
+
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <p className="text-sm font-medium text-text">Maiores movimentos hoje</p>
+        <Link href="/portfolio" className="text-xs text-gold">
+          Ver carteira
+        </Link>
+      </div>
+      <ul>
+        {movers.map((p) => {
+          const up = (p.dayChangeEur ?? 0) >= 0;
+          return (
+            <li
+              key={p.asset_id}
+              className="flex items-center justify-between gap-3 px-5 py-3 border-t border-line-soft"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-text">{shortTicker(p.symbol, p.name)}</p>
+                <p className="text-xs text-text-faint truncate">{p.name}</p>
+              </div>
+              <div className={cx("tabular text-right shrink-0", up ? "text-gain" : "text-loss")}>
+                <p className="text-sm">{formatPercent(p.dayChangePct ?? 0)}</p>
+                <p className="text-xs opacity-80">{formatSignedCurrency(p.dayChangeEur ?? 0)}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
 </file>
 
 <file path="tsconfig.json">
@@ -4271,6 +6055,97 @@ export default nextConfig;
     "tsx": "^4.23.12",
     "typescript": "^5"
   }
+}
+</file>
+
+<file path="page.tsx">
+import { ChevronDown } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { getNetWorthHistory } from "@/lib/data/net-worth-history";
+import { shortTicker } from "@/lib/ticker";
+import { HeroCard } from "@/components/dashboard/hero-card";
+import { TopMovers } from "@/components/dashboard/top-movers";
+import { RecordCard } from "@/components/dashboard/record-card";
+import { ReturnChart } from "@/components/dashboard/return-chart";
+import { WeightTreemap } from "@/components/dashboard/weight-treemap";
+import { BestWorst } from "@/components/dashboard/best-worst";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { DonutChart } from "@/components/charts/donut-chart";
+
+const PALETTE = ["#4C8DF6", "#2FD27F", "#B48CE0", "#F2B84B", "#5EC8D8", "#F2789F", "#8D9AB5"];
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [b, history] = await Promise.all([
+    getNetWorthBreakdown(supabase, user!.id),
+    getNetWorthHistory(supabase, user!.id, 3650),
+  ]);
+
+  const totalReturnEur = b.portfolioPnl + b.totalDividends;
+  const totalReturnPct = b.portfolioCost !== 0 ? totalReturnEur / Math.abs(b.portfolioCost) : 0;
+  const hasQuotes = b.lastQuoteAt !== null && b.positions.some((p) => p.dayChangeEur !== null);
+
+  const treemapItems = b.positions
+    .filter((p) => p.marketValue > 0)
+    .map((p) => ({
+      name: shortTicker(p.symbol, p.name),
+      size: p.marketValue,
+      ret: p.net_invested !== 0 ? ((p.marketValue - p.net_invested) / Math.abs(p.net_invested)) * 100 : 0,
+    }));
+
+  const allocation = [
+    ...[...b.positions]
+      .sort((a, c) => c.marketValue - a.marketValue)
+      .map((p, i) => ({ name: shortTicker(p.symbol, p.name), value: p.marketValue, color: PALETTE[i % PALETTE.length] })),
+    { name: "Contas e liquidez", value: b.cashInBanks + b.cashInSavings + b.cashInBrokers + b.physicalCash, color: "#5F6E8D" },
+  ];
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <HeroCard
+        totalNetWorth={b.totalNetWorth}
+        dayChangeEur={b.dayChangeEur}
+        dayChangePct={b.dayChangePct}
+        hasQuotes={hasQuotes}
+        totalReturnEur={totalReturnEur}
+        totalReturnPct={totalReturnPct}
+        dividends={b.totalDividends}
+        lastQuoteAt={b.lastQuoteAt}
+      />
+
+      <details className="group rounded-3xl border border-line bg-surface">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Detalhe do património
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+          <StatCard label="Contas bancárias" value={b.cashInBanks} />
+          <StatCard label="Poupança" value={b.cashInSavings} />
+          <StatCard label="Corretoras (livre)" value={b.cashInBrokers} />
+          <StatCard label="Numerário" value={b.physicalCash} />
+          <StatCard label="Portefólio" value={b.portfolioValue} tone="gold" />
+          <StatCard label="Capital investido" value={b.portfolioCost} />
+        </div>
+      </details>
+
+      <TopMovers positions={b.positions} />
+      <RecordCard current={b.totalNetWorth} snapshots={history} />
+      <ReturnChart snapshots={history} />
+      <WeightTreemap items={treemapItems} />
+
+      <section className="rounded-3xl border border-line bg-surface p-5">
+        <h2 className="text-base font-bold text-text mb-4">Distribuição</h2>
+        <DonutChart slices={allocation} emptyMessage="Ainda sem saldo registado." />
+      </section>
+
+      <BestWorst positions={b.positions} />
+    </div>
+  );
 }
 </file>
 
@@ -8104,10 +9979,14 @@ import { UndoImportButton } from "@/components/portfolio/undo-import-button";
 import { WipeImportsButton } from "@/components/portfolio/wipe-imports-button";
 import { HoldingsTable } from "@/components/portfolio/holdings-table";
 import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
+import { PortfolioTabs } from "@/components/portfolio/portfolio-tabs";
+import { PortfolioProjections } from "@/components/portfolio/portfolio-projections";
 import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { formatPercent } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { getNetWorthHistory } from "@/lib/data/net-worth-history";
+import { estimateAnnualGrowthRate } from "@/lib/reports/projections";
 import type { Account, RealizedPnlRow } from "@/types/database";
 
 const PALETTE = [
@@ -8126,14 +10005,22 @@ export default async function PortfolioPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: accounts }, breakdown, { data: realizedRows }] = await Promise.all([
+  const [{ data: accounts }, breakdown, { data: realizedRows }, history] = await Promise.all([
     supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
     getNetWorthBreakdown(supabase, user!.id),
     supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
+    // Vai buscar o máximo de histórico disponível (a tabela só tem os dias
+    // que já foram capturados, por isso pedir "10 anos" é seguro mesmo que
+    // só existam 2 semanas de dados reais).
+    getNetWorthHistory(supabase, user!.id, 3650),
   ]);
 
   const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
   const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+
+  // "Dinheiro total nas corretoras": o que está investido em ações +
+  // o saldo livre que ainda não foi investido.
+  const totalNasCorretoras = breakdown.portfolioValue + freeCash;
 
   const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
   const totalFees = breakdown.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
@@ -8143,6 +10030,8 @@ export default async function PortfolioPage() {
     (sum, r) => sum + Number(r.realized_pnl),
     0
   );
+
+  const estimatedAnnualRatePct = estimateAnnualGrowthRate(history);
 
   const compositionSlices: DonutSlice[] = [...breakdown.positions]
     .sort((a, b) => b.marketValue - a.marketValue)
@@ -8162,6 +10051,20 @@ export default async function PortfolioPage() {
           acompanha o valor atual e o lucro ou prejuízo de cada posição.
         </p>
       </header>
+
+      {/* Dinheiro total nas corretoras — em destaque, ao estilo do total do Dashboard. */}
+      <div className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
+          Dinheiro Total nas Corretoras
+        </p>
+        <p className="font-display text-3xl sm:text-4xl md:text-5xl tabular text-gold break-words">
+          {formatCurrency(totalNasCorretoras)}
+        </p>
+        <p className="text-sm text-text-muted mt-2">
+          Valor atual das ações ({formatCurrency(breakdown.portfolioValue)}) + saldo livre à espera
+          de ser investido ({formatCurrency(freeCash)}).
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
         <StatCard label="Capital investido" value={breakdown.portfolioCost} />
@@ -8193,41 +10096,60 @@ export default async function PortfolioPage() {
         <DegiroUpload brokerAccounts={brokerAccounts} />
       </Card>
 
-      {breakdown.positions.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="lg:col-span-3">
-            <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
-            <DonutChart slices={compositionSlices} />
-          </Card>
+      <PortfolioTabs
+        overview={
+          <>
+            {breakdown.positions.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+                <Card className="lg:col-span-3">
+                  <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
+                  <DonutChart slices={compositionSlices} />
+                </Card>
 
-          <Card className="lg:col-span-2 flex flex-col justify-between">
-            <div>
-              <CardLabel className="mb-3">Desempenho Global</CardLabel>
-              <p
-                className={`font-display text-3xl sm:text-4xl tabular break-words ${
-                  performancePct >= 0 ? "text-gain" : "text-loss"
-                }`}
-              >
-                {formatPercent(performancePct)}
-              </p>
-              <p className="text-xs text-text-faint mt-2">
-                Lucro/prejuízo não realizado face ao capital investido.
-              </p>
-            </div>
-            <div className="mt-6">
-              <PerformanceHighlights positions={breakdown.positions} />
-            </div>
-          </Card>
-        </div>
-      )}
+                <Card className="lg:col-span-2 flex flex-col justify-between">
+                  <div>
+                    <CardLabel className="mb-3">Desempenho Global</CardLabel>
+                    <p
+                      className={`font-display text-3xl sm:text-4xl tabular break-words ${
+                        performancePct >= 0 ? "text-gain" : "text-loss"
+                      }`}
+                    >
+                      {formatPercent(performancePct)}
+                    </p>
+                    <p className="text-xs text-text-faint mt-2">
+                      Lucro/prejuízo não realizado face ao capital investido.
+                    </p>
+                  </div>
+                  <div className="mt-6">
+                    <PerformanceHighlights positions={breakdown.positions} />
+                  </div>
+                </Card>
+              </div>
+            )}
 
-      <Card>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <CardLabel>Posições Atuais</CardLabel>
-          <RefreshQuotesButton />
-        </div>
-        <HoldingsTable positions={breakdown.positions} />
-      </Card>
+            <Card>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                <CardLabel>Posições Atuais</CardLabel>
+                <RefreshQuotesButton />
+              </div>
+              <HoldingsTable positions={breakdown.positions} />
+            </Card>
+          </>
+        }
+        projections={
+          <Card>
+            <CardLabel className="mb-1">Projeções do Portefólio</CardLabel>
+            <p className="text-xs text-text-faint mb-4">
+              Simulação da evolução do teu portefólio ao longo do tempo, com base numa taxa de
+              retorno anual que podes ajustar.
+            </p>
+            <PortfolioProjections
+              currentValue={breakdown.portfolioValue}
+              estimatedAnnualRatePct={estimatedAnnualRatePct}
+            />
+          </Card>
+        }
+      />
     </div>
   );
 }
