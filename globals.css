@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
+
+/*
+ * Tema "Capital" — azul-marinho profundo, cartões bem arredondados,
+ * um único azul de destaque, verde/vermelho só para ganhos/perdas.
+ * (--color-gold mantém o nome por compatibilidade, mas agora é o azul.)
+ */
+:root {
+  --color-ink:          #0A0F1F;
+  --color-surface:      #101829;
+  --color-surface-alt:  #18223A;
+  --color-line:         #22304D;
+  --color-line-soft:    #1A2540;
+  --color-text:         #EEF2FA;
+  --color-text-muted:   #8D9AB5;
+  --color-text-faint:   #5F6E8D;
+  --color-gold:         #4C8DF6;
+  --color-gold-soft:    #14264D;
+  --color-gain:         #2FD27F;
+  --color-gain-soft:    #0F2D26;
+  --color-loss:         #F0646B;
+  --color-loss-soft:    #34171D;
+  --color-info:         #6C9BD1;
+
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-body);
+  --font-mono: var(--font-body);
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-line: var(--color-line);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-gold: var(--color-gold);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-gain: var(--color-gain);
+  --color-gain-soft: var(--color-gain-soft);
+  --color-loss: var(--color-loss);
+  --color-loss-soft: var(--color-loss-soft);
+  --color-info: var(--color-info);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.ledger-rule { border-top: 1px solid var(--color-line); }
+
+details > summary::-webkit-details-marker { display: none; }
+
+::selection { background: var(--color-gold); color: var(--color-ink); }
+
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
