@@ -1,28 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hashFileContent, parseDegiroCsv } from "@/lib/degiro/parser";
+import { getHistoricalFxToEur } from "@/lib/market/quotes";
+import { refreshQuotes } from "@/lib/market/refresh";
+
+export const maxDuration = 60;
 
 /**
  * POST /api/degiro/import
  * Body: { csvText: string, fileName: string, accountId: string }
  *
- * 1. Faz parse do CSV no servidor (fonte de verdade — nunca confiar apenas
- *    no parsing feito no browser).
- * 2. Garante que cada ISIN/produto tem uma linha correspondente em `assets`.
- * 3. Cria PRIMEIRO a linha em `csv_imports` — a foreign key
- *    `asset_transactions_import_id_fkey` exige que essa linha já exista
- *    antes de qualquer `asset_transactions` apontar para ela. (Esta era a
- *    causa do erro "violates foreign key constraint
- *    asset_transactions_import_id_fkey": o código antigo gerava o
- *    importId e inseria já as transações com ele, antes de a linha em
- *    csv_imports existir.)
- * 4. Só depois insere as `asset_transactions`, ignorando duplicados através
- *    da restrição única (user_id, source_hash).
- * 5. Atualiza `csv_imports` com as contagens finais (inseridas/duplicadas).
- *    Se a inserção das transações falhar, remove a linha de importação
- *    criada no passo 3 (rollback), para não ficar uma importação "fantasma"
- *    com 0 transações no histórico.
+ * 1. Faz parse do CSV no servidor.
+ * 2. Identifica cada ativo pelo ISIN (e pela bolsa da DEGIRO, quando o CSV a traz).
+ * 3. Converte para EUR os valores em moeda estrangeira (ex: ações em USD), usando
+ *    o câmbio do próprio CSV ou, na falta dele, o câmbio histórico do dia.
+ * 4. Cria a linha em csv_imports ANTES das transações (a foreign key exige).
+ * 5. Insere as transações (ignora duplicados) e reconcilia o saldo da conta.
+ * 6. Atualiza automaticamente as cotações de todos os ativos.
  */
+
+/** Lê a bolsa de referência da DEGIRO a partir da linha crua do CSV, se existir. */
+function exchangeFromRaw(raw: Record<string, string>): string | null {
+  const names = ["bolsa de referencia", "reference exchange", "bolsa de valores"];
+  for (const [header, value] of Object.entries(raw)) {
+    const h = header.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    if (names.includes(h)) {
+      const v = (value ?? "").trim();
+      if (v) return v;
+    }
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -42,7 +51,6 @@ export async function POST(req: NextRequest) {
   const userId = auth.user.id;
   const fileHash = await hashFileContent(csvText);
 
-  // Deteta re-upload do mesmo ficheiro exato antes de fazer qualquer trabalho.
   const { data: existingImport } = await supabase
     .from("csv_imports")
     .select("id, created_at, rows_inserted")
@@ -67,38 +75,44 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // --- 1. Upsert de ativos (por ISIN; fallback pelo nome do produto) ------
+  const warnings = [...parsed.warnings];
+
+  // --- 1. Ativos (por ISIN; fallback pelo nome do produto) ----------------
   const assetIdByKey = new Map<string, string>();
-  const uniqueAssets = new Map<string, { isin: string | null; name: string; currency: string }>();
+  const uniqueAssets = new Map<
+    string,
+    { isin: string | null; name: string; currency: string; exchange: string | null }
+  >();
   for (const row of parsed.rows) {
     const key = row.isin ?? `name:${row.product}`;
-    if (!uniqueAssets.has(key)) {
-      uniqueAssets.set(key, { isin: row.isin, name: row.product, currency: row.currency });
+    const exchange = exchangeFromRaw(row.raw);
+    const existing = uniqueAssets.get(key);
+    if (!existing) {
+      uniqueAssets.set(key, { isin: row.isin, name: row.product, currency: row.currency, exchange });
+    } else if (!existing.exchange && exchange) {
+      existing.exchange = exchange;
     }
   }
 
   for (const [key, asset] of uniqueAssets) {
     if (asset.isin) {
-      const { data: existing } = await supabase
-        .from("assets")
-        .select("id")
-        .eq("isin", asset.isin)
-        .maybeSingle();
-
+      const { data: existing } = await supabase.from("assets").select("id").eq("isin", asset.isin).maybeSingle();
       if (existing) {
         assetIdByKey.set(key, existing.id);
+        if (asset.exchange) {
+          await supabase.from("assets").update({ exchange: asset.exchange }).eq("id", existing.id);
+        }
         continue;
       }
     }
 
     const { data: inserted, error: insertErr } = await supabase
       .from("assets")
-      .insert({ isin: asset.isin, name: asset.name, currency: asset.currency })
+      .insert({ isin: asset.isin, name: asset.name, currency: asset.currency, exchange: asset.exchange })
       .select("id")
       .single();
 
     if (insertErr) {
-      // corrida entre pedidos concorrentes ou ISIN já existe -> tenta ler de novo
       const { data: fallback } = await supabase
         .from("assets")
         .select("id")
@@ -110,7 +124,60 @@ export async function POST(req: NextRequest) {
     assetIdByKey.set(key, inserted.id);
   }
 
-  // --- 2. Cria a linha de importação PRIMEIRO (a FK exige que já exista) --
+  // --- 2. Conversão para EUR de valores em moeda estrangeira --------------
+  const histCache = new Map<string, number | null>();
+  async function histFx(currency: string, date: string): Promise<number | null> {
+    const key = `${currency}|${date}`;
+    if (!histCache.has(key)) histCache.set(key, await getHistoricalFxToEur(currency, date));
+    return histCache.get(key) ?? null;
+  }
+
+  /** O câmbio do CSV vem na convenção da DEGIRO (moeda por 1 EUR) ou invertido; o histórico decide. */
+  async function amountToEur(amount: number, currency: string, csvRate: number | null, date: string): Promise<number> {
+    if (!currency || currency === "EUR" || amount === 0) return amount;
+    const hist = await histFx(currency, date); // EUR por 1 unidade da moeda
+
+    if (csvRate && csvRate > 0) {
+      if (hist) {
+        if (Math.abs(csvRate / hist - 1) < 0.08) return amount * csvRate;
+        if (Math.abs(1 / csvRate / hist - 1) < 0.08) return amount / csvRate;
+      } else {
+        return amount / csvRate;
+      }
+    }
+    if (hist) return amount * hist;
+
+    warnings.push(`Sem câmbio para converter ${currency} em ${date}; valor mantido sem conversão.`);
+    return amount;
+  }
+
+  const rowsToInsert = [];
+  for (const row of parsed.rows) {
+    const key = row.isin ?? `name:${row.product}`;
+    const totalEur = await amountToEur(row.totalValue, row.currency, row.exchangeRate, row.date);
+    rowsToInsert.push({
+      user_id: userId,
+      account_id: accountId,
+      asset_id: assetIdByKey.get(key)!,
+      operation: row.operation,
+      occurred_on: row.date,
+      occurred_at: row.datetime,
+      quantity: row.quantity,
+      price: row.price,
+      local_value: row.localValue,
+      fees: row.fees,
+      total_value: totalEur, // sempre em EUR
+      currency: row.currency, // moeda original da operação
+      exchange_rate: row.exchangeRate,
+      description: row.description,
+      order_id: row.orderId,
+      source_hash: row.sourceHash,
+      source: "degiro",
+      raw_row: row.raw,
+    });
+  }
+
+  // --- 3. Importação PRIMEIRO (a FK exige), depois as transações ----------
   const { data: importRow, error: importInsertError } = await supabase
     .from("csv_imports")
     .insert({
@@ -134,59 +201,27 @@ export async function POST(req: NextRequest) {
   }
 
   const importId = importRow.id;
-
-  // --- 3. Inserção das transações (ignora duplicados pelo source_hash) ---
-  const rowsToInsert = parsed.rows.map((row) => {
-    const key = row.isin ?? `name:${row.product}`;
-    return {
-      user_id: userId,
-      account_id: accountId,
-      asset_id: assetIdByKey.get(key)!,
-      import_id: importId,
-      operation: row.operation,
-      occurred_on: row.date,
-      occurred_at: row.datetime,
-      quantity: row.quantity,
-      price: row.price,
-      local_value: row.localValue,
-      fees: row.fees,
-      total_value: row.totalValue,
-      currency: row.currency,
-      exchange_rate: row.exchangeRate,
-      description: row.description,
-      order_id: row.orderId,
-      source_hash: row.sourceHash,
-      source: "degiro",
-      raw_row: row.raw,
-    };
-  });
+  const withImport = rowsToInsert.map((r) => ({ ...r, import_id: importId }));
 
   const { data: insertedRows, error: insertError } = await supabase
     .from("asset_transactions")
-    .upsert(rowsToInsert, { onConflict: "user_id,source_hash", ignoreDuplicates: true })
+    .upsert(withImport, { onConflict: "user_id,source_hash", ignoreDuplicates: true })
     .select("id");
 
   if (insertError) {
-    // Rollback: sem transações associadas, não faz sentido deixar uma
-    // importação "vazia" no histórico.
     await supabase.from("csv_imports").delete().eq("id", importId);
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
   const rowsInserted = insertedRows?.length ?? 0;
-  const rowsDuplicated = rowsToInsert.length - rowsInserted;
+  const rowsDuplicated = withImport.length - rowsInserted;
 
-  // --- 4. Atualiza a importação com as contagens finais -------------------
   await supabase
     .from("csv_imports")
     .update({ rows_inserted: rowsInserted, rows_duplicated: rowsDuplicated })
     .eq("id", importId);
 
-  // --- 5. Reconcilia o saldo da conta com o valor que a própria DEGIRO
-  //         reportou (coluna "Saldo") na linha mais recente do ficheiro.
-  //         Isto garante que depósitos, levantamentos, cash sweeps e juros
-  //         — que não modelamos individualmente — continuam refletidos no
-  //         saldo livre da conta, sem termos de os tratar um a um.
+  // --- 4. Reconcilia o saldo livre com o "Saldo" reportado pela DEGIRO ----
   let reconciledBalance: { balance: number; at: string } | null = null;
   if (parsed.latestBalance) {
     const { error: reconcileError } = await supabase.rpc("reconcile_account_balance", {
@@ -201,6 +236,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // --- 5. Atualiza as cotações automaticamente ----------------------------
+  const quotes = await refreshQuotes(supabase, userId);
+  if (quotes.failed > 0) {
+    warnings.push(`${quotes.failed} ativo(s) sem cotação — carrega em "Atualizar cotações" para tentar de novo.`);
+  }
+
   return NextResponse.json({
     alreadyImported: false,
     format: parsed.format,
@@ -208,7 +249,8 @@ export async function POST(req: NextRequest) {
     rowsInserted,
     rowsDuplicated,
     rowsSkipped: parsed.skipped,
-    warnings: parsed.warnings,
+    warnings,
     reconciledBalance,
+    quotesUpdated: quotes.updated,
   });
 }

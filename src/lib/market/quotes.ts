@@ -5,22 +5,18 @@ const yahooFinance = new YahooFinance();
 /**
  * Cotações via Yahoo Finance, alinhadas com a bolsa que a DEGIRO usa.
  *
- * Problema original: o mesmo ISIN é negociado em várias bolsas e moedas
- * (ex: VWCE em Xetra, Amesterdão e Milão; ações US em USD). Pesquisar só por
- * ISIN devolvia uma listagem qualquer e o preço era tratado como EUR.
- *
- * Agora:
- *   1. A bolsa de referência da DEGIRO (EAM, XET, NDQ...) é convertida para
- *      o código de bolsa do Yahoo e escolhemos a listagem dessa bolsa.
- *   2. O preço é convertido para EUR (a DEGIRO mostra tudo em EUR).
- *   3. Guardamos o fecho anterior para calcular a variação do dia.
+ * - Cada ativo é identificado pelo ISIN; a listagem escolhida é a da mesma
+ *   bolsa que a DEGIRO mostra (quando o CSV a traz) ou, na falta dela, a
+ *   listagem europeia em EUR mais comum (Xetra primeiro).
+ * - Preços convertidos para EUR (a DEGIRO mostra tudo em EUR).
+ * - Fecho anterior guardado para calcular a variação do dia.
  */
 
 /** Código de bolsa da DEGIRO -> códigos de bolsa equivalentes no Yahoo. */
 const DEGIRO_TO_YAHOO_EXCHANGE: Record<string, string[]> = {
   EAM: ["AMS"],
   XET: ["GER"],
-  TDG: ["GER"],
+  TDG: ["GER"], // Tradegate não existe no Yahoo; Xetra é o mais próximo
   FRA: ["FRA"],
   EPA: ["PAR"],
   MIL: ["MIL"],
@@ -39,8 +35,10 @@ const DEGIRO_TO_YAHOO_EXCHANGE: Record<string, string[]> = {
   ASE: ["ASE", "PCX"],
 };
 
-/** Quando não sabemos a bolsa, preferimos listagens europeias em EUR. */
-const FALLBACK_PRIORITY = ["AMS", "GER", "PAR", "MIL", "LIS", "MCE", "BRU", "NMS", "NYQ", "LSE"];
+const EU_PRIORITY = ["GER", "AMS", "PAR", "MIL", "LIS", "MCE", "BRU", "VIE", "HEL", "EBS", "LSE", "FRA", "STO", "CPH", "OSL"];
+const US_PRIORITY = ["NMS", "NGM", "NCM", "NYQ", "PCX", "ASE", "BTS"];
+
+const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
 
 export interface ResolvedSymbol {
   symbol: string;
@@ -53,25 +51,30 @@ export async function resolveSymbolFromIsin(
   degiroExchange?: string | null
 ): Promise<ResolvedSymbol | null> {
   try {
-    const result = await yahooFinance.search(isinOrName, { quotesCount: 15 });
-    const candidates = (result.quotes ?? []).filter(
-      (q): q is typeof q & { symbol: string; exchange?: string } =>
-        "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
-    );
+    const result = await yahooFinance.search(isinOrName, { quotesCount: 20 });
+    const candidates = (result.quotes ?? []).filter((q) => {
+      if (!("symbol" in q) || typeof q.symbol !== "string" || q.symbol.length === 0) return false;
+      const type = "quoteType" in q && typeof q.quoteType === "string" ? q.quoteType : "";
+      return type === "" || ["EQUITY", "ETF", "MUTUALFUND"].includes(type);
+    }) as unknown as { symbol: string; shortname?: string; exchange?: string }[];
     if (candidates.length === 0) return null;
 
     const exchangeOf = (q: { exchange?: unknown }) => (typeof q.exchange === "string" ? q.exchange : "");
 
     let best: (typeof candidates)[number] | undefined;
 
+    // 1) A bolsa que a própria DEGIRO indica (CSV de Transações).
     const wanted = degiroExchange ? DEGIRO_TO_YAHOO_EXCHANGE[degiroExchange.trim().toUpperCase()] : undefined;
-    if (wanted) {
-      best = candidates.find((q) => wanted.includes(exchangeOf(q)));
-    }
+    if (wanted) best = candidates.find((q) => wanted.includes(exchangeOf(q)));
+
+    // 2) Sem bolsa conhecida: ações dos EUA ficam nos EUA, o resto na Europa (Xetra primeiro).
     if (!best) {
+      const priority = ISIN_RE.test(isinOrName) && isinOrName.startsWith("US")
+        ? [...US_PRIORITY, ...EU_PRIORITY]
+        : [...EU_PRIORITY, ...US_PRIORITY];
       best = [...candidates].sort((a, b) => {
-        const ia = FALLBACK_PRIORITY.indexOf(exchangeOf(a));
-        const ib = FALLBACK_PRIORITY.indexOf(exchangeOf(b));
+        const ia = priority.indexOf(exchangeOf(a));
+        const ib = priority.indexOf(exchangeOf(b));
         return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       })[0];
     }
@@ -79,7 +82,7 @@ export async function resolveSymbolFromIsin(
 
     return {
       symbol: best.symbol,
-      shortname: "shortname" in best && typeof best.shortname === "string" ? best.shortname : undefined,
+      shortname: typeof best.shortname === "string" ? best.shortname : undefined,
       exchange: exchangeOf(best) || undefined,
     };
   } catch (err) {
@@ -101,7 +104,7 @@ export interface LiveQuote {
   marketState: string | null;
 }
 
-/** Câmbio moeda -> EUR, com cache partilhado durante um pedido. */
+/** Câmbio atual moeda -> EUR, com cache partilhado durante um pedido. */
 async function getFxToEur(currency: string, cache: Map<string, number | null>): Promise<number | null> {
   if (currency === "EUR") return 1;
   if (cache.has(currency)) return cache.get(currency) ?? null;
@@ -113,6 +116,29 @@ async function getFxToEur(currency: string, cache: Map<string, number | null>): 
   } catch (err) {
     console.error(`Falha ao obter câmbio ${currency}/EUR:`, err);
     cache.set(currency, null);
+    return null;
+  }
+}
+
+/** Câmbio histórico (fecho do dia, ou do último dia útil anterior) moeda -> EUR. */
+export async function getHistoricalFxToEur(currency: string, isoDate: string): Promise<number | null> {
+  if (currency === "EUR") return 1;
+  try {
+    const day = new Date(`${isoDate}T00:00:00Z`);
+    const res = await yahooFinance.chart(`${currency}EUR=X`, {
+      period1: new Date(day.getTime() - 6 * 86400000),
+      period2: new Date(day.getTime() + 2 * 86400000),
+      interval: "1d",
+    });
+    const points = (res.quotes ?? []).filter((q) => typeof q.close === "number");
+    if (points.length === 0) return null;
+    let best = points[0];
+    for (const p of points) {
+      if (p.date.getTime() <= day.getTime() + 86400000) best = p;
+    }
+    return best.close as number;
+  } catch (err) {
+    console.error(`Falha ao obter câmbio histórico ${currency}/EUR em ${isoDate}:`, err);
     return null;
   }
 }
