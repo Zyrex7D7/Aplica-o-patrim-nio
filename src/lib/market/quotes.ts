@@ -46,6 +46,64 @@ export interface ResolvedSymbol {
   exchange?: string;
 }
 
+type Listing = { symbol: string; shortname?: string; longname?: string; exchange?: string };
+
+const GENERIC_WORDS = new Set(["ucits", "etf", "acc", "dist", "usd", "eur", "gbp", "accumulating", "distributing", "class"]);
+
+function nameTokens(s: string): Set<string> {
+  return new Set(
+    s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((t) => t && !GENERIC_WORDS.has(t))
+  );
+}
+
+/** Semelhança entre dois nomes (0 a 1), ignorando palavras genéricas como UCITS/ETF/Acc. */
+function nameSimilarity(a: string, b: string): number {
+  const A = nameTokens(a);
+  const B = nameTokens(b);
+  if (A.size === 0 || B.size === 0) return 0;
+  let inter = 0;
+  for (const t of A) if (B.has(t)) inter++;
+  return inter / (A.size + B.size - inter);
+}
+
+/**
+ * O Yahoo só devolve UMA listagem por ISIN (ex: CSSPX.MI), mas a DEGIRO usa
+ * outra (ex: SXR8 na Xetra). Procura a "irmã" na bolsa pretendida pesquisando
+ * pelo nome do fundo, e só a aceita se o nome for equivalente E o preço em
+ * euros estiver a menos de 2% da listagem original (o que exclui fundos
+ * parecidos, como a versão de distribuição do mesmo ETF).
+ */
+async function findSiblingListing(primary: Listing, preferred: string[]): Promise<Listing | null> {
+  const name = primary.longname ?? primary.shortname;
+  if (!name) return null;
+
+  const res = await yahooFinance.search(name, { quotesCount: 25 });
+  const siblings = (res.quotes ?? [])
+    .filter((q) => "symbol" in q && typeof q.symbol === "string")
+    .map((q) => q as unknown as Listing)
+    .filter(
+      (c) =>
+        c.symbol !== primary.symbol &&
+        preferred.includes(c.exchange ?? "") &&
+        nameSimilarity(name, c.longname ?? c.shortname ?? "") >= 0.6
+    )
+    .slice(0, 5);
+  if (siblings.length === 0) return null;
+
+  const fx = new Map<string, number | null>();
+  const base = await getQuote(primary.symbol, fx);
+  if (!base?.priceEur) return null;
+
+  let best: { listing: Listing; diff: number } | null = null;
+  for (const c of siblings) {
+    const q = await getQuote(c.symbol, fx);
+    if (!q?.priceEur) continue;
+    const diff = Math.abs(q.priceEur / base.priceEur - 1);
+    if (diff < 0.02 && (!best || diff < best.diff)) best = { listing: c, diff };
+  }
+  return best?.listing ?? null;
+}
+
 export async function resolveSymbolFromIsin(
   isinOrName: string,
   degiroExchange?: string | null
@@ -56,27 +114,35 @@ export async function resolveSymbolFromIsin(
       if (!("symbol" in q) || typeof q.symbol !== "string" || q.symbol.length === 0) return false;
       const type = "quoteType" in q && typeof q.quoteType === "string" ? q.quoteType : "";
       return type === "" || ["EQUITY", "ETF", "MUTUALFUND"].includes(type);
-    }) as unknown as { symbol: string; shortname?: string; exchange?: string }[];
+    }) as unknown as Listing[];
     if (candidates.length === 0) return null;
 
     const exchangeOf = (q: { exchange?: unknown }) => (typeof q.exchange === "string" ? q.exchange : "");
+    const isUS = ISIN_RE.test(isinOrName) && isinOrName.startsWith("US");
 
-    let best: (typeof candidates)[number] | undefined;
-
-    // 1) A bolsa que a própria DEGIRO indica (CSV de Transações).
+    // Bolsas pretendidas: a que a DEGIRO indica; senão Xetra (Europa) ou EUA.
     const wanted = degiroExchange ? DEGIRO_TO_YAHOO_EXCHANGE[degiroExchange.trim().toUpperCase()] : undefined;
-    if (wanted) best = candidates.find((q) => wanted.includes(exchangeOf(q)));
+    const preferred = wanted ?? (isUS ? US_PRIORITY : ["GER"]);
 
-    // 2) Sem bolsa conhecida: ações dos EUA ficam nos EUA, o resto na Europa (Xetra primeiro).
+    let best: Listing | undefined = candidates.find((q) => preferred.includes(exchangeOf(q)));
+
     if (!best) {
-      const priority = ISIN_RE.test(isinOrName) && isinOrName.startsWith("US")
-        ? [...US_PRIORITY, ...EU_PRIORITY]
-        : [...EU_PRIORITY, ...US_PRIORITY];
+      const priority = isUS ? [...US_PRIORITY, ...EU_PRIORITY] : [...EU_PRIORITY, ...US_PRIORITY];
       best = [...candidates].sort((a, b) => {
         const ia = priority.indexOf(exchangeOf(a));
         const ib = priority.indexOf(exchangeOf(b));
         return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       })[0];
+
+      // A listagem encontrada não é da bolsa pretendida: procura a equivalente.
+      if (best) {
+        try {
+          const sibling = await findSiblingListing(best, preferred);
+          if (sibling) best = sibling;
+        } catch (err) {
+          console.error("Falha ao procurar listagem equivalente:", err);
+        }
+      }
     }
     if (!best) return null;
 
