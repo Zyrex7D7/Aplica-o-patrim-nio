@@ -40,20 +40,6 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-mnt/
-  user-data/
-    outputs/
-      v2/
-        src/
-          app/
-            mais/
-              page.tsx
-            noticias/
-              page.tsx
-            portfolio/
-              page.tsx
-            radar/
-              page.tsx
 public/
   icons/
     icon-128.png
@@ -106,11 +92,19 @@ src/
       page.tsx
     login/
       page.tsx
+    mais/
+      actions.ts
+      page.tsx
+    noticias/
+      page.tsx
     portfolio/
       importacoes/
         page.tsx
       actions.ts
       loading.tsx
+      page.tsx
+    radar/
+      actions.ts
       page.tsx
     recorrentes/
       actions.ts
@@ -141,9 +135,15 @@ src/
     charts/
       donut-chart.tsx
     dashboard/
+      best-worst.tsx
+      hero-card.tsx
       net-worth-charts.tsx
       net-worth-history-chart.tsx
+      record-card.tsx
+      return-chart.tsx
       stat-card.tsx
+      top-movers.tsx
+      weight-treemap.tsx
     portfolio/
       degiro-upload.tsx
       holdings-table.tsx
@@ -153,6 +153,9 @@ src/
       refresh-quotes-button.tsx
       undo-import-button.tsx
       wipe-imports-button.tsx
+    radar/
+      remove-watch-button.tsx
+      watchlist-add.tsx
     recurring/
       recurring-form.tsx
       recurring-list.tsx
@@ -175,14 +178,15 @@ src/
     ui/
       card.tsx
       skeleton.tsx
+      ticker-avatar.tsx
     bottom-nav.tsx
     mobile-header.tsx
-    mobile-nav.tsx
     nav-sidebar.tsx
     register-sw.tsx
     service-worker-register.tsx
   lib/
     data/
+      header-summary.ts
       net-worth-history.ts
       net-worth.ts
     degiro/
@@ -198,26 +202,23 @@ src/
       server.ts
     format.ts
     nav-items.ts
+    ticker.ts
   types/
     database.ts
   proxy.ts
 supabase/
   004_remover_importacao.sql
+  005_cotacoes_eur.sql
+  006_radar.sql
   schema.sql
 test-fixtures/
   degiro-conta.csv
   degiro-transacoes.csv
   run-test.ts
 .gitignore
-005_cotacoes_eur.sql
-006_radar.sql
 AGENTS.md
 CLAUDE.md
 eslint.config.mjs
-globals.css
-hero-card.tsx
-holdings-table.tsx
-layout.tsx
 LEIA-ME-ALTERACOES.md
 LEIA-ME-ATUALIZACAO.md
 LEIA-ME-PATCH.md
@@ -226,23 +227,30 @@ LEIA-ME-RONDA-2.md
 LEIA-ME-RONDA-3.md
 LEIA-ME-V2.md
 LEIA-ME.md
-net-worth.ts
 next.config.ts
 package.json
-page.tsx
 postcss.config.mjs
-quotes.ts
 README.md
-route.ts
-ticker.ts
-top-movers.tsx
 tsconfig.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="mnt/user-data/outputs/v2/src/app/mais/page.tsx">
+<file path="src/app/mais/actions.ts">
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
+}
+</file>
+
+<file path="src/app/mais/page.tsx">
 import Link from "next/link";
 import { ChevronRight, FileClock, LogOut, type LucideIcon } from "lucide-react";
 import { ArrowLeftRight, PieChart, Repeat, Wallet } from "lucide-react";
@@ -287,7 +295,7 @@ export default function MaisPage() {
 }
 </file>
 
-<file path="mnt/user-data/outputs/v2/src/app/noticias/page.tsx">
+<file path="src/app/noticias/page.tsx">
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -425,105 +433,54 @@ export default async function NoticiasPage({ searchParams }: { searchParams: Pro
 }
 </file>
 
-<file path="mnt/user-data/outputs/v2/src/app/portfolio/page.tsx">
-import Link from "next/link";
-import { ChevronDown } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { getNetWorthBreakdown } from "@/lib/data/net-worth";
-import { getQuote } from "@/lib/market/quotes";
-import { DegiroUpload } from "@/components/portfolio/degiro-upload";
-import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
-import { UndoImportButton } from "@/components/portfolio/undo-import-button";
-import { WipeImportsButton } from "@/components/portfolio/wipe-imports-button";
-import { HoldingsTable, type ClosedRow } from "@/components/portfolio/holdings-table";
-import { StatCard } from "@/components/dashboard/stat-card";
-import type { Account, RealizedPnlRow } from "@/types/database";
+<file path="src/app/radar/actions.ts">
+"use server";
 
-export default async function PortfolioPage() {
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { getQuote, searchSymbol } from "@/lib/market/quotes";
+
+export async function addToWatchlist(formData: FormData): Promise<{ error?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
 
-  const [{ data: accounts }, b, { data: realizedRows }, { data: closedPositions }, sp500] = await Promise.all([
-    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
-    getNetWorthBreakdown(supabase, user!.id),
-    supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
-    supabase.from("portfolio_positions").select("*").eq("user_id", user!.id).lte("quantity_held", 0.0000001),
-    getQuote("^GSPC"),
-  ]);
+  const text = String(formData.get("query") ?? "").trim();
+  if (!text) return { error: "Escreve um nome, ticker ou ISIN." };
 
-  const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
-  const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
-  const totalFees = b.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
+  const found = await searchSymbol(text);
+  if (!found) return { error: `Não encontrei nada para "${text}".` };
 
-  const realized = (realizedRows ?? []) as RealizedPnlRow[];
-  const realizedById = new Map(realized.map((r) => [r.asset_id, Number(r.realized_pnl)]));
-  const totalRealized = realized.reduce((s, r) => s + Number(r.realized_pnl), 0);
+  const quote = await getQuote(found.symbol);
+  const { error } = await supabase.from("watchlist").insert({
+    user_id: user.id,
+    symbol: found.symbol,
+    name: found.name,
+    currency: quote?.currency ?? "EUR",
+    added_price: quote?.price ?? null,
+  });
 
-  const closed: ClosedRow[] = (closedPositions ?? []).map(
-    (p: { asset_id: string; name: string; symbol: string | null; total_dividends: number }) => ({
-      asset_id: p.asset_id,
-      name: p.name,
-      symbol: p.symbol,
-      realizedPnl: realizedById.get(p.asset_id) ?? 0,
-      total_dividends: Number(p.total_dividends),
-    })
-  );
+  if (error) return { error: error.code === "23505" ? "Já estás a seguir este ativo." : error.message };
+  revalidatePath("/radar");
+  return {};
+}
 
-  const hasQuotes = b.positions.some((p) => p.dayChangeEur !== null);
-
-  return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
-      <div className="flex justify-end">
-        <RefreshQuotesButton />
-      </div>
-
-      <HoldingsTable
-        positions={b.positions}
-        closed={closed}
-        portfolioDayPct={hasQuotes ? b.dayChangePct : null}
-        benchmarkPct={sp500?.changePercent != null ? sp500.changePercent / 100 : null}
-      />
-
-      <details className="group rounded-3xl border border-line bg-surface mt-2">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
-          Estatísticas da carteira
-          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="grid grid-cols-2 gap-3 px-4 pb-4">
-          <StatCard label="Capital investido" value={b.portfolioCost} />
-          <StatCard label="Valor atual" value={b.portfolioValue} tone="gold" />
-          <StatCard label="Lucro não realizado" value={b.portfolioPnl} tone={b.portfolioPnl >= 0 ? "gain" : "loss"} />
-          <StatCard label="Lucro realizado" value={totalRealized} tone={totalRealized >= 0 ? "gain" : "loss"} />
-          <StatCard label="Dividendos" value={b.totalDividends} tone="gain" />
-          <StatCard label="Comissões e taxas" value={totalFees} tone="loss" />
-          <StatCard label="Saldo livre" value={freeCash} />
-        </div>
-      </details>
-
-      <details className="group rounded-3xl border border-line bg-surface">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
-          Importar extrato DEGIRO
-          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="px-5 pb-5 flex flex-col gap-4">
-          <DegiroUpload brokerAccounts={brokerAccounts} />
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <UndoImportButton />
-            <WipeImportsButton />
-            <Link href="/portfolio/importacoes" className="text-xs text-gold">
-              Ver histórico de importações
-            </Link>
-          </div>
-        </div>
-      </details>
-    </div>
-  );
+export async function removeFromWatchlist(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+  const { error } = await supabase.from("watchlist").delete().eq("id", id).eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/radar");
+  return {};
 }
 </file>
 
-<file path="mnt/user-data/outputs/v2/src/app/radar/page.tsx">
+<file path="src/app/radar/page.tsx">
 import { createClient } from "@/lib/supabase/server";
 import { getQuote } from "@/lib/market/quotes";
 import { shortTicker } from "@/lib/ticker";
@@ -622,6 +579,572 @@ export default async function RadarPage() {
     </div>
   );
 }
+</file>
+
+<file path="src/components/dashboard/best-worst.tsx">
+import { formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+import { shortTicker } from "@/lib/ticker";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
+import type { EnrichedPosition } from "@/lib/data/net-worth";
+
+function tenure(iso: string | null): string {
+  if (!iso) return "";
+  const months = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / (30.44 * 86400000)));
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  const parts = [];
+  if (y > 0) parts.push(`${y} ${y === 1 ? "ano" : "anos"}`);
+  if (m > 0 || y === 0) parts.push(`${m} ${m === 1 ? "mês" : "meses"}`);
+  return `${parts.join(" e ")} em carteira`;
+}
+
+function Card({ title, p }: { title: string; p: EnrichedPosition }) {
+  const pnl = p.marketValue - p.net_invested;
+  const pct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
+  const up = pnl >= 0;
+  const t = shortTicker(p.symbol, p.name);
+  return (
+    <section className="rounded-3xl border border-line bg-surface p-5">
+      <h2 className="text-sm font-medium text-text-muted">{title}</h2>
+      <div className="flex items-center gap-3 mt-3">
+        <TickerAvatar ticker={t} size={44} />
+        <p className="text-2xl font-extrabold text-text">{t}</p>
+      </div>
+      <p className={cx("tabular text-xl font-bold mt-3", up ? "text-gain" : "text-loss")}>{formatPercent(pct)}</p>
+      <p className={cx("tabular text-lg font-semibold", up ? "text-gain" : "text-loss")}>{formatSignedCurrency(pnl)}</p>
+      <p className="text-sm text-text-muted mt-2">{tenure(p.first_purchase_at)}</p>
+    </section>
+  );
+}
+
+export function BestWorst({ positions }: { positions: EnrichedPosition[] }) {
+  if (positions.length < 2) return null;
+  const pct = (p: EnrichedPosition) => (p.net_invested !== 0 ? (p.marketValue - p.net_invested) / Math.abs(p.net_invested) : 0);
+  const sorted = [...positions].sort((a, b) => pct(b) - pct(a));
+  return (
+    <>
+      <Card title="Melhor posição" p={sorted[0]} />
+      <Card title="Pior posição" p={sorted[sorted.length - 1]} />
+    </>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/hero-card.tsx">
+import { formatCurrency, formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+
+const tone = (v: number) => (v > 0 ? "text-gain" : v < 0 ? "text-loss" : "text-text-muted");
+
+/** Cartão principal: património em azul grande, variação do dia, retorno total e dividendos. */
+export function HeroCard({
+  totalNetWorth, dayChangeEur, dayChangePct, hasQuotes, totalReturnEur, totalReturnPct, dividends, lastQuoteAt,
+}: {
+  totalNetWorth: number; dayChangeEur: number; dayChangePct: number; hasQuotes: boolean;
+  totalReturnEur: number; totalReturnPct: number; dividends: number; lastQuoteAt: string | null;
+}) {
+  const date = lastQuoteAt
+    ? new Date(lastQuoteAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" })
+    : null;
+
+  return (
+    <section
+      className="overflow-hidden rounded-3xl border border-line"
+      style={{ background: "linear-gradient(145deg, #12234A 0%, #101829 60%)" }}
+    >
+      <div className={cx("h-1 w-full", !hasQuotes ? "bg-line" : dayChangeEur >= 0 ? "bg-gain" : "bg-loss")} />
+      <div className="p-6">
+        <p className="text-sm text-text-muted">Património</p>
+        <p className="text-[44px] leading-none sm:text-6xl font-extrabold tabular text-gold mt-2 break-words">
+          {formatCurrency(totalNetWorth)}
+        </p>
+
+        <div className="mt-6">
+          <p className="text-sm text-text-muted">Variação diária{date ? ` · ${date}` : ""}</p>
+          {hasQuotes ? (
+            <p className={cx("tabular text-2xl font-bold mt-1", tone(dayChangeEur))}>
+              {formatPercent(dayChangePct)} <span className="text-text-faint font-normal">·</span>{" "}
+              {formatSignedCurrency(dayChangeEur)}
+            </p>
+          ) : (
+            <p className="text-sm text-text-faint mt-1">
+              Sem cotações. Em Carteira, toca em &quot;Atualizar cotações&quot;.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-text-muted">Retorno total</p>
+            <p className={cx("tabular text-xl font-bold mt-1", tone(totalReturnEur))}>{formatPercent(totalReturnPct)}</p>
+            <p className={cx("tabular text-sm", tone(totalReturnEur))}>{formatSignedCurrency(totalReturnEur)}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm text-text-muted">Dividendos</p>
+            <p className="tabular text-xl font-bold mt-1 text-text">{formatCurrency(dividends)}</p>
+            <p className="text-sm text-text-faint">recebidos</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/record-card.tsx">
+import { Sparkles } from "lucide-react";
+import { formatCurrency, formatDate, formatPercent, cx } from "@/lib/format";
+import type { NetWorthSnapshot } from "@/types/database";
+
+/** Máximo histórico do património (a partir dos snapshots diários). */
+export function RecordCard({ current, snapshots }: { current: number; snapshots: NetWorthSnapshot[] }) {
+  const previous = snapshots.slice(0, -1);
+  if (previous.length === 0) return null;
+
+  const best = previous.reduce((a, b) => (Number(b.total_net_worth) > Number(a.total_net_worth) ? b : a));
+  const max = Number(best.total_net_worth);
+  const isRecord = current >= max;
+  const pctOfMax = max > 0 ? Math.min(1, current / max) : 0;
+
+  return (
+    <section className="rounded-3xl border border-line bg-surface p-5">
+      <h2 className="text-base font-bold text-text">Máximo histórico</h2>
+      <p className={cx("flex items-center gap-2 mt-3 text-3xl font-extrabold", isRecord ? "text-gain" : "text-text")}>
+        {isRecord && <Sparkles size={26} className="text-gain" />}
+        {isRecord ? "Novo máximo" : `${formatPercent(pctOfMax - 1)} do máximo`}
+      </p>
+      <p className="text-sm text-text-muted mt-2">
+        {isRecord ? "Recorde anterior" : "Recorde"} {formatCurrency(max)} · {formatDate(best.snapshot_date)}
+      </p>
+      <div className="mt-4 h-2 rounded-full bg-surface-alt overflow-hidden">
+        <div className={cx("h-full rounded-full", isRecord ? "bg-gain" : "bg-gold")} style={{ width: `${pctOfMax * 100}%` }} />
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/return-chart.tsx">
+"use client";
+
+import { useState } from "react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatCurrency, formatDate, formatSignedCurrency, cx } from "@/lib/format";
+import type { NetWorthSnapshot } from "@/types/database";
+
+const RANGES = [
+  { key: "1m", label: "1M", days: 30 },
+  { key: "3m", label: "3M", days: 90 },
+  { key: "6m", label: "6M", days: 180 },
+  { key: "1a", label: "1A", days: 365 },
+  { key: "max", label: "Max", days: 100000 },
+] as const;
+
+/** Retorno acumulado do portefólio (valor − capital investido) ao longo do tempo. */
+export function ReturnChart({ snapshots }: { snapshots: NetWorthSnapshot[] }) {
+  const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("max");
+  const days = RANGES.find((r) => r.key === range)!.days;
+  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+
+  const data = snapshots
+    .filter((s) => s.snapshot_date >= since)
+    .map((s) => ({ date: s.snapshot_date, ret: Number(s.portfolio_value) - Number(s.portfolio_cost) }));
+
+  const last = data[data.length - 1]?.ret ?? 0;
+  const first = data[0]?.ret ?? 0;
+  const up = last >= 0;
+  const color = up ? "var(--color-gain)" : "var(--color-loss)";
+
+  return (
+    <section className="rounded-3xl border border-line bg-surface p-5">
+      <h2 className="text-base font-bold text-text">Retorno total acumulado</h2>
+      <div className="flex gap-1.5 mt-3">
+        {RANGES.map((r) => (
+          <button
+            key={r.key}
+            onClick={() => setRange(r.key)}
+            className={cx(
+              "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+              range === r.key ? "bg-gold text-ink" : "bg-surface-alt text-text-muted"
+            )}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      {data.length < 2 ? (
+        <p className="h-48 flex items-center justify-center text-sm text-text-faint text-center">
+          O histórico começa a ser guardado hoje. Volta amanhã para ver a evolução.
+        </p>
+      ) : (
+        <>
+          <p className={cx("tabular text-lg font-bold mt-4", up ? "text-gain" : "text-loss")}>
+            {formatSignedCurrency(last)}
+            <span className="text-sm font-medium text-text-muted ml-2">
+              ({formatSignedCurrency(last - first)} no período)
+            </span>
+          </p>
+          <div className="mt-2 -mx-2">
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={data}>
+                <defs>
+                  <linearGradient id="retFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" hide />
+                <YAxis hide domain={["dataMin", "dataMax"]} />
+                <Tooltip
+                  contentStyle={{ background: "var(--color-surface-alt)", border: "1px solid var(--color-line)", borderRadius: 12, fontSize: 12 }}
+                  labelFormatter={(d) => formatDate(String(d))}
+                  formatter={(v) => [formatCurrency(Number(v)), "Retorno"]}
+                />
+                <Area type="monotone" dataKey="ret" stroke={color} strokeWidth={2} fill="url(#retFill)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/top-movers.tsx">
+import Link from "next/link";
+import { formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+import { shortTicker } from "@/lib/ticker";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
+import type { EnrichedPosition } from "@/lib/data/net-worth";
+
+export function TopMovers({ positions }: { positions: EnrichedPosition[] }) {
+  const movers = positions
+    .filter((p) => p.dayChangeEur !== null && p.dayChangePct !== null)
+    .sort((a, b) => Math.abs(b.dayChangeEur ?? 0) - Math.abs(a.dayChangeEur ?? 0))
+    .slice(0, 5);
+  if (movers.length === 0) return null;
+
+  return (
+    <section className="rounded-3xl border border-line bg-surface p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-base font-bold text-text">Principais movers</h2>
+        <Link href="/noticias" className="text-sm text-gold">Notícias</Link>
+      </div>
+      <ul className="flex flex-col gap-3">
+        {movers.map((p) => {
+          const t = shortTicker(p.symbol, p.name);
+          const up = (p.dayChangeEur ?? 0) >= 0;
+          return (
+            <li key={p.asset_id} className="flex items-center gap-3">
+              <TickerAvatar ticker={t} />
+              <p className="font-bold text-text flex-1 min-w-0 truncate">{t}</p>
+              <p className={cx("tabular text-sm text-right font-semibold", up ? "text-gain" : "text-loss")}>
+                {formatPercent(p.dayChangePct ?? 0)} <span className="opacity-60">·</span>{" "}
+                {formatSignedCurrency(p.dayChangeEur ?? 0)}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/weight-treemap.tsx">
+"use client";
+
+import { ResponsiveContainer, Treemap } from "recharts";
+
+export interface TreemapItem {
+  name: string;
+  size: number; // valor de mercado (define o tamanho do bloco)
+  ret: number; // retorno em % (define a cor), ex: 106.5
+}
+
+interface CellProps { x: number; y: number; width: number; height: number; name?: string; ret?: number }
+
+function color(ret: number): string {
+  const strength = Math.min(1, Math.abs(ret) / 150);
+  const alpha = 0.3 + strength * 0.6;
+  return ret >= 0 ? `rgba(47, 210, 127, ${alpha})` : `rgba(240, 100, 107, ${alpha})`;
+}
+
+function Cell(props: CellProps) {
+  const { x, y, width, height, name, ret } = props;
+  if (width <= 0 || height <= 0 || ret === undefined) return null;
+  const showText = width > 52 && height > 38;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={8} fill={color(ret)} stroke="var(--color-ink)" strokeWidth={3} />
+      {showText && (
+        <>
+          <text x={x + width / 2} y={y + height / 2 - 4} textAnchor="middle" fill="#fff" fontSize={13} fontWeight={700}>
+            {name}
+          </text>
+          <text x={x + width / 2} y={y + height / 2 + 13} textAnchor="middle" fill="#fff" fontSize={12} opacity={0.9}>
+            {ret >= 0 ? "+" : ""}{ret.toFixed(1)}%
+          </text>
+        </>
+      )}
+    </g>
+  );
+}
+
+/** Mapa: tamanho = peso na carteira, cor = retorno. Vê-se logo onde está o dinheiro e o que rende. */
+export function WeightTreemap({ items }: { items: TreemapItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <section className="rounded-3xl border border-line bg-surface p-5">
+      <h2 className="text-base font-bold text-text">Peso vs retorno</h2>
+      <p className="text-xs text-text-faint mt-1">Tamanho = peso na carteira · cor = retorno</p>
+      <div className="mt-3">
+        <ResponsiveContainer width="100%" height={280}>
+          <Treemap
+            data={items}
+            dataKey="size"
+            isAnimationActive={false}
+            content={((props: unknown) => <Cell {...(props as CellProps)} />) as never}
+          />
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="src/components/radar/remove-watch-button.tsx">
+"use client";
+
+import { useTransition } from "react";
+import { X } from "lucide-react";
+import { toast } from "sonner";
+import { removeFromWatchlist } from "@/app/radar/actions";
+
+export function RemoveWatchButton({ id }: { id: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <button
+      disabled={pending}
+      title="Deixar de seguir"
+      onClick={() =>
+        start(async () => {
+          const r = await removeFromWatchlist(id);
+          if (r.error) toast.error(r.error);
+        })
+      }
+      className="text-text-faint hover:text-loss disabled:opacity-50"
+    >
+      <X size={16} />
+    </button>
+  );
+}
+</file>
+
+<file path="src/components/radar/watchlist-add.tsx">
+"use client";
+
+import { useRef, useTransition } from "react";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { addToWatchlist } from "@/app/radar/actions";
+
+export function WatchlistAdd() {
+  const ref = useRef<HTMLFormElement>(null);
+  const [pending, start] = useTransition();
+
+  function action(fd: FormData) {
+    start(async () => {
+      const r = await addToWatchlist(fd);
+      if (r.error) return toast.error(r.error);
+      ref.current?.reset();
+      toast.success("Adicionado ao Radar.");
+    });
+  }
+
+  return (
+    <form ref={ref} action={action} className="flex gap-2">
+      <input
+        name="query"
+        required
+        placeholder="Nome, ticker ou ISIN"
+        className="flex-1 min-w-0 rounded-2xl border border-line bg-surface px-4 py-3 text-sm outline-none focus:border-gold"
+      />
+      <button
+        type="submit"
+        disabled={pending}
+        className="flex items-center gap-1.5 rounded-2xl bg-gold px-4 py-3 text-sm font-bold text-ink disabled:opacity-50"
+      >
+        <Plus size={16} />
+        {pending ? "…" : "Seguir"}
+      </button>
+    </form>
+  );
+}
+</file>
+
+<file path="src/components/ui/ticker-avatar.tsx">
+const COLORS = ["#2563EB", "#7C3AED", "#DB2777", "#EA580C", "#0D9488", "#4F46E5", "#B45309", "#059669"];
+
+/** Quadrado colorido com as iniciais do ticker (cor estável por ticker). */
+export function TickerAvatar({ ticker, size = 40 }: { ticker: string; size?: number }) {
+  let hash = 0;
+  for (const ch of ticker) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-xl font-bold text-white"
+      style={{ width: size, height: size, background: COLORS[hash % COLORS.length], fontSize: size * 0.34 }}
+      aria-hidden
+    >
+      {ticker.slice(0, 2)}
+    </span>
+  );
+}
+</file>
+
+<file path="src/lib/data/header-summary.ts">
+import { createClient } from "@/lib/supabase/server";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import type { HeaderSummary } from "@/components/mobile-header";
+
+/** Aproximação: dias úteis, 07:00–21:00 UTC (cobre bolsas europeias e as dos EUA). */
+function isMarketOpen(now = new Date()): boolean {
+  const day = now.getUTCDay();
+  const h = now.getUTCHours();
+  return day >= 1 && day <= 5 && h >= 7 && h < 21;
+}
+
+export async function getHeaderSummary(): Promise<HeaderSummary | null> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    const b = await getNetWorthBreakdown(supabase, user.id);
+    return {
+      hasQuotes: b.lastQuoteAt !== null && b.positions.some((p) => p.dayChangeEur !== null),
+      dayChangeEur: b.dayChangeEur,
+      dayChangePct: b.dayChangePct,
+      lastQuoteAt: b.lastQuoteAt,
+      marketOpen: isMarketOpen(),
+    };
+  } catch {
+    return null;
+  }
+}
+</file>
+
+<file path="src/lib/ticker.ts">
+/**
+ * Ticker curto para mostrar na UI: "VWCE.DE" -> "VWCE", "AAPL" -> "AAPL".
+ * Sem símbolo, usa a primeira palavra do nome (máx. 6 caracteres).
+ */
+export function shortTicker(symbol: string | null, name: string): string {
+  if (symbol) return symbol.split(".")[0].toUpperCase();
+  const first = name.trim().split(/\s+/)[0] ?? name;
+  return first.slice(0, 6).toUpperCase();
+}
+</file>
+
+<file path="supabase/005_cotacoes_eur.sql">
+-- =========================================================================
+-- 005 — Cotações alinhadas com a DEGIRO
+-- =========================================================================
+-- 1) assets.exchange        -> bolsa de referência da DEGIRO (EAM, XET, NDQ...)
+-- 2) asset_quotes           -> preço já convertido para EUR, fecho anterior
+--                              e variação diária (para "variação do dia")
+-- 3) política UPDATE em assets -> sem ela, o símbolo Yahoo descoberto nunca
+--    era gravado e a app voltava a procurá-lo em todas as atualizações.
+-- 4) capture_net_worth_snapshot passa a usar o preço em EUR.
+-- Idempotente.
+-- =========================================================================
+
+alter table public.assets add column if not exists exchange text;
+
+alter table public.asset_quotes add column if not exists price_eur numeric(18,6);
+alter table public.asset_quotes add column if not exists previous_close_eur numeric(18,6);
+alter table public.asset_quotes add column if not exists change_percent numeric(10,4);
+
+drop policy if exists "assets_update_authenticated" on public.assets;
+create policy "assets_update_authenticated" on public.assets
+  for update using (auth.role() = 'authenticated');
+
+create or replace function public.capture_net_worth_snapshot(p_user_id uuid)
+returns void language plpgsql as $$
+declare
+  v_cash_banks numeric(18,2);
+  v_cash_savings numeric(18,2);
+  v_cash_brokers numeric(18,2);
+  v_cash_physical numeric(18,2);
+  v_portfolio_value numeric(18,2);
+  v_portfolio_cost numeric(18,2);
+begin
+  select coalesce(sum(current_balance), 0) into v_cash_banks
+  from public.accounts where user_id = p_user_id and type = 'banco' and is_archived = false;
+
+  select coalesce(sum(current_balance), 0) into v_cash_savings
+  from public.accounts where user_id = p_user_id and type = 'poupanca' and is_archived = false;
+
+  select coalesce(sum(current_balance), 0) into v_cash_brokers
+  from public.accounts where user_id = p_user_id and type = 'corretora' and is_archived = false;
+
+  select coalesce(sum(current_balance), 0) into v_cash_physical
+  from public.accounts where user_id = p_user_id and type = 'numerario' and is_archived = false;
+
+  select
+    coalesce(sum(coalesce(q.price_eur, case when q.currency = 'EUR' then q.price end, pp.net_invested / nullif(pp.quantity_held, 0)) * pp.quantity_held), 0),
+    coalesce(sum(pp.net_invested), 0)
+  into v_portfolio_value, v_portfolio_cost
+  from public.portfolio_positions pp
+  left join public.asset_quotes q on q.asset_id = pp.asset_id
+  where pp.user_id = p_user_id and pp.quantity_held > 0.0000001;
+
+  insert into public.net_worth_snapshots (
+    user_id, snapshot_date, total_net_worth,
+    cash_in_banks, cash_in_savings, cash_in_brokers, physical_cash,
+    portfolio_value, portfolio_cost
+  ) values (
+    p_user_id, current_date,
+    v_cash_banks + v_cash_savings + v_cash_brokers + v_cash_physical + v_portfolio_value,
+    v_cash_banks, v_cash_savings, v_cash_brokers, v_cash_physical,
+    v_portfolio_value, v_portfolio_cost
+  )
+  on conflict (user_id, snapshot_date) do update set
+    total_net_worth = excluded.total_net_worth,
+    cash_in_banks = excluded.cash_in_banks,
+    cash_in_savings = excluded.cash_in_savings,
+    cash_in_brokers = excluded.cash_in_brokers,
+    physical_cash = excluded.physical_cash,
+    portfolio_value = excluded.portfolio_value,
+    portfolio_cost = excluded.portfolio_cost;
+end;
+$$;
+</file>
+
+<file path="supabase/006_radar.sql">
+-- Radar: lista de ativos em observação (watchlist). Idempotente.
+create table if not exists public.watchlist (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  symbol       text not null,
+  name         text not null,
+  currency     text not null default 'EUR',
+  added_price  numeric(18,6),
+  added_at     timestamptz not null default now(),
+  unique (user_id, symbol)
+);
+
+create index if not exists idx_watchlist_user on public.watchlist(user_id);
+alter table public.watchlist enable row level security;
+
+drop policy if exists "watchlist_select_own" on public.watchlist;
+create policy "watchlist_select_own" on public.watchlist for select using (auth.uid() = user_id);
+drop policy if exists "watchlist_insert_own" on public.watchlist;
+create policy "watchlist_insert_own" on public.watchlist for insert with check (auth.uid() = user_id);
+drop policy if exists "watchlist_delete_own" on public.watchlist;
+create policy "watchlist_delete_own" on public.watchlist for delete using (auth.uid() = user_id);
 </file>
 
 <file path="public/file.svg">
@@ -787,13 +1310,14 @@ main();
 <file path="src/app/api/quotes/route.ts">
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getQuotes, resolveSymbolFromIsin } from "@/lib/market/quotes";
+import { getQuote, resolveSymbolFromIsin } from "@/lib/market/quotes";
 
 /**
  * GET /api/quotes
- * Atualiza o cache `asset_quotes` com cotações atuais para todos os ativos
- * do portefólio do utilizador autenticado, resolvendo o símbolo Yahoo
- * Finance a partir do ISIN quando ainda não o conhecemos.
+ * Atualiza o cache `asset_quotes` para todas as posições abertas do
+ * utilizador. Usa a bolsa de referência da DEGIRO (assets.exchange) para
+ * escolher a mesma listagem que ele vê na corretora, e guarda o preço já
+ * convertido para EUR + fecho anterior (variação do dia).
  */
 export async function GET(_req: NextRequest) {
   const supabase = await createClient();
@@ -804,49 +1328,79 @@ export async function GET(_req: NextRequest) {
 
   const { data: positions, error } = await supabase
     .from("portfolio_positions")
-    .select("asset_id, symbol, isin, name")
+    .select("asset_id, symbol, isin, name, quantity_held")
     .eq("user_id", auth.user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const updates: { asset_id: string; price: number; currency: string; fetched_at: string }[] = [];
-  const resolvedSymbols: { asset_id: string; symbol: string }[] = [];
+  const open = (positions ?? []).filter((p: { quantity_held: number }) => Number(p.quantity_held) > 0.0000001);
+  const assetIds = open.map((p: { asset_id: string }) => p.asset_id);
 
-  for (const pos of positions ?? []) {
-    let symbol = pos.symbol as string | null;
+  const { data: assetRows } = await supabase.from("assets").select("id, exchange").in("id", assetIds);
+  const exchangeById = new Map<string, string | null>(
+    (assetRows ?? []).map((a: { id: string; exchange: string | null }) => [a.id, a.exchange])
+  );
 
-    if (!symbol) {
-      const resolved = await resolveSymbolFromIsin(pos.isin ?? pos.name);
-      if (resolved) {
-        symbol = resolved.symbol;
-        resolvedSymbols.push({ asset_id: pos.asset_id, symbol });
+  const fxCache = new Map<string, number | null>();
+  const now = new Date().toISOString();
+
+  const results = await Promise.all(
+    open.map(
+      async (pos: { asset_id: string; symbol: string | null; isin: string | null; name: string }) => {
+        let symbol = pos.symbol;
+        let newSymbol: string | null = null;
+
+        if (!symbol) {
+          const resolved = await resolveSymbolFromIsin(pos.isin ?? pos.name, exchangeById.get(pos.asset_id));
+          if (resolved) {
+            symbol = resolved.symbol;
+            newSymbol = resolved.symbol;
+          }
+        }
+        if (!symbol) return null;
+
+        const quote = await getQuote(symbol, fxCache);
+        if (!quote) return null;
+
+        return {
+          newSymbol,
+          row: {
+            asset_id: pos.asset_id,
+            price: quote.price,
+            currency: quote.currency,
+            price_eur: quote.priceEur,
+            previous_close_eur: quote.previousCloseEur,
+            change_percent: quote.changePercent,
+            fetched_at: now,
+          },
+        };
       }
-    }
-    if (!symbol) continue;
+    )
+  );
 
-    const [quote] = await getQuotes([symbol]);
-    if (quote) {
-      updates.push({
-        asset_id: pos.asset_id,
-        price: quote.price,
-        currency: quote.currency,
-        fetched_at: new Date().toISOString(),
-      });
+  const ok = results.filter((r): r is NonNullable<typeof r> => r !== null);
+
+  for (const r of ok) {
+    if (r.newSymbol) {
+      await supabase.from("assets").update({ symbol: r.newSymbol }).eq("id", r.row.asset_id);
     }
   }
 
-  // Persiste o símbolo Yahoo Finance recém-descoberto no catálogo de ativos.
-  for (const r of resolvedSymbols) {
-    await supabase.from("assets").update({ symbol: r.symbol }).eq("id", r.asset_id);
-  }
-
+  const updates = ok.map((r) => r.row);
   if (updates.length > 0) {
-    await supabase.from("asset_quotes").upsert(updates, { onConflict: "asset_id" });
+    const { error: upsertError } = await supabase.from("asset_quotes").upsert(updates, { onConflict: "asset_id" });
+    if (upsertError) {
+      return NextResponse.json({ error: upsertError.message }, { status: 500 });
+    }
   }
 
-  return NextResponse.json({ updated: updates.length, quotes: updates });
+  return NextResponse.json({
+    updated: updates.length,
+    failed: open.length - updates.length,
+    quotes: updates,
+  });
 }
 </file>
 
@@ -2694,27 +3248,11 @@ import { clsx } from "clsx";
 import type { HTMLAttributes } from "react";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={clsx(
-        "rounded-lg border border-line bg-surface p-5",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <div className={clsx("rounded-2xl border border-line bg-surface p-5", className)} {...props} />;
 }
 
 export function CardLabel({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return (
-    <p
-      className={clsx(
-        "text-[11px] uppercase tracking-[0.14em] text-text-faint font-medium",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <p className={clsx("text-sm font-medium text-text-muted", className)} {...props} />;
 }
 </file>
 
@@ -2748,50 +3286,35 @@ export function PageSkeleton({ cards = 3 }: { cards?: number }) {
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, ArrowLeftRight, PieChart, LineChart } from "lucide-react";
 import { cx } from "@/lib/format";
+import { BOTTOM_NAV_ITEMS, MORE_PATHS } from "@/lib/nav-items";
 
-const ITEMS = [
-  { href: "/dashboard", label: "Início", icon: LayoutGrid },
-  { href: "/contas", label: "Contas", icon: Wallet },
-  { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
-  { href: "/relatorios", label: "Relatórios", icon: PieChart },
-  { href: "/portfolio", label: "Portefólio", icon: LineChart },
-];
-
-/**
- * Navegação inferior fixa, só visível em ecrãs pequenos (md:hidden) — no
- * desktop usa-se a NavSidebar em vez disto. Isto é o que faz a app
- * parecer uma app nativa no telemóvel em vez de um site.
- *
- * `env(safe-area-inset-bottom)` evita que os botões fiquem escondidos
- * atrás da barra de gestos do iPhone quando a app corre em modo standalone
- * (adicionada ao ecrã principal).
- */
 export function BottomNav() {
-  const pathname = usePathname();
-
+  const pathname = usePathname() ?? "";
   if (pathname === "/login") return null;
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-surface/95 backdrop-blur-sm"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-surface/95 backdrop-blur"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="grid grid-cols-5">
-        {ITEMS.map((item) => {
-          const active = pathname?.startsWith(item.href);
+        {BOTTOM_NAV_ITEMS.map((item) => {
+          const active =
+            item.href === "/mais"
+              ? MORE_PATHS.some((p) => pathname.startsWith(p))
+              : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cx(
-                "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] transition-colors",
-                active ? "text-gold" : "text-text-faint"
+                "flex flex-col items-center justify-center gap-1 pt-2.5 pb-2 text-[11px] border-t-2 transition-colors",
+                active ? "text-gold border-gold" : "text-text-muted border-transparent"
               )}
             >
-              <Icon size={20} strokeWidth={active ? 2 : 1.75} />
+              <Icon size={22} strokeWidth={active ? 2 : 1.75} />
               <span className="leading-none">{item.label}</span>
             </Link>
           );
@@ -2805,122 +3328,61 @@ export function BottomNav() {
 <file path="src/components/mobile-header.tsx">
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
-import { cx } from "@/lib/format";
-import { NAV_ITEMS } from "@/lib/nav-items";
+import { cx, formatPercent } from "@/lib/format";
 
-export function MobileHeader() {
+export interface HeaderSummary {
+  hasQuotes: boolean;
+  dayChangeEur: number;
+  dayChangePct: number;
+  lastQuoteAt: string | null;
+  marketOpen: boolean;
+}
+
+const eur0 = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+
+/** Topo fixo (só telemóvel): logo à esquerda; variação do dia e estado do mercado à direita. */
+export function MobileHeader({ summary }: { summary: HeaderSummary | null }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-
-  // Fecha o painel sempre que a rota muda (ex: depois de tocar num link).
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  // Impede o scroll do fundo enquanto o painel está aberto.
-  useEffect(() => {
-    if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [open]);
-
   if (pathname === "/login") return null;
 
+  const up = (summary?.dayChangeEur ?? 0) >= 0;
+  const date = summary?.lastQuoteAt
+    ? new Date(summary.lastQuoteAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" })
+    : null;
+
   return (
-    <>
-      <header
-        className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between border-b border-line bg-surface/95 backdrop-blur px-4"
-        style={{
-          height: "calc(52px + env(safe-area-inset-top))",
-          paddingTop: "env(safe-area-inset-top)",
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <Image src="/icons/icon-192.png" alt="" width={24} height={24} className="rounded-md" />
-          <p className="font-display text-base italic text-text">Meu Capital</p>
-        </div>
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Abrir menu"
-          className="p-2 -mr-2 text-text-muted hover:text-text transition-colors"
-        >
-          <Menu size={22} strokeWidth={1.75} />
-        </button>
-      </header>
-
-      {/* Fundo escurecido + painel lateral. Fica sempre montado (para a
-          transição de saída funcionar) mas sem interação nem visível
-          quando fechado. */}
-      <div
-        className={cx(
-          "md:hidden fixed inset-0 z-50 transition-opacity duration-200",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        )}
-      >
-        <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-
-        <nav
-          className={cx(
-            "absolute top-0 left-0 h-full w-72 max-w-[80vw] bg-surface border-r border-line flex flex-col transition-transform duration-200",
-            open ? "translate-x-0" : "-translate-x-full"
-          )}
-          style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
-        >
-          <div className="flex items-center justify-between px-4 py-4 border-b border-line-soft">
-            <div className="flex items-center gap-2.5">
-              <Image src="/icons/icon-192.png" alt="" width={28} height={28} className="rounded-md" />
-              <div>
-                <p className="font-display text-lg italic leading-tight text-text">Meu Capital</p>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-text-faint mt-0.5">
-                  Património &amp; Finanças
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setOpen(false)}
-              aria-label="Fechar menu"
-              className="p-2 text-text-faint hover:text-text transition-colors"
-            >
-              <X size={20} strokeWidth={1.75} />
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-1 px-3 py-4 overflow-y-auto">
-            {NAV_ITEMS.map((item) => {
-              const active = pathname?.startsWith(item.href);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cx(
-                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
-                    active
-                      ? "bg-surface-alt text-gold"
-                      : "text-text-muted hover:text-text hover:bg-surface-alt/60"
-                  )}
-                >
-                  <Icon size={18} strokeWidth={1.75} />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="mt-auto px-4 py-4 ledger-rule text-[11px] text-text-faint leading-relaxed">
-            Dados armazenados no teu próprio projeto Supabase. Nada é partilhado com terceiros.
-          </div>
-        </nav>
+    <header
+      className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between gap-3 border-b border-line bg-surface/95 backdrop-blur px-4"
+      style={{ height: "calc(60px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <Image src="/icons/icon-192.png" alt="" width={28} height={28} className="rounded-lg" />
+        <p className="font-bold text-base text-text truncate">Meu Capital</p>
       </div>
-    </>
+
+      {summary && (
+        <div className="text-right leading-tight shrink-0">
+          {summary.hasQuotes && (
+            <p className={cx("tabular text-sm font-semibold", up ? "text-gain" : "text-loss")}>
+              {up ? "+" : "−"}
+              {eur0.format(Math.abs(summary.dayChangeEur))}{" "}
+              <span className="font-medium">{formatPercent(summary.dayChangePct)}</span>
+              {date && (
+                <span className="text-text-muted font-normal ml-1" suppressHydrationWarning>
+                  {date}
+                </span>
+              )}
+            </p>
+          )}
+          <p className="text-xs text-text-muted flex items-center justify-end gap-1.5 mt-0.5">
+            <span className={cx("inline-block h-1.5 w-1.5 rounded-full", summary.marketOpen ? "bg-gain" : "bg-text-faint")} />
+            {summary.marketOpen ? "Mercado aberto" : "Mercado encerrado"}
+          </p>
+        </div>
+      )}
+    </header>
   );
 }
 </file>
@@ -3083,42 +3545,87 @@ export async function sha256Hex(input: string): Promise<string> {
 <file path="src/lib/market/quotes.ts">
 import YahooFinance from "yahoo-finance2";
 
-// Na v4 do yahoo-finance2, o export por omissão é uma classe — precisa de
-// ser instanciada uma única vez e reutilizada entre pedidos.
 const yahooFinance = new YahooFinance();
 
 /**
- * Módulo de cotações em tempo (quase) real via `yahoo-finance2`.
+ * Cotações via Yahoo Finance, alinhadas com a bolsa que a DEGIRO usa.
  *
- * A DEGIRO identifica os ativos por ISIN, mas o Yahoo Finance funciona por
- * "ticker" (símbolo). Por isso:
- *   1. `resolveSymbolFromIsin` usa a pesquisa do Yahoo para encontrar o
- *      símbolo mais provável a partir do ISIN ou do nome do produto.
- *   2. `getQuote` devolve o preço atual + moeda para um símbolo já
- *      conhecido, para atualizar o valor do portefólio e o P/L.
+ * Problema original: o mesmo ISIN é negociado em várias bolsas e moedas
+ * (ex: VWCE em Xetra, Amesterdão e Milão; ações US em USD). Pesquisar só por
+ * ISIN devolvia uma listagem qualquer e o preço era tratado como EUR.
+ *
+ * Agora:
+ *   1. A bolsa de referência da DEGIRO (EAM, XET, NDQ...) é convertida para
+ *      o código de bolsa do Yahoo e escolhemos a listagem dessa bolsa.
+ *   2. O preço é convertido para EUR (a DEGIRO mostra tudo em EUR).
+ *   3. Guardamos o fecho anterior para calcular a variação do dia.
  */
+
+/** Código de bolsa da DEGIRO -> códigos de bolsa equivalentes no Yahoo. */
+const DEGIRO_TO_YAHOO_EXCHANGE: Record<string, string[]> = {
+  EAM: ["AMS"],
+  XET: ["GER"],
+  TDG: ["GER"],
+  FRA: ["FRA"],
+  EPA: ["PAR"],
+  MIL: ["MIL"],
+  LSE: ["LSE"],
+  EBR: ["BRU"],
+  ELI: ["LIS"],
+  MAD: ["MCE"],
+  SWX: ["EBS"],
+  CPH: ["CPH"],
+  STO: ["STO"],
+  HEL: ["HEL"],
+  OSL: ["OSL"],
+  VIE: ["VIE"],
+  NDQ: ["NMS", "NGM", "NCM"],
+  NSY: ["NYQ", "PCX", "ASE", "BTS"],
+  ASE: ["ASE", "PCX"],
+};
+
+/** Quando não sabemos a bolsa, preferimos listagens europeias em EUR. */
+const FALLBACK_PRIORITY = ["AMS", "GER", "PAR", "MIL", "LIS", "MCE", "BRU", "NMS", "NYQ", "LSE"];
 
 export interface ResolvedSymbol {
   symbol: string;
   shortname?: string;
   exchange?: string;
-  currency?: string;
 }
 
 export async function resolveSymbolFromIsin(
-  isinOrName: string
+  isinOrName: string,
+  degiroExchange?: string | null
 ): Promise<ResolvedSymbol | null> {
   try {
-    const result = await yahooFinance.search(isinOrName, { quotesCount: 5 });
-    const best = result.quotes?.find(
-      (q): q is typeof q & { symbol: string } =>
+    const result = await yahooFinance.search(isinOrName, { quotesCount: 15 });
+    const candidates = (result.quotes ?? []).filter(
+      (q): q is typeof q & { symbol: string; exchange?: string } =>
         "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
     );
+    if (candidates.length === 0) return null;
+
+    const exchangeOf = (q: { exchange?: unknown }) => (typeof q.exchange === "string" ? q.exchange : "");
+
+    let best: (typeof candidates)[number] | undefined;
+
+    const wanted = degiroExchange ? DEGIRO_TO_YAHOO_EXCHANGE[degiroExchange.trim().toUpperCase()] : undefined;
+    if (wanted) {
+      best = candidates.find((q) => wanted.includes(exchangeOf(q)));
+    }
+    if (!best) {
+      best = [...candidates].sort((a, b) => {
+        const ia = FALLBACK_PRIORITY.indexOf(exchangeOf(a));
+        const ib = FALLBACK_PRIORITY.indexOf(exchangeOf(b));
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      })[0];
+    }
     if (!best) return null;
+
     return {
       symbol: best.symbol,
       shortname: "shortname" in best && typeof best.shortname === "string" ? best.shortname : undefined,
-      exchange: "exchange" in best && typeof best.exchange === "string" ? best.exchange : undefined,
+      exchange: exchangeOf(best) || undefined,
     };
   } catch (err) {
     console.error(`Falha ao resolver símbolo para "${isinOrName}":`, err);
@@ -3128,20 +3635,59 @@ export async function resolveSymbolFromIsin(
 
 export interface LiveQuote {
   symbol: string;
+  /** Preço na moeda original da listagem (GBp já convertido para GBP). */
   price: number;
   currency: string;
+  /** Preço convertido para EUR (null se não foi possível obter o câmbio). */
+  priceEur: number | null;
+  previousCloseEur: number | null;
+  /** Variação do dia em %, ex: 1.53 significa +1,53%. */
   changePercent: number | null;
   marketState: string | null;
 }
 
-export async function getQuote(symbol: string): Promise<LiveQuote | null> {
+/** Câmbio moeda -> EUR, com cache partilhado durante um pedido. */
+async function getFxToEur(currency: string, cache: Map<string, number | null>): Promise<number | null> {
+  if (currency === "EUR") return 1;
+  if (cache.has(currency)) return cache.get(currency) ?? null;
+  try {
+    const fx = await yahooFinance.quote(`${currency}EUR=X`);
+    const rate = fx?.regularMarketPrice ?? null;
+    cache.set(currency, rate);
+    return rate;
+  } catch (err) {
+    console.error(`Falha ao obter câmbio ${currency}/EUR:`, err);
+    cache.set(currency, null);
+    return null;
+  }
+}
+
+export async function getQuote(
+  symbol: string,
+  fxCache: Map<string, number | null> = new Map()
+): Promise<LiveQuote | null> {
   try {
     const q = await yahooFinance.quote(symbol);
     if (!q || q.regularMarketPrice === undefined) return null;
+
+    // Londres cota em pence (GBp): dividir por 100 para libras.
+    let currency = q.currency ?? "EUR";
+    let divisor = 1;
+    if (currency === "GBp" || currency === "GBX") {
+      currency = "GBP";
+      divisor = 100;
+    }
+
+    const price = q.regularMarketPrice / divisor;
+    const prev = q.regularMarketPreviousClose !== undefined ? q.regularMarketPreviousClose / divisor : null;
+    const fx = await getFxToEur(currency, fxCache);
+
     return {
       symbol,
-      price: q.regularMarketPrice,
-      currency: q.currency ?? "EUR",
+      price,
+      currency,
+      priceEur: fx !== null ? price * fx : null,
+      previousCloseEur: fx !== null && prev !== null ? prev * fx : null,
       changePercent: q.regularMarketChangePercent ?? null,
       marketState: q.marketState ?? null,
     };
@@ -3151,13 +3697,44 @@ export async function getQuote(symbol: string): Promise<LiveQuote | null> {
   }
 }
 
-export async function getQuotes(symbols: string[]): Promise<LiveQuote[]> {
-  const unique = Array.from(new Set(symbols.filter(Boolean)));
-  const results = await Promise.allSettled(unique.map((s) => getQuote(s)));
-  return results
-    .filter((r): r is PromiseFulfilledResult<LiveQuote | null> => r.status === "fulfilled")
-    .map((r) => r.value)
-    .filter((v): v is LiveQuote => v !== null);
+/** Procura o primeiro símbolo para um texto livre (ticker, nome ou ISIN). Usado no Radar. */
+export async function searchSymbol(query: string): Promise<{ symbol: string; name: string } | null> {
+  try {
+    const result = await yahooFinance.search(query, { quotesCount: 6 });
+    const hit = (result.quotes ?? []).find(
+      (q) => "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
+    ) as { symbol: string; shortname?: string; longname?: string } | undefined;
+    if (!hit) return null;
+    return { symbol: hit.symbol, name: hit.shortname ?? hit.longname ?? hit.symbol };
+  } catch (err) {
+    console.error(`Falha ao procurar "${query}":`, err);
+    return null;
+  }
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  publisher: string;
+  link: string;
+  publishedAt: number; // ms
+}
+
+/** Notícias recentes para um símbolo (ou tema, ex: "stock market"). */
+export async function getNews(query: string, count = 4): Promise<NewsItem[]> {
+  try {
+    const result = await yahooFinance.search(query, { quotesCount: 0, newsCount: count });
+    return (result.news ?? []).map((n) => ({
+      id: String(n.uuid),
+      title: String(n.title),
+      publisher: String(n.publisher ?? ""),
+      link: String(n.link),
+      publishedAt: new Date(n.providerPublishTime as unknown as string | number | Date).getTime(),
+    }));
+  } catch (err) {
+    console.error(`Falha ao obter notícias de "${query}":`, err);
+    return [];
+  }
 }
 </file>
 
@@ -3398,19 +3975,31 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 </file>
 
 <file path="src/lib/nav-items.ts">
-import { LayoutGrid, Wallet, ArrowLeftRight, Repeat, PieChart, LineChart } from "lucide-react";
+import { LayoutGrid, Wallet, Radar, Newspaper, MoreHorizontal, ArrowLeftRight, Repeat, PieChart } from "lucide-react";
 
+/** Menu do desktop (barra lateral): tudo à vista. */
 export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Património", icon: LayoutGrid },
+  { href: "/dashboard", label: "Visão Geral", icon: LayoutGrid },
+  { href: "/portfolio", label: "Carteira", icon: Wallet },
+  { href: "/radar", label: "Radar", icon: Radar },
+  { href: "/noticias", label: "Notícias", icon: Newspaper },
   { href: "/contas", label: "Contas", icon: Wallet },
   { href: "/transacoes", label: "Movimentos", icon: ArrowLeftRight },
   { href: "/recorrentes", label: "Recorrências", icon: Repeat },
   { href: "/relatorios", label: "Relatórios", icon: PieChart },
-  { href: "/portfolio", label: "Portefólio", icon: LineChart },
 ] as const;
 
-/** Subconjunto mostrado na barra fixa de baixo no telemóvel — só cabem 5 sem ficar apertado. */
-export const BOTTOM_NAV_ITEMS = NAV_ITEMS.filter((item) => item.href !== "/recorrentes");
+/** Barra inferior do telemóvel: 4 atalhos + "Mais" com o resto. */
+export const BOTTOM_NAV_ITEMS = [
+  { href: "/dashboard", label: "Visão Geral", icon: LayoutGrid },
+  { href: "/portfolio", label: "Carteira", icon: Wallet },
+  { href: "/radar", label: "Radar", icon: Radar },
+  { href: "/noticias", label: "Notícias", icon: Newspaper },
+  { href: "/mais", label: "Mais", icon: MoreHorizontal },
+];
+
+/** Rotas que "vivem" dentro do separador Mais. */
+export const MORE_PATHS = ["/mais", "/contas", "/transacoes", "/recorrentes", "/relatorios"];
 </file>
 
 <file path="test-fixtures/degiro-conta.csv">
@@ -3511,105 +4100,6 @@ yarn-error.log*
 next-env.d.ts
 </file>
 
-<file path="005_cotacoes_eur.sql">
--- =========================================================================
--- 005 — Cotações alinhadas com a DEGIRO
--- =========================================================================
--- 1) assets.exchange        -> bolsa de referência da DEGIRO (EAM, XET, NDQ...)
--- 2) asset_quotes           -> preço já convertido para EUR, fecho anterior
---                              e variação diária (para "variação do dia")
--- 3) política UPDATE em assets -> sem ela, o símbolo Yahoo descoberto nunca
---    era gravado e a app voltava a procurá-lo em todas as atualizações.
--- 4) capture_net_worth_snapshot passa a usar o preço em EUR.
--- Idempotente.
--- =========================================================================
-
-alter table public.assets add column if not exists exchange text;
-
-alter table public.asset_quotes add column if not exists price_eur numeric(18,6);
-alter table public.asset_quotes add column if not exists previous_close_eur numeric(18,6);
-alter table public.asset_quotes add column if not exists change_percent numeric(10,4);
-
-drop policy if exists "assets_update_authenticated" on public.assets;
-create policy "assets_update_authenticated" on public.assets
-  for update using (auth.role() = 'authenticated');
-
-create or replace function public.capture_net_worth_snapshot(p_user_id uuid)
-returns void language plpgsql as $$
-declare
-  v_cash_banks numeric(18,2);
-  v_cash_savings numeric(18,2);
-  v_cash_brokers numeric(18,2);
-  v_cash_physical numeric(18,2);
-  v_portfolio_value numeric(18,2);
-  v_portfolio_cost numeric(18,2);
-begin
-  select coalesce(sum(current_balance), 0) into v_cash_banks
-  from public.accounts where user_id = p_user_id and type = 'banco' and is_archived = false;
-
-  select coalesce(sum(current_balance), 0) into v_cash_savings
-  from public.accounts where user_id = p_user_id and type = 'poupanca' and is_archived = false;
-
-  select coalesce(sum(current_balance), 0) into v_cash_brokers
-  from public.accounts where user_id = p_user_id and type = 'corretora' and is_archived = false;
-
-  select coalesce(sum(current_balance), 0) into v_cash_physical
-  from public.accounts where user_id = p_user_id and type = 'numerario' and is_archived = false;
-
-  select
-    coalesce(sum(coalesce(q.price_eur, case when q.currency = 'EUR' then q.price end, pp.net_invested / nullif(pp.quantity_held, 0)) * pp.quantity_held), 0),
-    coalesce(sum(pp.net_invested), 0)
-  into v_portfolio_value, v_portfolio_cost
-  from public.portfolio_positions pp
-  left join public.asset_quotes q on q.asset_id = pp.asset_id
-  where pp.user_id = p_user_id and pp.quantity_held > 0.0000001;
-
-  insert into public.net_worth_snapshots (
-    user_id, snapshot_date, total_net_worth,
-    cash_in_banks, cash_in_savings, cash_in_brokers, physical_cash,
-    portfolio_value, portfolio_cost
-  ) values (
-    p_user_id, current_date,
-    v_cash_banks + v_cash_savings + v_cash_brokers + v_cash_physical + v_portfolio_value,
-    v_cash_banks, v_cash_savings, v_cash_brokers, v_cash_physical,
-    v_portfolio_value, v_portfolio_cost
-  )
-  on conflict (user_id, snapshot_date) do update set
-    total_net_worth = excluded.total_net_worth,
-    cash_in_banks = excluded.cash_in_banks,
-    cash_in_savings = excluded.cash_in_savings,
-    cash_in_brokers = excluded.cash_in_brokers,
-    physical_cash = excluded.physical_cash,
-    portfolio_value = excluded.portfolio_value,
-    portfolio_cost = excluded.portfolio_cost;
-end;
-$$;
-</file>
-
-<file path="006_radar.sql">
--- Radar: lista de ativos em observação (watchlist). Idempotente.
-create table if not exists public.watchlist (
-  id           uuid primary key default gen_random_uuid(),
-  user_id      uuid not null references auth.users(id) on delete cascade,
-  symbol       text not null,
-  name         text not null,
-  currency     text not null default 'EUR',
-  added_price  numeric(18,6),
-  added_at     timestamptz not null default now(),
-  unique (user_id, symbol)
-);
-
-create index if not exists idx_watchlist_user on public.watchlist(user_id);
-alter table public.watchlist enable row level security;
-
-drop policy if exists "watchlist_select_own" on public.watchlist;
-create policy "watchlist_select_own" on public.watchlist for select using (auth.uid() = user_id);
-drop policy if exists "watchlist_insert_own" on public.watchlist;
-create policy "watchlist_insert_own" on public.watchlist for insert with check (auth.uid() = user_id);
-drop policy if exists "watchlist_delete_own" on public.watchlist;
-create policy "watchlist_delete_own" on public.watchlist for delete using (auth.uid() = user_id);
-</file>
-
 <file path="AGENTS.md">
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -3645,326 +4135,6 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
-</file>
-
-<file path="globals.css">
-@import "tailwindcss";
-
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
-@import "@fontsource/inter/800.css";
-
-/*
- * Tema "Capital" — azul-marinho profundo, cartões bem arredondados,
- * um único azul de destaque, verde/vermelho só para ganhos/perdas.
- * (--color-gold mantém o nome por compatibilidade, mas agora é o azul.)
- */
-:root {
-  --color-ink:          #0A0F1F;
-  --color-surface:      #101829;
-  --color-surface-alt:  #18223A;
-  --color-line:         #22304D;
-  --color-line-soft:    #1A2540;
-  --color-text:         #EEF2FA;
-  --color-text-muted:   #8D9AB5;
-  --color-text-faint:   #5F6E8D;
-  --color-gold:         #4C8DF6;
-  --color-gold-soft:    #14264D;
-  --color-gain:         #2FD27F;
-  --color-gain-soft:    #0F2D26;
-  --color-loss:         #F0646B;
-  --color-loss-soft:    #34171D;
-  --color-info:         #6C9BD1;
-
-  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-body);
-  --font-mono: var(--font-body);
-}
-
-@theme inline {
-  --color-ink: var(--color-ink);
-  --color-surface: var(--color-surface);
-  --color-surface-alt: var(--color-surface-alt);
-  --color-line: var(--color-line);
-  --color-text: var(--color-text);
-  --color-text-muted: var(--color-text-muted);
-  --color-text-faint: var(--color-text-faint);
-  --color-gold: var(--color-gold);
-  --color-gold-soft: var(--color-gold-soft);
-  --color-gain: var(--color-gain);
-  --color-gain-soft: var(--color-gain-soft);
-  --color-loss: var(--color-loss);
-  --color-loss-soft: var(--color-loss-soft);
-  --color-info: var(--color-info);
-
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
-}
-
-body {
-  background: var(--color-ink);
-  color: var(--color-text);
-  font-family: var(--font-body);
-}
-
-.tabular {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.ledger-rule { border-top: 1px solid var(--color-line); }
-
-details > summary::-webkit-details-marker { display: none; }
-
-::selection { background: var(--color-gold); color: var(--color-ink); }
-
-:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
-
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-}
-</file>
-
-<file path="hero-card.tsx">
-import { formatCurrency, formatPercent, formatSignedCurrency, cx } from "@/lib/format";
-
-function tone(value: number): string {
-  return value > 0 ? "text-gain" : value < 0 ? "text-loss" : "text-text-muted";
-}
-
-/**
- * Cartão principal: um número grande (património), a variação do dia logo
- * por baixo, e dois indicadores secundários. Tudo o que importa à primeira
- * vista, sem abrir nada.
- */
-export function HeroCard({
-  totalNetWorth,
-  dayChangeEur,
-  dayChangePct,
-  hasQuotes,
-  totalReturnEur,
-  totalReturnPct,
-  dividends,
-  lastQuoteAt,
-}: {
-  totalNetWorth: number;
-  dayChangeEur: number;
-  dayChangePct: number;
-  hasQuotes: boolean;
-  totalReturnEur: number;
-  totalReturnPct: number;
-  dividends: number;
-  lastQuoteAt: string | null;
-}) {
-  const topLine = !hasQuotes ? "bg-line" : dayChangeEur >= 0 ? "bg-gain" : "bg-loss";
-
-  return (
-    <section className="relative overflow-hidden rounded-2xl border border-line bg-surface">
-      <div className={cx("h-0.5 w-full", topLine)} />
-      <div className="p-5 sm:p-7">
-        <p className="text-sm text-text-muted">Património</p>
-        <p className="font-display text-4xl sm:text-5xl md:text-6xl tabular text-text mt-1 break-words">
-          {formatCurrency(totalNetWorth)}
-        </p>
-
-        <div className="mt-5">
-          <p className="text-sm text-text-muted">Hoje</p>
-          {hasQuotes ? (
-            <p className={cx("tabular text-xl sm:text-2xl mt-0.5", tone(dayChangeEur))}>
-              {formatPercent(dayChangePct)}
-              <span className="text-text-faint mx-2">·</span>
-              {formatSignedCurrency(dayChangeEur)}
-            </p>
-          ) : (
-            <p className="text-sm text-text-faint mt-1">
-              Sem cotações ainda. Em Portefólio, toca em &quot;Atualizar cotações&quot;.
-            </p>
-          )}
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-line-soft pt-5">
-          <div className="min-w-0">
-            <p className="text-sm text-text-muted">Retorno total</p>
-            <p className={cx("tabular text-lg sm:text-xl mt-0.5", tone(totalReturnEur))}>
-              {formatPercent(totalReturnPct)}
-            </p>
-            <p className={cx("tabular text-sm", tone(totalReturnEur))}>{formatSignedCurrency(totalReturnEur)}</p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm text-text-muted">Dividendos recebidos</p>
-            <p className="tabular text-lg sm:text-xl mt-0.5 text-text">{formatCurrency(dividends)}</p>
-            {lastQuoteAt && (
-              <p className="text-xs text-text-faint mt-1">
-                Cotações de {new Date(lastQuoteAt).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-</file>
-
-<file path="holdings-table.tsx">
-import { formatCurrency, formatPercent, formatSignedCurrency, cx } from "@/lib/format";
-import { shortTicker } from "@/lib/ticker";
-
-export interface PositionRow {
-  asset_id: string;
-  name: string;
-  symbol: string | null;
-  isin: string | null;
-  quantity_held: number;
-  net_invested: number;
-  total_dividends: number;
-  total_fees: number;
-  first_purchase_at: string | null;
-  currentPrice: number | null;
-  marketValue: number;
-  dayChangePct?: number | null;
-  dayChangeEur?: number | null;
-}
-
-function formatMonthYear(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
-}
-
-const tone = (v: number) => (v > 0 ? "text-gain" : v < 0 ? "text-loss" : "text-text-muted");
-
-/**
- * Um cartão por posição. Em cima: ticker, nome e valor atual. À direita, o
- * que interessa: retorno total (grande) e variação de hoje (pequena).
- * A barra lateral é verde ou vermelha conforme o retorno total.
- */
-export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
-  if (positions.length === 0) {
-    return (
-      <p className="text-sm text-text-muted py-6 text-center">
-        Ainda sem posições. Importa um extrato da DEGIRO acima.
-      </p>
-    );
-  }
-
-  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
-  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
-
-  return (
-    <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-      {sorted.map((p) => {
-        const pnl = p.marketValue - p.net_invested;
-        const totalReturn = pnl + p.total_dividends;
-        const totalReturnPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
-        const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
-        const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
-        const up = totalReturn >= 0;
-
-        return (
-          <li
-            key={p.asset_id}
-            className={cx(
-              "rounded-xl border border-line bg-surface p-4 border-l-4",
-              up ? "border-l-gain" : "border-l-loss"
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-base font-semibold text-text">{shortTicker(p.symbol, p.name)}</p>
-                <p className="text-xs text-text-faint truncate">{p.name}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="tabular text-base text-text">{formatCurrency(p.marketValue)}</p>
-                <p className={cx("tabular text-sm", tone(totalReturn))}>{formatPercent(totalReturnPct)}</p>
-              </div>
-            </div>
-
-            <div className="mt-3 flex items-end justify-between gap-3">
-              <p className="text-xs text-text-faint tabular">
-                {p.currentPrice !== null ? `${formatCurrency(p.currentPrice)} · ` : ""}
-                {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })} un.
-              </p>
-              {p.dayChangePct != null && p.dayChangeEur != null ? (
-                <p className={cx("tabular text-xs", tone(p.dayChangeEur))}>
-                  Hoje {formatPercent(p.dayChangePct)} · {formatSignedCurrency(p.dayChangeEur)}
-                </p>
-              ) : (
-                <p className="text-xs text-text-faint">Sem cotação</p>
-              )}
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-line-soft grid grid-cols-3 gap-2 text-xs">
-              <div>
-                <p className="text-text-faint">Custo médio</p>
-                <p className="tabular text-text-muted">{formatCurrency(avgCost)}</p>
-              </div>
-              <div>
-                <p className="text-text-faint">Lucro</p>
-                <p className={cx("tabular", tone(totalReturn))}>{formatSignedCurrency(totalReturn)}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-text-faint">Peso · desde</p>
-                <p className="tabular text-text-muted">
-                  {(weight * 100).toFixed(1)}% · {formatMonthYear(p.first_purchase_at)}
-                </p>
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-</file>
-
-<file path="layout.tsx">
-import type { Metadata, Viewport } from "next";
-import "./globals.css";
-import { NavSidebar } from "@/components/nav-sidebar";
-import { MobileHeader } from "@/components/mobile-header";
-import { BottomNav } from "@/components/bottom-nav";
-import { RegisterServiceWorker } from "@/components/register-sw";
-import { getHeaderSummary } from "@/lib/data/header-summary";
-import { Toaster } from "sonner";
-
-export const metadata: Metadata = {
-  title: "Meu Capital — Património & Finanças Pessoais",
-  description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Meu Capital" },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#0A0F1F",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  viewportFit: "cover",
-};
-
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const summary = await getHeaderSummary();
-
-  return (
-    <html lang="pt-PT" className="h-full antialiased overflow-x-hidden">
-      <body className="min-h-full bg-ink text-text font-sans overflow-x-hidden">
-        <div className="flex min-h-screen">
-          <NavSidebar />
-          <main className="flex-1 min-w-0 pt-[calc(60px+env(safe-area-inset-top))] pb-[calc(72px+env(safe-area-inset-bottom))] md:pt-0 md:pb-0">
-            {children}
-          </main>
-        </div>
-        <MobileHeader summary={summary} />
-        <BottomNav />
-        <RegisterServiceWorker />
-        <Toaster theme="dark" position="top-center" richColors />
-      </body>
-    </html>
-  );
-}
 </file>
 
 <file path="LEIA-ME-ALTERACOES.md">
@@ -4336,157 +4506,6 @@ escolhidos com a bolsa certa.
 - A variação "Hoje" usa o fecho anterior da mesma listagem.
 </file>
 
-<file path="LEIA-ME-V2.md">
-# Redesenho completo ao estilo sharpyield
-
-## 1. SQL (Supabase → SQL Editor, por esta ordem)
-1. `supabase/005_cotacoes_eur.sql`  (cotações em EUR, fecho anterior, bolsa do ativo)
-2. `supabase/006_radar.sql`         (tabela do Radar)
-
-## 2. Copiar ficheiros (substituem/criam; mesmos caminhos dentro de `src/`)
-Substituem:
-- `app/globals.css`, `app/layout.tsx`, `app/dashboard/page.tsx`, `app/portfolio/page.tsx`
-- `app/api/quotes/route.ts`
-- `components/ui/card.tsx`, `components/bottom-nav.tsx`, `components/mobile-header.tsx`
-- `components/portfolio/holdings-table.tsx`
-- `lib/nav-items.ts`, `lib/data/net-worth.ts`, `lib/market/quotes.ts`
-
-Novos:
-- `app/radar/{page.tsx,actions.ts}`, `app/noticias/page.tsx`, `app/mais/{page.tsx,actions.ts}`
-- `components/ui/ticker-avatar.tsx`
-- `components/radar/{watchlist-add.tsx,remove-watch-button.tsx}`
-- `components/dashboard/{record-card,return-chart,weight-treemap,best-worst}.tsx`
-  (e `hero-card.tsx` + `top-movers.tsx`, que substituem os da ronda anterior)
-- `lib/ticker.ts`, `lib/data/header-summary.ts`
-
-Podes apagar `components/mobile-nav.tsx` (já não é usado).
-
-## 3. Bolsa da DEGIRO no parser (ver LEIA-ME-RONDA-3.md do patch anterior, passo 3 e 4)
-
-## Notas
-- O tema agora é azul-marinho; `text-gold`/`bg-gold` passaram a ser o azul de destaque.
-- Sem logos reais das empresas: usei quadrados com as iniciais do ticker.
-- "Mercado aberto/encerrado" é uma aproximação por horário (dias úteis, 07–21h UTC).
-- "Retorno total acumulado" e "Máximo histórico" usam os snapshots diários, por isso
-  só têm histórico a partir do dia em que a app começou a guardá-los.
-- Alocação setorial não está incluída: não temos o setor de cada ativo guardado.
-</file>
-
-<file path="net-worth.ts">
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Account, PortfolioPosition } from "@/types/database";
-
-export type EnrichedPosition = PortfolioPosition & {
-  /** Preço atual em EUR (null se ainda não houver cotação). */
-  currentPrice: number | null;
-  marketValue: number;
-  /** Variação do dia em fração (0.0153 = +1,53%), null se não houver fecho anterior. */
-  dayChangePct: number | null;
-  /** Variação do dia em EUR para a quantidade detida. */
-  dayChangeEur: number | null;
-};
-
-export interface NetWorthBreakdown {
-  totalNetWorth: number;
-  cashInBanks: number;
-  cashInSavings: number;
-  cashInBrokers: number;
-  physicalCash: number;
-  portfolioValue: number;
-  portfolioCost: number;
-  portfolioPnl: number;
-  /** Soma dos dividendos recebidos em todas as posições. */
-  totalDividends: number;
-  /** Variação do dia do portefólio inteiro, em EUR e em fração. */
-  dayChangeEur: number;
-  dayChangePct: number;
-  /** Momento da cotação mais recente, ou null se nunca foram atualizadas. */
-  lastQuoteAt: string | null;
-  accounts: Account[];
-  positions: EnrichedPosition[];
-}
-
-interface QuoteRow {
-  asset_id: string;
-  price: number;
-  currency: string;
-  price_eur: number | null;
-  previous_close_eur: number | null;
-  fetched_at: string;
-}
-
-export async function getNetWorthBreakdown(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: SupabaseClient<any>,
-  userId: string
-): Promise<NetWorthBreakdown> {
-  const [{ data: accounts }, { data: positions }, { data: quotes }] = await Promise.all([
-    supabase.from("accounts").select("*").eq("user_id", userId).eq("is_archived", false),
-    supabase.from("portfolio_positions").select("*").eq("user_id", userId),
-    supabase.from("asset_quotes").select("*"),
-  ]);
-
-  const quoteByAsset = new Map<string, QuoteRow>((quotes ?? []).map((q: QuoteRow) => [q.asset_id, q]));
-
-  const activePositions = (positions ?? []).filter((p: PortfolioPosition) => p.quantity_held > 0.0000001);
-
-  const enrichedPositions: EnrichedPosition[] = activePositions.map((p: PortfolioPosition) => {
-    const q = quoteByAsset.get(p.asset_id);
-    // Preço em EUR: o convertido, ou o preço original se a moeda já for EUR.
-    const priceEur = q ? q.price_eur ?? (q.currency === "EUR" ? Number(q.price) : null) : null;
-    const prevEur = q?.previous_close_eur ?? null;
-
-    const marketValue = priceEur !== null ? priceEur * p.quantity_held : p.net_invested;
-    const dayChangeEur =
-      priceEur !== null && prevEur !== null ? (priceEur - Number(prevEur)) * p.quantity_held : null;
-    const dayChangePct =
-      priceEur !== null && prevEur !== null && Number(prevEur) !== 0 ? priceEur / Number(prevEur) - 1 : null;
-
-    return { ...p, currentPrice: priceEur, marketValue, dayChangePct, dayChangeEur };
-  });
-
-  const portfolioValue = enrichedPositions.reduce((sum, p) => sum + p.marketValue, 0);
-  const portfolioCost = activePositions.reduce((sum: number, p: PortfolioPosition) => sum + p.net_invested, 0);
-  const totalDividends = enrichedPositions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
-
-  const dayChangeEur = enrichedPositions.reduce((sum, p) => sum + (p.dayChangeEur ?? 0), 0);
-  const valueYesterday = portfolioValue - dayChangeEur;
-  const dayChangePct = valueYesterday !== 0 ? dayChangeEur / valueYesterday : 0;
-
-  const lastQuoteAt =
-    (quotes ?? []).reduce<string | null>(
-      (latest, q: QuoteRow) => (!latest || q.fetched_at > latest ? q.fetched_at : latest),
-      null
-    ) ?? null;
-
-  const accountsList: Account[] = accounts ?? [];
-  const sumBy = (type: Account["type"]) =>
-    accountsList.filter((a) => a.type === type).reduce((sum, a) => sum + Number(a.current_balance), 0);
-
-  const cashInBanks = sumBy("banco");
-  const cashInSavings = sumBy("poupanca");
-  const cashInBrokers = sumBy("corretora");
-  const physicalCash = sumBy("numerario");
-
-  return {
-    totalNetWorth: cashInBanks + cashInSavings + cashInBrokers + physicalCash + portfolioValue,
-    cashInBanks,
-    cashInSavings,
-    cashInBrokers,
-    physicalCash,
-    portfolioValue,
-    portfolioCost,
-    portfolioPnl: portfolioValue - portfolioCost,
-    totalDividends,
-    dayChangeEur,
-    dayChangePct,
-    lastQuoteAt,
-    accounts: accountsList,
-    positions: enrichedPositions,
-  };
-}
-</file>
-
 <file path="postcss.config.mjs">
 const config = {
   plugins: {
@@ -4495,320 +4514,6 @@ const config = {
 };
 
 export default config;
-</file>
-
-<file path="quotes.ts">
-import YahooFinance from "yahoo-finance2";
-
-const yahooFinance = new YahooFinance();
-
-/**
- * Cotações via Yahoo Finance, alinhadas com a bolsa que a DEGIRO usa.
- *
- * Problema original: o mesmo ISIN é negociado em várias bolsas e moedas
- * (ex: VWCE em Xetra, Amesterdão e Milão; ações US em USD). Pesquisar só por
- * ISIN devolvia uma listagem qualquer e o preço era tratado como EUR.
- *
- * Agora:
- *   1. A bolsa de referência da DEGIRO (EAM, XET, NDQ...) é convertida para
- *      o código de bolsa do Yahoo e escolhemos a listagem dessa bolsa.
- *   2. O preço é convertido para EUR (a DEGIRO mostra tudo em EUR).
- *   3. Guardamos o fecho anterior para calcular a variação do dia.
- */
-
-/** Código de bolsa da DEGIRO -> códigos de bolsa equivalentes no Yahoo. */
-const DEGIRO_TO_YAHOO_EXCHANGE: Record<string, string[]> = {
-  EAM: ["AMS"],
-  XET: ["GER"],
-  TDG: ["GER"],
-  FRA: ["FRA"],
-  EPA: ["PAR"],
-  MIL: ["MIL"],
-  LSE: ["LSE"],
-  EBR: ["BRU"],
-  ELI: ["LIS"],
-  MAD: ["MCE"],
-  SWX: ["EBS"],
-  CPH: ["CPH"],
-  STO: ["STO"],
-  HEL: ["HEL"],
-  OSL: ["OSL"],
-  VIE: ["VIE"],
-  NDQ: ["NMS", "NGM", "NCM"],
-  NSY: ["NYQ", "PCX", "ASE", "BTS"],
-  ASE: ["ASE", "PCX"],
-};
-
-/** Quando não sabemos a bolsa, preferimos listagens europeias em EUR. */
-const FALLBACK_PRIORITY = ["AMS", "GER", "PAR", "MIL", "LIS", "MCE", "BRU", "NMS", "NYQ", "LSE"];
-
-export interface ResolvedSymbol {
-  symbol: string;
-  shortname?: string;
-  exchange?: string;
-}
-
-export async function resolveSymbolFromIsin(
-  isinOrName: string,
-  degiroExchange?: string | null
-): Promise<ResolvedSymbol | null> {
-  try {
-    const result = await yahooFinance.search(isinOrName, { quotesCount: 15 });
-    const candidates = (result.quotes ?? []).filter(
-      (q): q is typeof q & { symbol: string; exchange?: string } =>
-        "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
-    );
-    if (candidates.length === 0) return null;
-
-    const exchangeOf = (q: { exchange?: unknown }) => (typeof q.exchange === "string" ? q.exchange : "");
-
-    let best: (typeof candidates)[number] | undefined;
-
-    const wanted = degiroExchange ? DEGIRO_TO_YAHOO_EXCHANGE[degiroExchange.trim().toUpperCase()] : undefined;
-    if (wanted) {
-      best = candidates.find((q) => wanted.includes(exchangeOf(q)));
-    }
-    if (!best) {
-      best = [...candidates].sort((a, b) => {
-        const ia = FALLBACK_PRIORITY.indexOf(exchangeOf(a));
-        const ib = FALLBACK_PRIORITY.indexOf(exchangeOf(b));
-        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-      })[0];
-    }
-    if (!best) return null;
-
-    return {
-      symbol: best.symbol,
-      shortname: "shortname" in best && typeof best.shortname === "string" ? best.shortname : undefined,
-      exchange: exchangeOf(best) || undefined,
-    };
-  } catch (err) {
-    console.error(`Falha ao resolver símbolo para "${isinOrName}":`, err);
-    return null;
-  }
-}
-
-export interface LiveQuote {
-  symbol: string;
-  /** Preço na moeda original da listagem (GBp já convertido para GBP). */
-  price: number;
-  currency: string;
-  /** Preço convertido para EUR (null se não foi possível obter o câmbio). */
-  priceEur: number | null;
-  previousCloseEur: number | null;
-  /** Variação do dia em %, ex: 1.53 significa +1,53%. */
-  changePercent: number | null;
-  marketState: string | null;
-}
-
-/** Câmbio moeda -> EUR, com cache partilhado durante um pedido. */
-async function getFxToEur(currency: string, cache: Map<string, number | null>): Promise<number | null> {
-  if (currency === "EUR") return 1;
-  if (cache.has(currency)) return cache.get(currency) ?? null;
-  try {
-    const fx = await yahooFinance.quote(`${currency}EUR=X`);
-    const rate = fx?.regularMarketPrice ?? null;
-    cache.set(currency, rate);
-    return rate;
-  } catch (err) {
-    console.error(`Falha ao obter câmbio ${currency}/EUR:`, err);
-    cache.set(currency, null);
-    return null;
-  }
-}
-
-export async function getQuote(
-  symbol: string,
-  fxCache: Map<string, number | null> = new Map()
-): Promise<LiveQuote | null> {
-  try {
-    const q = await yahooFinance.quote(symbol);
-    if (!q || q.regularMarketPrice === undefined) return null;
-
-    // Londres cota em pence (GBp): dividir por 100 para libras.
-    let currency = q.currency ?? "EUR";
-    let divisor = 1;
-    if (currency === "GBp" || currency === "GBX") {
-      currency = "GBP";
-      divisor = 100;
-    }
-
-    const price = q.regularMarketPrice / divisor;
-    const prev = q.regularMarketPreviousClose !== undefined ? q.regularMarketPreviousClose / divisor : null;
-    const fx = await getFxToEur(currency, fxCache);
-
-    return {
-      symbol,
-      price,
-      currency,
-      priceEur: fx !== null ? price * fx : null,
-      previousCloseEur: fx !== null && prev !== null ? prev * fx : null,
-      changePercent: q.regularMarketChangePercent ?? null,
-      marketState: q.marketState ?? null,
-    };
-  } catch (err) {
-    console.error(`Falha ao obter cotação para "${symbol}":`, err);
-    return null;
-  }
-}
-</file>
-
-<file path="route.ts">
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getQuote, resolveSymbolFromIsin } from "@/lib/market/quotes";
-
-/**
- * GET /api/quotes
- * Atualiza o cache `asset_quotes` para todas as posições abertas do
- * utilizador. Usa a bolsa de referência da DEGIRO (assets.exchange) para
- * escolher a mesma listagem que ele vê na corretora, e guarda o preço já
- * convertido para EUR + fecho anterior (variação do dia).
- */
-export async function GET(_req: NextRequest) {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) {
-    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  }
-
-  const { data: positions, error } = await supabase
-    .from("portfolio_positions")
-    .select("asset_id, symbol, isin, name, quantity_held")
-    .eq("user_id", auth.user.id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  const open = (positions ?? []).filter((p: { quantity_held: number }) => Number(p.quantity_held) > 0.0000001);
-  const assetIds = open.map((p: { asset_id: string }) => p.asset_id);
-
-  const { data: assetRows } = await supabase.from("assets").select("id, exchange").in("id", assetIds);
-  const exchangeById = new Map<string, string | null>(
-    (assetRows ?? []).map((a: { id: string; exchange: string | null }) => [a.id, a.exchange])
-  );
-
-  const fxCache = new Map<string, number | null>();
-  const now = new Date().toISOString();
-
-  const results = await Promise.all(
-    open.map(
-      async (pos: { asset_id: string; symbol: string | null; isin: string | null; name: string }) => {
-        let symbol = pos.symbol;
-        let newSymbol: string | null = null;
-
-        if (!symbol) {
-          const resolved = await resolveSymbolFromIsin(pos.isin ?? pos.name, exchangeById.get(pos.asset_id));
-          if (resolved) {
-            symbol = resolved.symbol;
-            newSymbol = resolved.symbol;
-          }
-        }
-        if (!symbol) return null;
-
-        const quote = await getQuote(symbol, fxCache);
-        if (!quote) return null;
-
-        return {
-          newSymbol,
-          row: {
-            asset_id: pos.asset_id,
-            price: quote.price,
-            currency: quote.currency,
-            price_eur: quote.priceEur,
-            previous_close_eur: quote.previousCloseEur,
-            change_percent: quote.changePercent,
-            fetched_at: now,
-          },
-        };
-      }
-    )
-  );
-
-  const ok = results.filter((r): r is NonNullable<typeof r> => r !== null);
-
-  for (const r of ok) {
-    if (r.newSymbol) {
-      await supabase.from("assets").update({ symbol: r.newSymbol }).eq("id", r.row.asset_id);
-    }
-  }
-
-  const updates = ok.map((r) => r.row);
-  if (updates.length > 0) {
-    const { error: upsertError } = await supabase.from("asset_quotes").upsert(updates, { onConflict: "asset_id" });
-    if (upsertError) {
-      return NextResponse.json({ error: upsertError.message }, { status: 500 });
-    }
-  }
-
-  return NextResponse.json({
-    updated: updates.length,
-    failed: open.length - updates.length,
-    quotes: updates,
-  });
-}
-</file>
-
-<file path="ticker.ts">
-/**
- * Ticker curto para mostrar na UI: "VWCE.DE" -> "VWCE", "AAPL" -> "AAPL".
- * Sem símbolo, usa a primeira palavra do nome (máx. 6 caracteres).
- */
-export function shortTicker(symbol: string | null, name: string): string {
-  if (symbol) return symbol.split(".")[0].toUpperCase();
-  const first = name.trim().split(/\s+/)[0] ?? name;
-  return first.slice(0, 6).toUpperCase();
-}
-</file>
-
-<file path="top-movers.tsx">
-import Link from "next/link";
-import { Card } from "@/components/ui/card";
-import { formatPercent, formatSignedCurrency, cx } from "@/lib/format";
-import { shortTicker } from "@/lib/ticker";
-import type { EnrichedPosition } from "@/lib/data/net-worth";
-
-/** Posições que mais mexeram hoje (em €), com ticker, % e valor. */
-export function TopMovers({ positions }: { positions: EnrichedPosition[] }) {
-  const movers = positions
-    .filter((p) => p.dayChangeEur !== null && p.dayChangePct !== null)
-    .sort((a, b) => Math.abs(b.dayChangeEur ?? 0) - Math.abs(a.dayChangeEur ?? 0))
-    .slice(0, 5);
-
-  if (movers.length === 0) return null;
-
-  return (
-    <Card className="p-0 overflow-hidden">
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
-        <p className="text-sm font-medium text-text">Maiores movimentos hoje</p>
-        <Link href="/portfolio" className="text-xs text-gold">
-          Ver carteira
-        </Link>
-      </div>
-      <ul>
-        {movers.map((p) => {
-          const up = (p.dayChangeEur ?? 0) >= 0;
-          return (
-            <li
-              key={p.asset_id}
-              className="flex items-center justify-between gap-3 px-5 py-3 border-t border-line-soft"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-text">{shortTicker(p.symbol, p.name)}</p>
-                <p className="text-xs text-text-faint truncate">{p.name}</p>
-              </div>
-              <div className={cx("tabular text-right shrink-0", up ? "text-gain" : "text-loss")}>
-                <p className="text-sm">{formatPercent(p.dayChangePct ?? 0)}</p>
-                <p className="text-xs opacity-80">{formatSignedCurrency(p.dayChangeEur ?? 0)}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </Card>
-  );
-}
 </file>
 
 <file path="tsconfig.json">
@@ -5814,50 +5519,19 @@ export function EditTransactionDialog({
 }
 </file>
 
-<file path="src/components/mobile-nav.tsx">
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cx } from "@/lib/format";
-import { BOTTOM_NAV_ITEMS } from "@/lib/nav-items";
-
-export function MobileNav() {
-  const pathname = usePathname();
-  if (pathname === "/login") return null;
-
-  return (
-    <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-surface/95 backdrop-blur"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-    >
-      <div className="grid grid-cols-5">
-        {BOTTOM_NAV_ITEMS.map((item) => {
-          const active = pathname?.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cx(
-                "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] transition-colors",
-                active ? "text-gold" : "text-text-faint"
-              )}
-            >
-              <Icon size={20} strokeWidth={active ? 2 : 1.75} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-</file>
-
 <file path="src/lib/data/net-worth.ts">
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Account, PortfolioPosition } from "@/types/database";
+
+export type EnrichedPosition = PortfolioPosition & {
+  /** Preço atual em EUR (null se ainda não houver cotação). */
+  currentPrice: number | null;
+  marketValue: number;
+  /** Variação do dia em fração (0.0153 = +1,53%), null se não houver fecho anterior. */
+  dayChangePct: number | null;
+  /** Variação do dia em EUR para a quantidade detida. */
+  dayChangeEur: number | null;
+};
 
 export interface NetWorthBreakdown {
   totalNetWorth: number;
@@ -5868,15 +5542,26 @@ export interface NetWorthBreakdown {
   portfolioValue: number;
   portfolioCost: number;
   portfolioPnl: number;
+  /** Soma dos dividendos recebidos em todas as posições. */
+  totalDividends: number;
+  /** Variação do dia do portefólio inteiro, em EUR e em fração. */
+  dayChangeEur: number;
+  dayChangePct: number;
+  /** Momento da cotação mais recente, ou null se nunca foram atualizadas. */
+  lastQuoteAt: string | null;
   accounts: Account[];
-  positions: (PortfolioPosition & { currentPrice: number | null; marketValue: number })[];
+  positions: EnrichedPosition[];
 }
 
-/**
- * Agrega, num único objeto, tudo o que o Dashboard de Património precisa:
- * saldos das contas (banco / corretora / numerário) + valor atual do
- * portefólio de investimentos, usando o cache de cotações `asset_quotes`.
- */
+interface QuoteRow {
+  asset_id: string;
+  price: number;
+  currency: string;
+  price_eur: number | null;
+  previous_close_eur: number | null;
+  fetched_at: string;
+}
+
 export async function getNetWorthBreakdown(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
@@ -5888,37 +5573,50 @@ export async function getNetWorthBreakdown(
     supabase.from("asset_quotes").select("*"),
   ]);
 
-  const quoteByAsset = new Map((quotes ?? []).map((q: { asset_id: string; price: number }) => [q.asset_id, q.price]));
+  const quoteByAsset = new Map<string, QuoteRow>((quotes ?? []).map((q: QuoteRow) => [q.asset_id, q]));
 
   const activePositions = (positions ?? []).filter((p: PortfolioPosition) => p.quantity_held > 0.0000001);
 
-  const enrichedPositions = activePositions.map((p: PortfolioPosition) => {
-    const currentPrice = quoteByAsset.get(p.asset_id) ?? null;
-    const marketValue = currentPrice !== null ? currentPrice * p.quantity_held : p.net_invested;
-    return { ...p, currentPrice, marketValue };
+  const enrichedPositions: EnrichedPosition[] = activePositions.map((p: PortfolioPosition) => {
+    const q = quoteByAsset.get(p.asset_id);
+    // Preço em EUR: o convertido, ou o preço original se a moeda já for EUR.
+    const priceEur = q ? q.price_eur ?? (q.currency === "EUR" ? Number(q.price) : null) : null;
+    const prevEur = q?.previous_close_eur ?? null;
+
+    const marketValue = priceEur !== null ? priceEur * p.quantity_held : p.net_invested;
+    const dayChangeEur =
+      priceEur !== null && prevEur !== null ? (priceEur - Number(prevEur)) * p.quantity_held : null;
+    const dayChangePct =
+      priceEur !== null && prevEur !== null && Number(prevEur) !== 0 ? priceEur / Number(prevEur) - 1 : null;
+
+    return { ...p, currentPrice: priceEur, marketValue, dayChangePct, dayChangeEur };
   });
 
   const portfolioValue = enrichedPositions.reduce((sum, p) => sum + p.marketValue, 0);
   const portfolioCost = activePositions.reduce((sum: number, p: PortfolioPosition) => sum + p.net_invested, 0);
+  const totalDividends = enrichedPositions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+
+  const dayChangeEur = enrichedPositions.reduce((sum, p) => sum + (p.dayChangeEur ?? 0), 0);
+  const valueYesterday = portfolioValue - dayChangeEur;
+  const dayChangePct = valueYesterday !== 0 ? dayChangeEur / valueYesterday : 0;
+
+  const lastQuoteAt =
+    (quotes ?? []).reduce<string | null>(
+      (latest, q: QuoteRow) => (!latest || q.fetched_at > latest ? q.fetched_at : latest),
+      null
+    ) ?? null;
 
   const accountsList: Account[] = accounts ?? [];
-  const cashInBanks = accountsList
-    .filter((a) => a.type === "banco")
-    .reduce((sum, a) => sum + Number(a.current_balance), 0);
-  const cashInSavings = accountsList
-    .filter((a) => a.type === "poupanca")
-    .reduce((sum, a) => sum + Number(a.current_balance), 0);
-  const cashInBrokers = accountsList
-    .filter((a) => a.type === "corretora")
-    .reduce((sum, a) => sum + Number(a.current_balance), 0);
-  const physicalCash = accountsList
-    .filter((a) => a.type === "numerario")
-    .reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const sumBy = (type: Account["type"]) =>
+    accountsList.filter((a) => a.type === type).reduce((sum, a) => sum + Number(a.current_balance), 0);
 
-  const totalNetWorth = cashInBanks + cashInSavings + cashInBrokers + physicalCash + portfolioValue;
+  const cashInBanks = sumBy("banco");
+  const cashInSavings = sumBy("poupanca");
+  const cashInBrokers = sumBy("corretora");
+  const physicalCash = sumBy("numerario");
 
   return {
-    totalNetWorth,
+    totalNetWorth: cashInBanks + cashInSavings + cashInBrokers + physicalCash + portfolioValue,
     cashInBanks,
     cashInSavings,
     cashInBrokers,
@@ -5926,6 +5624,10 @@ export async function getNetWorthBreakdown(
     portfolioValue,
     portfolioCost,
     portfolioPnl: portfolioValue - portfolioCost,
+    totalDividends,
+    dayChangeEur,
+    dayChangePct,
+    lastQuoteAt,
     accounts: accountsList,
     positions: enrichedPositions,
   };
@@ -5989,6 +5691,14 @@ definição disponível aqui). Não incluí essas peças no consolidado porque
 prefiro não adivinhar essa fórmula. Se encontrares esse ficheiro
 (SQL Editor do Supabase → histórico, ou Database → Migrations), manda-mo
 que junto tudo num script único.
+</file>
+
+<file path="LEIA-ME-V2.md">
+# Redesenho v2 — como instalar
+1. Apaga os ficheiros soltos (ver instruções no chat).
+2. Descomprime este zip na RAIZ do projeto (onde está o package.json), a substituir tudo.
+3. Corre os SQL 005 e 006 no Supabase (pasta supabase/).
+4. npm run build
 </file>
 
 <file path="next.config.ts">
@@ -6055,97 +5765,6 @@ export default nextConfig;
     "tsx": "^4.23.12",
     "typescript": "^5"
   }
-}
-</file>
-
-<file path="page.tsx">
-import { ChevronDown } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { getNetWorthBreakdown } from "@/lib/data/net-worth";
-import { getNetWorthHistory } from "@/lib/data/net-worth-history";
-import { shortTicker } from "@/lib/ticker";
-import { HeroCard } from "@/components/dashboard/hero-card";
-import { TopMovers } from "@/components/dashboard/top-movers";
-import { RecordCard } from "@/components/dashboard/record-card";
-import { ReturnChart } from "@/components/dashboard/return-chart";
-import { WeightTreemap } from "@/components/dashboard/weight-treemap";
-import { BestWorst } from "@/components/dashboard/best-worst";
-import { StatCard } from "@/components/dashboard/stat-card";
-import { DonutChart } from "@/components/charts/donut-chart";
-
-const PALETTE = ["#4C8DF6", "#2FD27F", "#B48CE0", "#F2B84B", "#5EC8D8", "#F2789F", "#8D9AB5"];
-
-export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [b, history] = await Promise.all([
-    getNetWorthBreakdown(supabase, user!.id),
-    getNetWorthHistory(supabase, user!.id, 3650),
-  ]);
-
-  const totalReturnEur = b.portfolioPnl + b.totalDividends;
-  const totalReturnPct = b.portfolioCost !== 0 ? totalReturnEur / Math.abs(b.portfolioCost) : 0;
-  const hasQuotes = b.lastQuoteAt !== null && b.positions.some((p) => p.dayChangeEur !== null);
-
-  const treemapItems = b.positions
-    .filter((p) => p.marketValue > 0)
-    .map((p) => ({
-      name: shortTicker(p.symbol, p.name),
-      size: p.marketValue,
-      ret: p.net_invested !== 0 ? ((p.marketValue - p.net_invested) / Math.abs(p.net_invested)) * 100 : 0,
-    }));
-
-  const allocation = [
-    ...[...b.positions]
-      .sort((a, c) => c.marketValue - a.marketValue)
-      .map((p, i) => ({ name: shortTicker(p.symbol, p.name), value: p.marketValue, color: PALETTE[i % PALETTE.length] })),
-    { name: "Contas e liquidez", value: b.cashInBanks + b.cashInSavings + b.cashInBrokers + b.physicalCash, color: "#5F6E8D" },
-  ];
-
-  return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
-      <HeroCard
-        totalNetWorth={b.totalNetWorth}
-        dayChangeEur={b.dayChangeEur}
-        dayChangePct={b.dayChangePct}
-        hasQuotes={hasQuotes}
-        totalReturnEur={totalReturnEur}
-        totalReturnPct={totalReturnPct}
-        dividends={b.totalDividends}
-        lastQuoteAt={b.lastQuoteAt}
-      />
-
-      <details className="group rounded-3xl border border-line bg-surface">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
-          Detalhe do património
-          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="grid grid-cols-2 gap-3 px-4 pb-4">
-          <StatCard label="Contas bancárias" value={b.cashInBanks} />
-          <StatCard label="Poupança" value={b.cashInSavings} />
-          <StatCard label="Corretoras (livre)" value={b.cashInBrokers} />
-          <StatCard label="Numerário" value={b.physicalCash} />
-          <StatCard label="Portefólio" value={b.portfolioValue} tone="gold" />
-          <StatCard label="Capital investido" value={b.portfolioCost} />
-        </div>
-      </details>
-
-      <TopMovers positions={b.positions} />
-      <RecordCard current={b.totalNetWorth} snapshots={history} />
-      <ReturnChart snapshots={history} />
-      <WeightTreemap items={treemapItems} />
-
-      <section className="rounded-3xl border border-line bg-surface p-5">
-        <h2 className="text-base font-bold text-text mb-4">Distribuição</h2>
-        <DonutChart slices={allocation} emptyMessage="Ainda sem saldo registado." />
-      </section>
-
-      <BestWorst positions={b.positions} />
-    </div>
-  );
 }
 </file>
 
@@ -6471,45 +6090,37 @@ export async function deleteCategoryRule(ruleId: string): Promise<{ error?: stri
 <file path="src/app/globals.css">
 @import "tailwindcss";
 
-@import "@fontsource/fraunces/400.css";
-@import "@fontsource/fraunces/500.css";
-@import "@fontsource/fraunces/600.css";
-@import "@fontsource/fraunces/600-italic.css";
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
 
 /*
- * =========================================================================
- * TOKENS DE DESIGN — "Livro-Razão" (Ledger)
- * =========================================================================
- * Paleta de tinta escura inspirada em extratos bancários e livros-razão
- * contabilísticos: fundo quase-preto, réguas finas em vez de sombras,
- * números tabulares em mono, e um único acento dourado ("património")
- * que se distingue do verde (ganho) e vermelho (perda).
+ * Tema "Capital" — azul-marinho profundo, cartões bem arredondados,
+ * um único azul de destaque, verde/vermelho só para ganhos/perdas.
+ * (--color-gold mantém o nome por compatibilidade, mas agora é o azul.)
  */
 :root {
-  --color-ink:          #0B0F14;
-  --color-surface:      #12171F;
-  --color-surface-alt:  #1A212B;
-  --color-line:         #232B36;
-  --color-line-soft:    #1A212B;
-  --color-text:         #EDEFF2;
-  --color-text-muted:   #8A93A3;
-  --color-text-faint:   #57616F;
-  --color-gold:         #D9A441;
-  --color-gold-soft:    #3A2F1B;
-  --color-gain:         #35D28A;
-  --color-gain-soft:    #123023;
-  --color-loss:         #E5636A;
-  --color-loss-soft:    #331A1D;
+  --color-ink:          #0A0F1F;
+  --color-surface:      #101829;
+  --color-surface-alt:  #18223A;
+  --color-line:         #22304D;
+  --color-line-soft:    #1A2540;
+  --color-text:         #EEF2FA;
+  --color-text-muted:   #8D9AB5;
+  --color-text-faint:   #5F6E8D;
+  --color-gold:         #4C8DF6;
+  --color-gold-soft:    #14264D;
+  --color-gain:         #2FD27F;
+  --color-gain-soft:    #0F2D26;
+  --color-loss:         #F0646B;
+  --color-loss-soft:    #34171D;
   --color-info:         #6C9BD1;
 
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: var(--font-body);
+  --font-mono: var(--font-body);
 }
 
 @theme inline {
@@ -6540,30 +6151,20 @@ body {
 }
 
 .tabular {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 
-.ledger-rule {
-  border-top: 1px solid var(--color-line);
-}
+.ledger-rule { border-top: 1px solid var(--color-line); }
 
-::selection {
-  background: var(--color-gold);
-  color: var(--color-ink);
-}
+details > summary::-webkit-details-marker { display: none; }
 
-:focus-visible {
-  outline: 2px solid var(--color-gold);
-  outline-offset: 2px;
-}
+::selection { background: var(--color-gold); color: var(--color-ink); }
+
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 </file>
 
@@ -8396,7 +7997,13 @@ export default async function TransacoesPage({
 </file>
 
 <file path="src/components/portfolio/holdings-table.tsx">
-import { formatCurrency, formatPercent } from "@/lib/format";
+"use client";
+
+import { useState } from "react";
+import { Search } from "lucide-react";
+import { formatCurrency, formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+import { shortTicker } from "@/lib/ticker";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
 
 export interface PositionRow {
   asset_id: string;
@@ -8410,141 +8017,156 @@ export interface PositionRow {
   first_purchase_at: string | null;
   currentPrice: number | null;
   marketValue: number;
+  dayChangePct?: number | null;
+  dayChangeEur?: number | null;
 }
 
-function formatMonthYear(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
+export interface ClosedRow {
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  realizedPnl: number;
+  total_dividends: number;
 }
 
-function computeDerived(p: PositionRow, totalValue: number) {
-  const pnl = p.marketValue - p.net_invested;
-  const pnlPct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
-  const totalReturn = pnl + p.total_dividends;
-  const totalReturnPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
-  const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
-  const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
-  return { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight };
-}
+const tone = (v: number) => (v > 0 ? "text-gain" : v < 0 ? "text-loss" : "text-text-muted");
 
-export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
-  if (positions.length === 0) {
-    return (
-      <p className="text-sm text-text-muted py-6 text-center">
-        Ainda sem posições. Importa um extrato da DEGIRO acima.
-      </p>
-    );
-  }
+export function HoldingsTable({
+  positions,
+  closed,
+  portfolioDayPct,
+  benchmarkPct,
+}: {
+  positions: PositionRow[];
+  closed: ClosedRow[];
+  portfolioDayPct: number | null;
+  benchmarkPct: number | null;
+}) {
+  const [tab, setTab] = useState<"open" | "closed">("open");
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
 
-  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
-  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
+  const open = [...positions]
+    .sort((a, b) => b.marketValue - a.marketValue)
+    .filter((p) => !q || p.name.toLowerCase().includes(q) || (p.symbol ?? "").toLowerCase().includes(q));
+  const done = closed.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.symbol ?? "").toLowerCase().includes(q));
 
   return (
-    <div>
-      {/* --- Vista de cartões: telemóvel (< md) --- */}
-      <ul className="md:hidden flex flex-col gap-3">
-        {sorted.map((p) => {
-          const { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight } = computeDerived(p, totalValue);
-          return (
-            <li key={p.asset_id} className="rounded-lg border border-line-soft bg-surface-alt/40 p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <p className="text-sm text-text truncate">{p.name}</p>
-                  <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
-                </div>
-                <span className="tabular text-sm text-text shrink-0">{formatCurrency(p.marketValue)}</span>
-              </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-6 border-b border-line">
+        {([
+          { key: "open", label: "Abertas", n: positions.length },
+          { key: "closed", label: "Fechadas", n: closed.length },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={cx(
+              "pb-3 -mb-px text-base font-semibold border-b-2 transition-colors",
+              tab === t.key ? "border-gold text-gold" : "border-transparent text-text-muted"
+            )}
+          >
+            {t.label} <span className="font-normal">{t.n}</span>
+          </button>
+        ))}
+      </div>
 
-              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
-                <div>
-                  <p className="text-text-faint">Qtd. / Custo Médio</p>
-                  <p className="tabular text-text-muted mt-0.5">
-                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })} · {formatCurrency(avgCost)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-text-faint">Peso na carteira</p>
-                  <p className="tabular text-text-muted mt-0.5">{(weight * 100).toFixed(1)}%</p>
-                </div>
-                <div>
-                  <p className="text-text-faint">Lucro / Prejuízo</p>
-                  <p className={`tabular mt-0.5 ${pnl >= 0 ? "text-gain" : "text-loss"}`}>
-                    {formatCurrency(pnl)} <span className="opacity-70">({formatPercent(pnlPct)})</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-text-faint">Retorno Total</p>
-                  <p className={`tabular mt-0.5 ${totalReturn >= 0 ? "text-gain" : "text-loss"}`}>
-                    {formatCurrency(totalReturn)} <span className="opacity-70">({formatPercent(totalReturnPct)})</span>
-                  </p>
-                </div>
-              </div>
+      {tab === "open" && portfolioDayPct !== null && (
+        <div className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm flex flex-wrap items-center gap-x-2">
+          <span className="font-bold text-text">Carteira</span>
+          <span className={cx("tabular font-semibold", tone(portfolioDayPct))}>{formatPercent(portfolioDayPct)}</span>
+          {benchmarkPct !== null && (
+            <>
+              <span className="text-text-faint">· vs S&amp;P 500</span>
+              <span className={cx("tabular font-semibold", tone(benchmarkPct))}>{formatPercent(benchmarkPct)}</span>
+            </>
+          )}
+        </div>
+      )}
 
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-line-soft text-[11px] text-text-faint">
-                <span>Dividendos: <span className="text-text-muted tabular">{formatCurrency(p.total_dividends)}</span></span>
-                <span>Desde {formatMonthYear(p.first_purchase_at)}</span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="relative">
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-faint" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Pesquisar…"
+          className="w-full rounded-2xl border border-line bg-surface pl-10 pr-4 py-3 text-sm outline-none focus:border-gold"
+        />
+      </div>
 
-      {/* --- Vista de tabela: desktop (>= md) --- */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm min-w-[860px]">
-          <thead>
-            <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
-              <th className="py-2 pr-4 font-medium">Ativo</th>
-              <th className="py-2 pr-4 font-medium text-right">Qtd.</th>
-              <th className="py-2 pr-4 font-medium text-right">Custo Médio</th>
-              <th className="py-2 pr-4 font-medium text-right">Preço Atual</th>
-              <th className="py-2 pr-4 font-medium text-right">Valor Atual</th>
-              <th className="py-2 pr-4 font-medium text-right">Peso</th>
-              <th className="py-2 pr-4 font-medium text-right">Lucro/Prejuízo</th>
-              <th className="py-2 pr-4 font-medium text-right">Dividendos</th>
-              <th className="py-2 pr-4 font-medium text-right">Retorno Total</th>
-              <th className="py-2 font-medium text-right">Desde</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p) => {
-              const { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight } = computeDerived(p, totalValue);
+      {tab === "open" ? (
+        open.length === 0 ? (
+          <p className="text-sm text-text-muted py-8 text-center">
+            {positions.length === 0 ? "Ainda sem posições. Importa um extrato da DEGIRO mais abaixo." : "Nada encontrado."}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {open.map((p) => {
+              const pnl = p.marketValue - p.net_invested;
+              const totalReturn = pnl + p.total_dividends;
+              const totalPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
+              const t = shortTicker(p.symbol, p.name);
               return (
-                <tr key={p.asset_id} className="border-b border-line-soft last:border-0">
-                  <td className="py-2.5 pr-4">
-                    <p className="text-text">{p.name}</p>
-                    <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{formatCurrency(avgCost)}</td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text">
-                    {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text">{formatCurrency(p.marketValue)}</td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{(weight * 100).toFixed(1)}%</td>
-                  <td className={`py-2.5 pr-4 text-right tabular ${pnl >= 0 ? "text-gain" : "text-loss"}`}>
-                    {formatCurrency(pnl)}
-                    <span className="text-xs ml-1 opacity-70">({formatPercent(pnlPct)})</span>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{formatCurrency(p.total_dividends)}</td>
-                  <td
-                    className={`py-2.5 pr-4 text-right tabular ${totalReturn >= 0 ? "text-gain" : "text-loss"}`}
-                    title="Lucro/prejuízo + dividendos recebidos"
-                  >
-                    {formatCurrency(totalReturn)}
-                    <span className="text-xs ml-1 opacity-70">({formatPercent(totalReturnPct)})</span>
-                  </td>
-                  <td className="py-2.5 text-right tabular text-text-faint text-xs">
-                    {formatMonthYear(p.first_purchase_at)}
-                  </td>
-                </tr>
+                <li
+                  key={p.asset_id}
+                  className={cx(
+                    "rounded-2xl border border-line bg-surface p-4 border-l-4",
+                    totalReturn >= 0 ? "border-l-gain" : "border-l-loss"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <TickerAvatar ticker={t} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-extrabold text-text leading-tight">{t}</p>
+                      <p className="text-sm text-text-muted truncate">{p.name}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="tabular text-lg font-bold text-text">{formatCurrency(p.marketValue)}</p>
+                      <p className={cx("tabular text-sm font-semibold", tone(totalReturn))}>{formatPercent(totalPct)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                    <p className="text-text-muted tabular">
+                      {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}{" "}
+                      <span className="text-text-faint">·</span>{" "}
+                      {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })} un.
+                    </p>
+                    {p.dayChangePct != null && p.dayChangeEur != null ? (
+                      <p className={cx("tabular font-semibold", tone(p.dayChangeEur))}>
+                        {formatPercent(p.dayChangePct)} <span className="opacity-60">·</span> {formatSignedCurrency(p.dayChangeEur)}
+                      </p>
+                    ) : (
+                      <p className="text-text-faint">Sem cotação</p>
+                    )}
+                  </div>
+                </li>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+        )
+      ) : done.length === 0 ? (
+        <p className="text-sm text-text-muted py-8 text-center">Ainda não fechaste nenhuma posição.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {done.map((p) => {
+            const t = shortTicker(p.symbol, p.name);
+            const total = p.realizedPnl + p.total_dividends;
+            return (
+              <li key={p.asset_id} className="rounded-2xl border border-line bg-surface p-4 flex items-center gap-3">
+                <TickerAvatar ticker={t} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-extrabold text-text leading-tight">{t}</p>
+                  <p className="text-sm text-text-muted truncate">{p.name}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={cx("tabular text-lg font-bold", tone(total))}>{formatSignedCurrency(total)}</p>
+                  <p className="text-xs text-text-faint">lucro realizado</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -8861,14 +8483,21 @@ export type Database = any;
 </file>
 
 <file path="src/app/dashboard/page.tsx">
+import { ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getNetWorthBreakdown } from "@/lib/data/net-worth";
 import { getNetWorthHistory } from "@/lib/data/net-worth-history";
+import { shortTicker } from "@/lib/ticker";
+import { HeroCard } from "@/components/dashboard/hero-card";
+import { TopMovers } from "@/components/dashboard/top-movers";
+import { RecordCard } from "@/components/dashboard/record-card";
+import { ReturnChart } from "@/components/dashboard/return-chart";
+import { WeightTreemap } from "@/components/dashboard/weight-treemap";
+import { BestWorst } from "@/components/dashboard/best-worst";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DonutChart } from "@/components/charts/donut-chart";
-import { NetWorthHistoryChart } from "@/components/dashboard/net-worth-history-chart";
-import { Card, CardLabel } from "@/components/ui/card";
-import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+
+const PALETTE = ["#4C8DF6", "#2FD27F", "#B48CE0", "#F2B84B", "#5EC8D8", "#F2789F", "#8D9AB5"];
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -8876,104 +8505,69 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [breakdown, history] = await Promise.all([
+  const [b, history] = await Promise.all([
     getNetWorthBreakdown(supabase, user!.id),
-    getNetWorthHistory(supabase, user!.id),
+    getNetWorthHistory(supabase, user!.id, 3650),
   ]);
 
-  const slices = [
-    { name: "Contas Bancárias", value: breakdown.cashInBanks, color: "var(--color-info)" },
-    { name: "Poupança", value: breakdown.cashInSavings, color: "#B48CE0" },
-    { name: "Corretoras (livre)", value: breakdown.cashInBrokers, color: "var(--color-gold)" },
-    { name: "Numerário", value: breakdown.physicalCash, color: "#8A93A3" },
-    { name: "Portefólio", value: breakdown.portfolioValue, color: "var(--color-gain)" },
+  const totalReturnEur = b.portfolioPnl + b.totalDividends;
+  const totalReturnPct = b.portfolioCost !== 0 ? totalReturnEur / Math.abs(b.portfolioCost) : 0;
+  const hasQuotes = b.lastQuoteAt !== null && b.positions.some((p) => p.dayChangeEur !== null);
+
+  const treemapItems = b.positions
+    .filter((p) => p.marketValue > 0)
+    .map((p) => ({
+      name: shortTicker(p.symbol, p.name),
+      size: p.marketValue,
+      ret: p.net_invested !== 0 ? ((p.marketValue - p.net_invested) / Math.abs(p.net_invested)) * 100 : 0,
+    }));
+
+  const allocation = [
+    ...[...b.positions]
+      .sort((a, c) => c.marketValue - a.marketValue)
+      .map((p, i) => ({ name: shortTicker(p.symbol, p.name), value: p.marketValue, color: PALETTE[i % PALETTE.length] })),
+    { name: "Contas e liquidez", value: b.cashInBanks + b.cashInSavings + b.cashInBrokers + b.physicalCash, color: "#5F6E8D" },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
-      <header className="mb-10">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
-          Património Global
-        </p>
-        <p className="font-display text-3xl sm:text-4xl md:text-5xl tabular text-text break-words">
-          {formatCurrency(breakdown.totalNetWorth)}
-        </p>
-        <p className="text-sm text-text-muted mt-2">
-          Soma de contas bancárias, poupança, saldo livre em corretoras, numerário e valor atual
-          do portefólio de investimentos.
-        </p>
-      </header>
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <HeroCard
+        totalNetWorth={b.totalNetWorth}
+        dayChangeEur={b.dayChangeEur}
+        dayChangePct={b.dayChangePct}
+        hasQuotes={hasQuotes}
+        totalReturnEur={totalReturnEur}
+        totalReturnPct={totalReturnPct}
+        dividends={b.totalDividends}
+        lastQuoteAt={b.lastQuoteAt}
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
-        <StatCard label="Contas Bancárias" value={breakdown.cashInBanks} />
-        <StatCard label="Poupança" value={breakdown.cashInSavings} />
-        <StatCard label="Corretoras (saldo livre)" value={breakdown.cashInBrokers} />
-        <StatCard label="Numerário" value={breakdown.physicalCash} />
-        <StatCard label="Portefólio (valor atual)" value={breakdown.portfolioValue} tone="gold" />
-      </div>
+      <details className="group rounded-3xl border border-line bg-surface">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Detalhe do património
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+          <StatCard label="Contas bancárias" value={b.cashInBanks} />
+          <StatCard label="Poupança" value={b.cashInSavings} />
+          <StatCard label="Corretoras (livre)" value={b.cashInBrokers} />
+          <StatCard label="Numerário" value={b.physicalCash} />
+          <StatCard label="Portefólio" value={b.portfolioValue} tone="gold" />
+          <StatCard label="Capital investido" value={b.portfolioCost} />
+        </div>
+      </details>
 
-      <Card className="mb-4">
-        <CardLabel className="mb-1">Evolução do Património</CardLabel>
-        <p className="text-xs text-text-faint mb-2">Últimos 90 dias, com um ponto capturado por dia.</p>
-        <NetWorthHistoryChart snapshots={history} />
-      </Card>
+      <TopMovers positions={b.positions} />
+      <RecordCard current={b.totalNetWorth} snapshots={history} />
+      <ReturnChart snapshots={history} />
+      <WeightTreemap items={treemapItems} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <Card className="lg:col-span-2">
-          <CardLabel>Distribuição do Património</CardLabel>
-          <div className="mt-4">
-            <DonutChart slices={slices} emptyMessage="Ainda sem saldo registado — adiciona contas e transações para veres a distribuição." />
-          </div>
-        </Card>
+      <section className="rounded-3xl border border-line bg-surface p-5">
+        <h2 className="text-base font-bold text-text mb-4">Distribuição</h2>
+        <DonutChart slices={allocation} emptyMessage="Ainda sem saldo registado." />
+      </section>
 
-        <Card className="lg:col-span-3">
-          <CardLabel>Investimentos — Custo vs. Valor Atual</CardLabel>
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            <div className="min-w-0">
-              <p className="text-xs text-text-faint">Capital investido</p>
-              <p className="tabular text-xl text-text mt-1 break-words">{formatCurrency(breakdown.portfolioCost)}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-text-faint">Lucro / Prejuízo não realizado</p>
-              <p
-                className={`tabular text-xl mt-1 break-words ${
-                  breakdown.portfolioPnl >= 0 ? "text-gain" : "text-loss"
-                }`}
-              >
-                {formatSignedCurrency(breakdown.portfolioPnl)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 ledger-rule pt-4">
-            <p className="text-xs text-text-faint mb-3">Posições atuais</p>
-            {breakdown.positions.length === 0 ? (
-              <p className="text-sm text-text-muted">
-                Ainda não importaste transações de bolsa. Vai a{" "}
-                <a href="/portfolio" className="text-gold underline underline-offset-2">
-                  Portefólio
-                </a>{" "}
-                para carregar o CSV da DEGIRO.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {breakdown.positions.map((p) => (
-                  <li
-                    key={p.asset_id}
-                    className="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-line-soft last:border-0"
-                  >
-                    <span className="text-text truncate min-w-0">{p.name}</span>
-                    <span className="tabular text-text-muted shrink-0">
-                      {p.quantity_held.toLocaleString("pt-PT")} un.
-                    </span>
-                    <span className="tabular text-text shrink-0">{formatCurrency(p.marketValue)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </Card>
-      </div>
+      <BestWorst positions={b.positions} />
     </div>
   );
 }
@@ -8984,41 +8578,42 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { MobileHeader } from "@/components/mobile-header";
+import { BottomNav } from "@/components/bottom-nav";
 import { RegisterServiceWorker } from "@/components/register-sw";
+import { getHeaderSummary } from "@/lib/data/header-summary";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Meu Capital — Património & Finanças Pessoais",
   description: "Gestor de património e orçamento pessoal, com importação de extratos DEGIRO.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Meu Capital",
-  },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Meu Capital" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B0F14",
+  themeColor: "#0A0F1F",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const summary = await getHeaderSummary();
+
   return (
     <html lang="pt-PT" className="h-full antialiased overflow-x-hidden">
       <body className="min-h-full bg-ink text-text font-sans overflow-x-hidden">
         <div className="flex min-h-screen">
           <NavSidebar />
-          <main className="flex-1 min-w-0 pt-[calc(52px+env(safe-area-inset-top))] md:pt-0">
+          <main className="flex-1 min-w-0 pt-[calc(60px+env(safe-area-inset-top))] pb-[calc(72px+env(safe-area-inset-bottom))] md:pt-0 md:pb-0">
             {children}
           </main>
         </div>
-        <MobileHeader />
+        <MobileHeader summary={summary} />
+        <BottomNav />
         <RegisterServiceWorker />
-        <Toaster theme="dark" position="top-right" richColors />
+        <Toaster theme="dark" position="top-center" richColors />
       </body>
     </html>
   );
@@ -9971,33 +9566,21 @@ export default async function RelatoriosPage({
 </file>
 
 <file path="src/app/portfolio/page.tsx">
+import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardLabel } from "@/components/ui/card";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { getQuote } from "@/lib/market/quotes";
+import { getNetWorthHistory } from "@/lib/data/net-worth-history";
+import { estimateAnnualGrowthRate } from "@/lib/reports/projections";
+import { PortfolioProjections } from "@/components/portfolio/portfolio-projections";
 import { DegiroUpload } from "@/components/portfolio/degiro-upload";
 import { RefreshQuotesButton } from "@/components/portfolio/refresh-quotes-button";
 import { UndoImportButton } from "@/components/portfolio/undo-import-button";
 import { WipeImportsButton } from "@/components/portfolio/wipe-imports-button";
-import { HoldingsTable } from "@/components/portfolio/holdings-table";
-import { PerformanceHighlights } from "@/components/portfolio/performance-highlights";
-import { PortfolioTabs } from "@/components/portfolio/portfolio-tabs";
-import { PortfolioProjections } from "@/components/portfolio/portfolio-projections";
-import { DonutChart, type DonutSlice } from "@/components/charts/donut-chart";
+import { HoldingsTable, type ClosedRow } from "@/components/portfolio/holdings-table";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { formatCurrency, formatPercent } from "@/lib/format";
-import { getNetWorthBreakdown } from "@/lib/data/net-worth";
-import { getNetWorthHistory } from "@/lib/data/net-worth-history";
-import { estimateAnnualGrowthRate } from "@/lib/reports/projections";
 import type { Account, RealizedPnlRow } from "@/types/database";
-
-const PALETTE = [
-  "var(--color-gold)",
-  "var(--color-gain)",
-  "var(--color-info)",
-  "#B48CE0",
-  "#F2789F",
-  "#5EC8D8",
-  "#D9A441",
-];
 
 export default async function PortfolioPage() {
   const supabase = await createClient();
@@ -10005,151 +9588,94 @@ export default async function PortfolioPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: accounts }, breakdown, { data: realizedRows }, history] = await Promise.all([
+  const [{ data: accounts }, b, { data: realizedRows }, { data: closedPositions }, sp500, history] = await Promise.all([
     supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false),
     getNetWorthBreakdown(supabase, user!.id),
     supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
-    // Vai buscar o máximo de histórico disponível (a tabela só tem os dias
-    // que já foram capturados, por isso pedir "10 anos" é seguro mesmo que
-    // só existam 2 semanas de dados reais).
+    supabase.from("portfolio_positions").select("*").eq("user_id", user!.id).lte("quantity_held", 0.0000001),
+    getQuote("^GSPC"),
     getNetWorthHistory(supabase, user!.id, 3650),
   ]);
 
   const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
   const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const totalFees = b.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
 
-  // "Dinheiro total nas corretoras": o que está investido em ações +
-  // o saldo livre que ainda não foi investido.
-  const totalNasCorretoras = breakdown.portfolioValue + freeCash;
+  const realized = (realizedRows ?? []) as RealizedPnlRow[];
+  const realizedById = new Map(realized.map((r) => [r.asset_id, Number(r.realized_pnl)]));
+  const totalRealized = realized.reduce((s, r) => s + Number(r.realized_pnl), 0);
 
-  const totalDividends = breakdown.positions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
-  const totalFees = breakdown.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
-  const performancePct =
-    breakdown.portfolioCost !== 0 ? breakdown.portfolioPnl / breakdown.portfolioCost : 0;
-  const totalRealizedPnl = ((realizedRows ?? []) as RealizedPnlRow[]).reduce(
-    (sum, r) => sum + Number(r.realized_pnl),
-    0
+  const closed: ClosedRow[] = (closedPositions ?? []).map(
+    (p: { asset_id: string; name: string; symbol: string | null; total_dividends: number }) => ({
+      asset_id: p.asset_id,
+      name: p.name,
+      symbol: p.symbol,
+      realizedPnl: realizedById.get(p.asset_id) ?? 0,
+      total_dividends: Number(p.total_dividends),
+    })
   );
 
   const estimatedAnnualRatePct = estimateAnnualGrowthRate(history);
+  const totalNasCorretoras = b.portfolioValue + freeCash;
 
-  const compositionSlices: DonutSlice[] = [...breakdown.positions]
-    .sort((a, b) => b.marketValue - a.marketValue)
-    .map((p, i) => ({
-      name: p.name,
-      value: p.marketValue,
-      color: PALETTE[i % PALETTE.length],
-    }));
+  const hasQuotes = b.positions.some((p) => p.dayChangeEur !== null);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
-      <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Investimentos</p>
-        <h1 className="font-display text-3xl text-text">Portefólio</h1>
-        <p className="text-sm text-text-muted mt-2">
-          Importa o extrato de transações da DEGIRO (formato europeu, com vírgulas decimais) e
-          acompanha o valor atual e o lucro ou prejuízo de cada posição.
-        </p>
-      </header>
-
-      {/* Dinheiro total nas corretoras — em destaque, ao estilo do total do Dashboard. */}
-      <div className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
-          Dinheiro Total nas Corretoras
-        </p>
-        <p className="font-display text-3xl sm:text-4xl md:text-5xl tabular text-gold break-words">
-          {formatCurrency(totalNasCorretoras)}
-        </p>
-        <p className="text-sm text-text-muted mt-2">
-          Valor atual das ações ({formatCurrency(breakdown.portfolioValue)}) + saldo livre à espera
-          de ser investido ({formatCurrency(freeCash)}).
-        </p>
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <div className="flex justify-end">
+        <RefreshQuotesButton />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
-        <StatCard label="Capital investido" value={breakdown.portfolioCost} />
-        <StatCard label="Valor atual" value={breakdown.portfolioValue} tone="gold" />
-        <StatCard
-          label="Lucro / Prejuízo (não realizado)"
-          value={breakdown.portfolioPnl}
-          tone={breakdown.portfolioPnl >= 0 ? "gain" : "loss"}
-        />
-        <StatCard
-          label="Lucro Realizado"
-          value={totalRealizedPnl}
-          tone={totalRealizedPnl >= 0 ? "gain" : "loss"}
-          hint="Ganhos/perdas já vendidos, custo médio"
-        />
-        <StatCard label="Dividendos Recebidos" value={totalDividends} tone="gain" />
-        <StatCard label="Comissões e Taxas Pagas" value={totalFees} tone="loss" />
-        <StatCard label="Saldo livre (à espera de investir)" value={freeCash} />
-      </div>
+      <HoldingsTable
+        positions={b.positions}
+        closed={closed}
+        portfolioDayPct={hasQuotes ? b.dayChangePct : null}
+        benchmarkPct={sp500?.changePercent != null ? sp500.changePercent / 100 : null}
+      />
 
-      <Card className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-          <CardLabel>Importar Extrato DEGIRO</CardLabel>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <details className="group rounded-3xl border border-line bg-surface mt-2">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Estatísticas da carteira
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+          <StatCard label="Capital investido" value={b.portfolioCost} />
+          <StatCard label="Valor atual" value={b.portfolioValue} tone="gold" />
+          <StatCard label="Lucro não realizado" value={b.portfolioPnl} tone={b.portfolioPnl >= 0 ? "gain" : "loss"} />
+          <StatCard label="Lucro realizado" value={totalRealized} tone={totalRealized >= 0 ? "gain" : "loss"} />
+          <StatCard label="Dividendos" value={b.totalDividends} tone="gain" />
+          <StatCard label="Comissões e taxas" value={totalFees} tone="loss" />
+          <StatCard label="Saldo livre" value={freeCash} />
+          <StatCard label="Dinheiro total nas corretoras" value={totalNasCorretoras} tone="gold" />
+        </div>
+      </details>
+
+      <details className="group rounded-3xl border border-line bg-surface">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Projeções
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-5 pb-5">
+          <PortfolioProjections currentValue={b.portfolioValue} estimatedAnnualRatePct={estimatedAnnualRatePct} />
+        </div>
+      </details>
+
+      <details className="group rounded-3xl border border-line bg-surface">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Importar extrato DEGIRO
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-5 pb-5 flex flex-col gap-4">
+          <DegiroUpload brokerAccounts={brokerAccounts} />
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <UndoImportButton />
             <WipeImportsButton />
+            <Link href="/portfolio/importacoes" className="text-xs text-gold">
+              Ver histórico de importações
+            </Link>
           </div>
         </div>
-        <DegiroUpload brokerAccounts={brokerAccounts} />
-      </Card>
-
-      <PortfolioTabs
-        overview={
-          <>
-            {breakdown.positions.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-                <Card className="lg:col-span-3">
-                  <CardLabel className="mb-4">Composição do Portefólio</CardLabel>
-                  <DonutChart slices={compositionSlices} />
-                </Card>
-
-                <Card className="lg:col-span-2 flex flex-col justify-between">
-                  <div>
-                    <CardLabel className="mb-3">Desempenho Global</CardLabel>
-                    <p
-                      className={`font-display text-3xl sm:text-4xl tabular break-words ${
-                        performancePct >= 0 ? "text-gain" : "text-loss"
-                      }`}
-                    >
-                      {formatPercent(performancePct)}
-                    </p>
-                    <p className="text-xs text-text-faint mt-2">
-                      Lucro/prejuízo não realizado face ao capital investido.
-                    </p>
-                  </div>
-                  <div className="mt-6">
-                    <PerformanceHighlights positions={breakdown.positions} />
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            <Card>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                <CardLabel>Posições Atuais</CardLabel>
-                <RefreshQuotesButton />
-              </div>
-              <HoldingsTable positions={breakdown.positions} />
-            </Card>
-          </>
-        }
-        projections={
-          <Card>
-            <CardLabel className="mb-1">Projeções do Portefólio</CardLabel>
-            <p className="text-xs text-text-faint mb-4">
-              Simulação da evolução do teu portefólio ao longo do tempo, com base numa taxa de
-              retorno anual que podes ajustar.
-            </p>
-            <PortfolioProjections
-              currentValue={breakdown.portfolioValue}
-              estimatedAnnualRatePct={estimatedAnnualRatePct}
-            />
-          </Card>
-        }
-      />
+      </details>
     </div>
   );
 }

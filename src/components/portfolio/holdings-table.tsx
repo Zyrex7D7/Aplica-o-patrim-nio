@@ -1,4 +1,10 @@
-import { formatCurrency, formatPercent } from "@/lib/format";
+"use client";
+
+import { useState } from "react";
+import { Search } from "lucide-react";
+import { formatCurrency, formatPercent, formatSignedCurrency, cx } from "@/lib/format";
+import { shortTicker } from "@/lib/ticker";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
 
 export interface PositionRow {
   asset_id: string;
@@ -12,141 +18,156 @@ export interface PositionRow {
   first_purchase_at: string | null;
   currentPrice: number | null;
   marketValue: number;
+  dayChangePct?: number | null;
+  dayChangeEur?: number | null;
 }
 
-function formatMonthYear(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
+export interface ClosedRow {
+  asset_id: string;
+  name: string;
+  symbol: string | null;
+  realizedPnl: number;
+  total_dividends: number;
 }
 
-function computeDerived(p: PositionRow, totalValue: number) {
-  const pnl = p.marketValue - p.net_invested;
-  const pnlPct = p.net_invested !== 0 ? pnl / Math.abs(p.net_invested) : 0;
-  const totalReturn = pnl + p.total_dividends;
-  const totalReturnPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
-  const avgCost = p.quantity_held !== 0 ? p.net_invested / p.quantity_held : 0;
-  const weight = totalValue > 0 ? p.marketValue / totalValue : 0;
-  return { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight };
-}
+const tone = (v: number) => (v > 0 ? "text-gain" : v < 0 ? "text-loss" : "text-text-muted");
 
-export function HoldingsTable({ positions }: { positions: PositionRow[] }) {
-  if (positions.length === 0) {
-    return (
-      <p className="text-sm text-text-muted py-6 text-center">
-        Ainda sem posições. Importa um extrato da DEGIRO acima.
-      </p>
-    );
-  }
+export function HoldingsTable({
+  positions,
+  closed,
+  portfolioDayPct,
+  benchmarkPct,
+}: {
+  positions: PositionRow[];
+  closed: ClosedRow[];
+  portfolioDayPct: number | null;
+  benchmarkPct: number | null;
+}) {
+  const [tab, setTab] = useState<"open" | "closed">("open");
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
 
-  const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
-  const sorted = [...positions].sort((a, b) => b.marketValue - a.marketValue);
+  const open = [...positions]
+    .sort((a, b) => b.marketValue - a.marketValue)
+    .filter((p) => !q || p.name.toLowerCase().includes(q) || (p.symbol ?? "").toLowerCase().includes(q));
+  const done = closed.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.symbol ?? "").toLowerCase().includes(q));
 
   return (
-    <div>
-      {/* --- Vista de cartões: telemóvel (< md) --- */}
-      <ul className="md:hidden flex flex-col gap-3">
-        {sorted.map((p) => {
-          const { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight } = computeDerived(p, totalValue);
-          return (
-            <li key={p.asset_id} className="rounded-lg border border-line-soft bg-surface-alt/40 p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <p className="text-sm text-text truncate">{p.name}</p>
-                  <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
-                </div>
-                <span className="tabular text-sm text-text shrink-0">{formatCurrency(p.marketValue)}</span>
-              </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-6 border-b border-line">
+        {([
+          { key: "open", label: "Abertas", n: positions.length },
+          { key: "closed", label: "Fechadas", n: closed.length },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={cx(
+              "pb-3 -mb-px text-base font-semibold border-b-2 transition-colors",
+              tab === t.key ? "border-gold text-gold" : "border-transparent text-text-muted"
+            )}
+          >
+            {t.label} <span className="font-normal">{t.n}</span>
+          </button>
+        ))}
+      </div>
 
-              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
-                <div>
-                  <p className="text-text-faint">Qtd. / Custo Médio</p>
-                  <p className="tabular text-text-muted mt-0.5">
-                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })} · {formatCurrency(avgCost)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-text-faint">Peso na carteira</p>
-                  <p className="tabular text-text-muted mt-0.5">{(weight * 100).toFixed(1)}%</p>
-                </div>
-                <div>
-                  <p className="text-text-faint">Lucro / Prejuízo</p>
-                  <p className={`tabular mt-0.5 ${pnl >= 0 ? "text-gain" : "text-loss"}`}>
-                    {formatCurrency(pnl)} <span className="opacity-70">({formatPercent(pnlPct)})</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-text-faint">Retorno Total</p>
-                  <p className={`tabular mt-0.5 ${totalReturn >= 0 ? "text-gain" : "text-loss"}`}>
-                    {formatCurrency(totalReturn)} <span className="opacity-70">({formatPercent(totalReturnPct)})</span>
-                  </p>
-                </div>
-              </div>
+      {tab === "open" && portfolioDayPct !== null && (
+        <div className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm flex flex-wrap items-center gap-x-2">
+          <span className="font-bold text-text">Carteira</span>
+          <span className={cx("tabular font-semibold", tone(portfolioDayPct))}>{formatPercent(portfolioDayPct)}</span>
+          {benchmarkPct !== null && (
+            <>
+              <span className="text-text-faint">· vs S&amp;P 500</span>
+              <span className={cx("tabular font-semibold", tone(benchmarkPct))}>{formatPercent(benchmarkPct)}</span>
+            </>
+          )}
+        </div>
+      )}
 
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-line-soft text-[11px] text-text-faint">
-                <span>Dividendos: <span className="text-text-muted tabular">{formatCurrency(p.total_dividends)}</span></span>
-                <span>Desde {formatMonthYear(p.first_purchase_at)}</span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="relative">
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-faint" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Pesquisar…"
+          className="w-full rounded-2xl border border-line bg-surface pl-10 pr-4 py-3 text-sm outline-none focus:border-gold"
+        />
+      </div>
 
-      {/* --- Vista de tabela: desktop (>= md) --- */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm min-w-[860px]">
-          <thead>
-            <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-text-faint border-b border-line">
-              <th className="py-2 pr-4 font-medium">Ativo</th>
-              <th className="py-2 pr-4 font-medium text-right">Qtd.</th>
-              <th className="py-2 pr-4 font-medium text-right">Custo Médio</th>
-              <th className="py-2 pr-4 font-medium text-right">Preço Atual</th>
-              <th className="py-2 pr-4 font-medium text-right">Valor Atual</th>
-              <th className="py-2 pr-4 font-medium text-right">Peso</th>
-              <th className="py-2 pr-4 font-medium text-right">Lucro/Prejuízo</th>
-              <th className="py-2 pr-4 font-medium text-right">Dividendos</th>
-              <th className="py-2 pr-4 font-medium text-right">Retorno Total</th>
-              <th className="py-2 font-medium text-right">Desde</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p) => {
-              const { pnl, pnlPct, totalReturn, totalReturnPct, avgCost, weight } = computeDerived(p, totalValue);
+      {tab === "open" ? (
+        open.length === 0 ? (
+          <p className="text-sm text-text-muted py-8 text-center">
+            {positions.length === 0 ? "Ainda sem posições. Importa um extrato da DEGIRO mais abaixo." : "Nada encontrado."}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {open.map((p) => {
+              const pnl = p.marketValue - p.net_invested;
+              const totalReturn = pnl + p.total_dividends;
+              const totalPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
+              const t = shortTicker(p.symbol, p.name);
               return (
-                <tr key={p.asset_id} className="border-b border-line-soft last:border-0">
-                  <td className="py-2.5 pr-4">
-                    <p className="text-text">{p.name}</p>
-                    <p className="text-xs text-text-faint mt-0.5">{p.symbol ?? p.isin ?? "—"}</p>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">
-                    {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{formatCurrency(avgCost)}</td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text">
-                    {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text">{formatCurrency(p.marketValue)}</td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{(weight * 100).toFixed(1)}%</td>
-                  <td className={`py-2.5 pr-4 text-right tabular ${pnl >= 0 ? "text-gain" : "text-loss"}`}>
-                    {formatCurrency(pnl)}
-                    <span className="text-xs ml-1 opacity-70">({formatPercent(pnlPct)})</span>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right tabular text-text-muted">{formatCurrency(p.total_dividends)}</td>
-                  <td
-                    className={`py-2.5 pr-4 text-right tabular ${totalReturn >= 0 ? "text-gain" : "text-loss"}`}
-                    title="Lucro/prejuízo + dividendos recebidos"
-                  >
-                    {formatCurrency(totalReturn)}
-                    <span className="text-xs ml-1 opacity-70">({formatPercent(totalReturnPct)})</span>
-                  </td>
-                  <td className="py-2.5 text-right tabular text-text-faint text-xs">
-                    {formatMonthYear(p.first_purchase_at)}
-                  </td>
-                </tr>
+                <li
+                  key={p.asset_id}
+                  className={cx(
+                    "rounded-2xl border border-line bg-surface p-4 border-l-4",
+                    totalReturn >= 0 ? "border-l-gain" : "border-l-loss"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <TickerAvatar ticker={t} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-extrabold text-text leading-tight">{t}</p>
+                      <p className="text-sm text-text-muted truncate">{p.name}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="tabular text-lg font-bold text-text">{formatCurrency(p.marketValue)}</p>
+                      <p className={cx("tabular text-sm font-semibold", tone(totalReturn))}>{formatPercent(totalPct)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                    <p className="text-text-muted tabular">
+                      {p.currentPrice !== null ? formatCurrency(p.currentPrice) : "—"}{" "}
+                      <span className="text-text-faint">·</span>{" "}
+                      {p.quantity_held.toLocaleString("pt-PT", { maximumFractionDigits: 4 })} un.
+                    </p>
+                    {p.dayChangePct != null && p.dayChangeEur != null ? (
+                      <p className={cx("tabular font-semibold", tone(p.dayChangeEur))}>
+                        {formatPercent(p.dayChangePct)} <span className="opacity-60">·</span> {formatSignedCurrency(p.dayChangeEur)}
+                      </p>
+                    ) : (
+                      <p className="text-text-faint">Sem cotação</p>
+                    )}
+                  </div>
+                </li>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+        )
+      ) : done.length === 0 ? (
+        <p className="text-sm text-text-muted py-8 text-center">Ainda não fechaste nenhuma posição.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {done.map((p) => {
+            const t = shortTicker(p.symbol, p.name);
+            const total = p.realizedPnl + p.total_dividends;
+            return (
+              <li key={p.asset_id} className="rounded-2xl border border-line bg-surface p-4 flex items-center gap-3">
+                <TickerAvatar ticker={t} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-extrabold text-text leading-tight">{t}</p>
+                  <p className="text-sm text-text-muted truncate">{p.name}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={cx("tabular text-lg font-bold", tone(total))}>{formatSignedCurrency(total)}</p>
+                  <p className="text-xs text-text-faint">lucro realizado</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

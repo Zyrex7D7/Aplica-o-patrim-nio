@@ -1,11 +1,18 @@
+import { ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getNetWorthBreakdown } from "@/lib/data/net-worth";
 import { getNetWorthHistory } from "@/lib/data/net-worth-history";
+import { shortTicker } from "@/lib/ticker";
+import { HeroCard } from "@/components/dashboard/hero-card";
+import { TopMovers } from "@/components/dashboard/top-movers";
+import { RecordCard } from "@/components/dashboard/record-card";
+import { ReturnChart } from "@/components/dashboard/return-chart";
+import { WeightTreemap } from "@/components/dashboard/weight-treemap";
+import { BestWorst } from "@/components/dashboard/best-worst";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DonutChart } from "@/components/charts/donut-chart";
-import { NetWorthHistoryChart } from "@/components/dashboard/net-worth-history-chart";
-import { Card, CardLabel } from "@/components/ui/card";
-import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+
+const PALETTE = ["#4C8DF6", "#2FD27F", "#B48CE0", "#F2B84B", "#5EC8D8", "#F2789F", "#8D9AB5"];
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -13,104 +20,69 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [breakdown, history] = await Promise.all([
+  const [b, history] = await Promise.all([
     getNetWorthBreakdown(supabase, user!.id),
-    getNetWorthHistory(supabase, user!.id),
+    getNetWorthHistory(supabase, user!.id, 3650),
   ]);
 
-  const slices = [
-    { name: "Contas Bancárias", value: breakdown.cashInBanks, color: "var(--color-info)" },
-    { name: "Poupança", value: breakdown.cashInSavings, color: "#B48CE0" },
-    { name: "Corretoras (livre)", value: breakdown.cashInBrokers, color: "var(--color-gold)" },
-    { name: "Numerário", value: breakdown.physicalCash, color: "#8A93A3" },
-    { name: "Portefólio", value: breakdown.portfolioValue, color: "var(--color-gain)" },
+  const totalReturnEur = b.portfolioPnl + b.totalDividends;
+  const totalReturnPct = b.portfolioCost !== 0 ? totalReturnEur / Math.abs(b.portfolioCost) : 0;
+  const hasQuotes = b.lastQuoteAt !== null && b.positions.some((p) => p.dayChangeEur !== null);
+
+  const treemapItems = b.positions
+    .filter((p) => p.marketValue > 0)
+    .map((p) => ({
+      name: shortTicker(p.symbol, p.name),
+      size: p.marketValue,
+      ret: p.net_invested !== 0 ? ((p.marketValue - p.net_invested) / Math.abs(p.net_invested)) * 100 : 0,
+    }));
+
+  const allocation = [
+    ...[...b.positions]
+      .sort((a, c) => c.marketValue - a.marketValue)
+      .map((p, i) => ({ name: shortTicker(p.symbol, p.name), value: p.marketValue, color: PALETTE[i % PALETTE.length] })),
+    { name: "Contas e liquidez", value: b.cashInBanks + b.cashInSavings + b.cashInBrokers + b.physicalCash, color: "#5F6E8D" },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
-      <header className="mb-10">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">
-          Património Global
-        </p>
-        <p className="font-display text-3xl sm:text-4xl md:text-5xl tabular text-text break-words">
-          {formatCurrency(breakdown.totalNetWorth)}
-        </p>
-        <p className="text-sm text-text-muted mt-2">
-          Soma de contas bancárias, poupança, saldo livre em corretoras, numerário e valor atual
-          do portefólio de investimentos.
-        </p>
-      </header>
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
+      <HeroCard
+        totalNetWorth={b.totalNetWorth}
+        dayChangeEur={b.dayChangeEur}
+        dayChangePct={b.dayChangePct}
+        hasQuotes={hasQuotes}
+        totalReturnEur={totalReturnEur}
+        totalReturnPct={totalReturnPct}
+        dividends={b.totalDividends}
+        lastQuoteAt={b.lastQuoteAt}
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
-        <StatCard label="Contas Bancárias" value={breakdown.cashInBanks} />
-        <StatCard label="Poupança" value={breakdown.cashInSavings} />
-        <StatCard label="Corretoras (saldo livre)" value={breakdown.cashInBrokers} />
-        <StatCard label="Numerário" value={breakdown.physicalCash} />
-        <StatCard label="Portefólio (valor atual)" value={breakdown.portfolioValue} tone="gold" />
-      </div>
+      <details className="group rounded-3xl border border-line bg-surface">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-bold text-text">
+          Detalhe do património
+          <ChevronDown size={20} className="text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+          <StatCard label="Contas bancárias" value={b.cashInBanks} />
+          <StatCard label="Poupança" value={b.cashInSavings} />
+          <StatCard label="Corretoras (livre)" value={b.cashInBrokers} />
+          <StatCard label="Numerário" value={b.physicalCash} />
+          <StatCard label="Portefólio" value={b.portfolioValue} tone="gold" />
+          <StatCard label="Capital investido" value={b.portfolioCost} />
+        </div>
+      </details>
 
-      <Card className="mb-4">
-        <CardLabel className="mb-1">Evolução do Património</CardLabel>
-        <p className="text-xs text-text-faint mb-2">Últimos 90 dias, com um ponto capturado por dia.</p>
-        <NetWorthHistoryChart snapshots={history} />
-      </Card>
+      <TopMovers positions={b.positions} />
+      <RecordCard current={b.totalNetWorth} snapshots={history} />
+      <ReturnChart snapshots={history} />
+      <WeightTreemap items={treemapItems} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <Card className="lg:col-span-2">
-          <CardLabel>Distribuição do Património</CardLabel>
-          <div className="mt-4">
-            <DonutChart slices={slices} emptyMessage="Ainda sem saldo registado — adiciona contas e transações para veres a distribuição." />
-          </div>
-        </Card>
+      <section className="rounded-3xl border border-line bg-surface p-5">
+        <h2 className="text-base font-bold text-text mb-4">Distribuição</h2>
+        <DonutChart slices={allocation} emptyMessage="Ainda sem saldo registado." />
+      </section>
 
-        <Card className="lg:col-span-3">
-          <CardLabel>Investimentos — Custo vs. Valor Atual</CardLabel>
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            <div className="min-w-0">
-              <p className="text-xs text-text-faint">Capital investido</p>
-              <p className="tabular text-xl text-text mt-1 break-words">{formatCurrency(breakdown.portfolioCost)}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-text-faint">Lucro / Prejuízo não realizado</p>
-              <p
-                className={`tabular text-xl mt-1 break-words ${
-                  breakdown.portfolioPnl >= 0 ? "text-gain" : "text-loss"
-                }`}
-              >
-                {formatSignedCurrency(breakdown.portfolioPnl)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 ledger-rule pt-4">
-            <p className="text-xs text-text-faint mb-3">Posições atuais</p>
-            {breakdown.positions.length === 0 ? (
-              <p className="text-sm text-text-muted">
-                Ainda não importaste transações de bolsa. Vai a{" "}
-                <a href="/portfolio" className="text-gold underline underline-offset-2">
-                  Portefólio
-                </a>{" "}
-                para carregar o CSV da DEGIRO.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {breakdown.positions.map((p) => (
-                  <li
-                    key={p.asset_id}
-                    className="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-line-soft last:border-0"
-                  >
-                    <span className="text-text truncate min-w-0">{p.name}</span>
-                    <span className="tabular text-text-muted shrink-0">
-                      {p.quantity_held.toLocaleString("pt-PT")} un.
-                    </span>
-                    <span className="tabular text-text shrink-0">{formatCurrency(p.marketValue)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </Card>
-      </div>
+      <BestWorst positions={b.positions} />
     </div>
   );
 }

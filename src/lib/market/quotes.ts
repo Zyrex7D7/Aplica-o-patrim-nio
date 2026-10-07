@@ -1,41 +1,86 @@
 import YahooFinance from "yahoo-finance2";
 
-// Na v4 do yahoo-finance2, o export por omissão é uma classe — precisa de
-// ser instanciada uma única vez e reutilizada entre pedidos.
 const yahooFinance = new YahooFinance();
 
 /**
- * Módulo de cotações em tempo (quase) real via `yahoo-finance2`.
+ * Cotações via Yahoo Finance, alinhadas com a bolsa que a DEGIRO usa.
  *
- * A DEGIRO identifica os ativos por ISIN, mas o Yahoo Finance funciona por
- * "ticker" (símbolo). Por isso:
- *   1. `resolveSymbolFromIsin` usa a pesquisa do Yahoo para encontrar o
- *      símbolo mais provável a partir do ISIN ou do nome do produto.
- *   2. `getQuote` devolve o preço atual + moeda para um símbolo já
- *      conhecido, para atualizar o valor do portefólio e o P/L.
+ * Problema original: o mesmo ISIN é negociado em várias bolsas e moedas
+ * (ex: VWCE em Xetra, Amesterdão e Milão; ações US em USD). Pesquisar só por
+ * ISIN devolvia uma listagem qualquer e o preço era tratado como EUR.
+ *
+ * Agora:
+ *   1. A bolsa de referência da DEGIRO (EAM, XET, NDQ...) é convertida para
+ *      o código de bolsa do Yahoo e escolhemos a listagem dessa bolsa.
+ *   2. O preço é convertido para EUR (a DEGIRO mostra tudo em EUR).
+ *   3. Guardamos o fecho anterior para calcular a variação do dia.
  */
+
+/** Código de bolsa da DEGIRO -> códigos de bolsa equivalentes no Yahoo. */
+const DEGIRO_TO_YAHOO_EXCHANGE: Record<string, string[]> = {
+  EAM: ["AMS"],
+  XET: ["GER"],
+  TDG: ["GER"],
+  FRA: ["FRA"],
+  EPA: ["PAR"],
+  MIL: ["MIL"],
+  LSE: ["LSE"],
+  EBR: ["BRU"],
+  ELI: ["LIS"],
+  MAD: ["MCE"],
+  SWX: ["EBS"],
+  CPH: ["CPH"],
+  STO: ["STO"],
+  HEL: ["HEL"],
+  OSL: ["OSL"],
+  VIE: ["VIE"],
+  NDQ: ["NMS", "NGM", "NCM"],
+  NSY: ["NYQ", "PCX", "ASE", "BTS"],
+  ASE: ["ASE", "PCX"],
+};
+
+/** Quando não sabemos a bolsa, preferimos listagens europeias em EUR. */
+const FALLBACK_PRIORITY = ["AMS", "GER", "PAR", "MIL", "LIS", "MCE", "BRU", "NMS", "NYQ", "LSE"];
 
 export interface ResolvedSymbol {
   symbol: string;
   shortname?: string;
   exchange?: string;
-  currency?: string;
 }
 
 export async function resolveSymbolFromIsin(
-  isinOrName: string
+  isinOrName: string,
+  degiroExchange?: string | null
 ): Promise<ResolvedSymbol | null> {
   try {
-    const result = await yahooFinance.search(isinOrName, { quotesCount: 5 });
-    const best = result.quotes?.find(
-      (q): q is typeof q & { symbol: string } =>
+    const result = await yahooFinance.search(isinOrName, { quotesCount: 15 });
+    const candidates = (result.quotes ?? []).filter(
+      (q): q is typeof q & { symbol: string; exchange?: string } =>
         "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
     );
+    if (candidates.length === 0) return null;
+
+    const exchangeOf = (q: { exchange?: unknown }) => (typeof q.exchange === "string" ? q.exchange : "");
+
+    let best: (typeof candidates)[number] | undefined;
+
+    const wanted = degiroExchange ? DEGIRO_TO_YAHOO_EXCHANGE[degiroExchange.trim().toUpperCase()] : undefined;
+    if (wanted) {
+      best = candidates.find((q) => wanted.includes(exchangeOf(q)));
+    }
+    if (!best) {
+      best = [...candidates].sort((a, b) => {
+        const ia = FALLBACK_PRIORITY.indexOf(exchangeOf(a));
+        const ib = FALLBACK_PRIORITY.indexOf(exchangeOf(b));
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      })[0];
+    }
     if (!best) return null;
+
     return {
       symbol: best.symbol,
       shortname: "shortname" in best && typeof best.shortname === "string" ? best.shortname : undefined,
-      exchange: "exchange" in best && typeof best.exchange === "string" ? best.exchange : undefined,
+      exchange: exchangeOf(best) || undefined,
     };
   } catch (err) {
     console.error(`Falha ao resolver símbolo para "${isinOrName}":`, err);
@@ -45,20 +90,59 @@ export async function resolveSymbolFromIsin(
 
 export interface LiveQuote {
   symbol: string;
+  /** Preço na moeda original da listagem (GBp já convertido para GBP). */
   price: number;
   currency: string;
+  /** Preço convertido para EUR (null se não foi possível obter o câmbio). */
+  priceEur: number | null;
+  previousCloseEur: number | null;
+  /** Variação do dia em %, ex: 1.53 significa +1,53%. */
   changePercent: number | null;
   marketState: string | null;
 }
 
-export async function getQuote(symbol: string): Promise<LiveQuote | null> {
+/** Câmbio moeda -> EUR, com cache partilhado durante um pedido. */
+async function getFxToEur(currency: string, cache: Map<string, number | null>): Promise<number | null> {
+  if (currency === "EUR") return 1;
+  if (cache.has(currency)) return cache.get(currency) ?? null;
+  try {
+    const fx = await yahooFinance.quote(`${currency}EUR=X`);
+    const rate = fx?.regularMarketPrice ?? null;
+    cache.set(currency, rate);
+    return rate;
+  } catch (err) {
+    console.error(`Falha ao obter câmbio ${currency}/EUR:`, err);
+    cache.set(currency, null);
+    return null;
+  }
+}
+
+export async function getQuote(
+  symbol: string,
+  fxCache: Map<string, number | null> = new Map()
+): Promise<LiveQuote | null> {
   try {
     const q = await yahooFinance.quote(symbol);
     if (!q || q.regularMarketPrice === undefined) return null;
+
+    // Londres cota em pence (GBp): dividir por 100 para libras.
+    let currency = q.currency ?? "EUR";
+    let divisor = 1;
+    if (currency === "GBp" || currency === "GBX") {
+      currency = "GBP";
+      divisor = 100;
+    }
+
+    const price = q.regularMarketPrice / divisor;
+    const prev = q.regularMarketPreviousClose !== undefined ? q.regularMarketPreviousClose / divisor : null;
+    const fx = await getFxToEur(currency, fxCache);
+
     return {
       symbol,
-      price: q.regularMarketPrice,
-      currency: q.currency ?? "EUR",
+      price,
+      currency,
+      priceEur: fx !== null ? price * fx : null,
+      previousCloseEur: fx !== null && prev !== null ? prev * fx : null,
       changePercent: q.regularMarketChangePercent ?? null,
       marketState: q.marketState ?? null,
     };
@@ -68,11 +152,42 @@ export async function getQuote(symbol: string): Promise<LiveQuote | null> {
   }
 }
 
-export async function getQuotes(symbols: string[]): Promise<LiveQuote[]> {
-  const unique = Array.from(new Set(symbols.filter(Boolean)));
-  const results = await Promise.allSettled(unique.map((s) => getQuote(s)));
-  return results
-    .filter((r): r is PromiseFulfilledResult<LiveQuote | null> => r.status === "fulfilled")
-    .map((r) => r.value)
-    .filter((v): v is LiveQuote => v !== null);
+/** Procura o primeiro símbolo para um texto livre (ticker, nome ou ISIN). Usado no Radar. */
+export async function searchSymbol(query: string): Promise<{ symbol: string; name: string } | null> {
+  try {
+    const result = await yahooFinance.search(query, { quotesCount: 6 });
+    const hit = (result.quotes ?? []).find(
+      (q) => "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
+    ) as { symbol: string; shortname?: string; longname?: string } | undefined;
+    if (!hit) return null;
+    return { symbol: hit.symbol, name: hit.shortname ?? hit.longname ?? hit.symbol };
+  } catch (err) {
+    console.error(`Falha ao procurar "${query}":`, err);
+    return null;
+  }
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  publisher: string;
+  link: string;
+  publishedAt: number; // ms
+}
+
+/** Notícias recentes para um símbolo (ou tema, ex: "stock market"). */
+export async function getNews(query: string, count = 4): Promise<NewsItem[]> {
+  try {
+    const result = await yahooFinance.search(query, { quotesCount: 0, newsCount: count });
+    return (result.news ?? []).map((n) => ({
+      id: String(n.uuid),
+      title: String(n.title),
+      publisher: String(n.publisher ?? ""),
+      link: String(n.link),
+      publishedAt: new Date(n.providerPublishTime as unknown as string | number | Date).getTime(),
+    }));
+  } catch (err) {
+    console.error(`Falha ao obter notícias de "${query}":`, err);
+    return [];
+  }
 }

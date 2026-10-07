@@ -1,44 +1,36 @@
 @import "tailwindcss";
 
-@import "@fontsource/fraunces/400.css";
-@import "@fontsource/fraunces/500.css";
-@import "@fontsource/fraunces/600.css";
-@import "@fontsource/fraunces/600-italic.css";
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
 
 /*
- * =========================================================================
- * TOKENS DE DESIGN — "Livro-Razão" (Ledger)
- * =========================================================================
- * Paleta de tinta escura inspirada em extratos bancários e livros-razão
- * contabilísticos: fundo quase-preto, réguas finas em vez de sombras,
- * números tabulares em mono, e um único acento dourado ("património")
- * que se distingue do verde (ganho) e vermelho (perda).
+ * Tema "Capital" — azul-marinho profundo, cartões bem arredondados,
+ * um único azul de destaque, verde/vermelho só para ganhos/perdas.
+ * (--color-gold mantém o nome por compatibilidade, mas agora é o azul.)
  */
 :root {
-  --color-ink:          #0B0F14;
-  --color-surface:      #12171F;
-  --color-surface-alt:  #1A212B;
-  --color-line:         #232B36;
-  --color-line-soft:    #1A212B;
-  --color-text:         #EDEFF2;
-  --color-text-muted:   #8A93A3;
-  --color-text-faint:   #57616F;
-  --color-gold:         #D9A441;
-  --color-gold-soft:    #3A2F1B;
-  --color-gain:         #35D28A;
-  --color-gain-soft:    #123023;
-  --color-loss:         #E5636A;
-  --color-loss-soft:    #331A1D;
+  --color-ink:          #0A0F1F;
+  --color-surface:      #101829;
+  --color-surface-alt:  #18223A;
+  --color-line:         #22304D;
+  --color-line-soft:    #1A2540;
+  --color-text:         #EEF2FA;
+  --color-text-muted:   #8D9AB5;
+  --color-text-faint:   #5F6E8D;
+  --color-gold:         #4C8DF6;
+  --color-gold-soft:    #14264D;
+  --color-gain:         #2FD27F;
+  --color-gain-soft:    #0F2D26;
+  --color-loss:         #F0646B;
+  --color-loss-soft:    #34171D;
   --color-info:         #6C9BD1;
 
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: var(--font-body);
+  --font-mono: var(--font-body);
 }
 
 @theme inline {
@@ -69,28 +61,18 @@ body {
 }
 
 .tabular {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 
-.ledger-rule {
-  border-top: 1px solid var(--color-line);
-}
+.ledger-rule { border-top: 1px solid var(--color-line); }
 
-::selection {
-  background: var(--color-gold);
-  color: var(--color-ink);
-}
+details > summary::-webkit-details-marker { display: none; }
 
-:focus-visible {
-  outline: 2px solid var(--color-gold);
-  outline-offset: 2px;
-}
+::selection { background: var(--color-gold); color: var(--color-ink); }
+
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
