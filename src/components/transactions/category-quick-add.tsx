@@ -1,25 +1,27 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createCategory } from "@/app/transacoes/actions";
 
 export function CategoryQuickAdd() {
   const [open, setOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
 
-  async function action(formData: FormData) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     startTransition(async () => {
-      try {
-        await createCategory(formData);
-        formRef.current?.reset();
-        toast.success("Categoria criada.");
-        setOpen(false);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao criar categoria.");
+      const result = await createCategory(formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
       }
+      form.reset();
+      toast.success("Categoria criada.");
+      setOpen(false);
     });
   }
 
@@ -36,7 +38,7 @@ export function CategoryQuickAdd() {
   }
 
   return (
-    <form ref={formRef} action={action} className="flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="flex items-center gap-2">
       <input
         name="name"
         required
@@ -50,12 +52,14 @@ export function CategoryQuickAdd() {
         <option value="despesa">Despesa</option>
         <option value="receita">Receita</option>
       </select>
-      <input name="color" type="color" defaultValue="#8B93A1" className="h-6 w-8 rounded border border-line bg-transparent" />
-      <button
-        type="submit"
-        disabled={isPending}
-        className="text-xs text-gold hover:opacity-80 disabled:opacity-50"
-      >
+      <input
+        name="color"
+        type="color"
+        aria-label="Cor da categoria"
+        defaultValue="#8B93A1"
+        className="h-6 w-8 rounded border border-line bg-transparent"
+      />
+      <button type="submit" disabled={isPending} className="text-xs text-gold hover:opacity-80 disabled:opacity-50">
         Guardar
       </button>
       <button type="button" onClick={() => setOpen(false)} className="text-xs text-text-faint hover:text-text">

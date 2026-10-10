@@ -6,28 +6,16 @@ import type { AssetOperation } from "@/types/database";
  * =========================================================================
  * PARSER DE CSV DA DEGIRO
  * =========================================================================
- * A DEGIRO tem, na prática, dois exports distintos que os utilizadores
- * costumam carregar:
+ * Dois exports distintos:
+ *   1. "Transacções"   — uma linha por execução de bolsa (Quantidade e Preço explícitos).
+ *   2. "Estado de Conta" — movimentos de caixa; a operação é inferida do texto da Descrição.
  *
- *   1. "Transacções" (Transactions.csv)  — uma linha por execução de bolsa,
- *      com colunas explícitas de Quantidade e Preço.
- *
- *   2. "Estado de Conta" (Account.csv)   — um extrato de movimentos de caixa
- *      (compras, vendas, dividendos, comissões, depósitos...) onde a
- *      operação tem de ser inferida a partir do texto livre da coluna
- *      "Descrição" / "Mutação".
- *
- * Este parser deteta automaticamente o formato pelo cabeçalho e lida com:
- *   - delimitador ";" (locale PT/ES) ou "," (locale EN/US)
- *   - números europeus "1.234,56"
- *   - colunas de moeda "sem nome" que a DEGIRO intercala a seguir a cada
- *     coluna de valor (ex: [Valor Local] [ ] -> moeda | valor)
- *   - datas "dd-mm-aaaa"
+ * Deteta o formato pelo cabeçalho e lida com delimitador ";" ou ",", números
+ * europeus, colunas de moeda sem nome e datas "dd-mm-aaaa".
  * =========================================================================
  */
 
 export interface ParsedDegiroRow {
-  /** Índice da linha no ficheiro original (para mostrar erros ao utilizador). */
   rowIndex: number;
   date: string; // ISO aaaa-mm-dd
   datetime: string | null;
@@ -38,22 +26,16 @@ export interface ParsedDegiroRow {
   price: number | null;
   localValue: number | null;
   fees: number;
+  /** Fluxo de caixa COM SINAL (compra < 0, venda > 0). */
   totalValue: number;
   currency: string;
   exchangeRate: number | null;
   description: string;
   orderId: string | null;
-  /**
-   * Saldo da conta (coluna "Saldo") reportado pela própria DEGIRO nesta
-   * linha, se existir. É o valor mais fiável para reconciliar o saldo
-   * livre da conta — reflete TODOS os movimentos (depósitos, levantamentos,
-   * cash sweeps, juros, compras, vendas, dividendos, comissões), incluindo
-   * os que não conseguimos/quisemos modelar individualmente.
-   */
+  /** Saldo da conta reportado pela DEGIRO nesta linha, se existir. */
   balance: number | null;
   /** Hash estável da linha original — usado para deduplicação. */
   sourceHash: string;
-  /** Linha crua (mapa header->valor) guardada para auditoria. */
   raw: Record<string, string>;
 }
 
@@ -62,19 +44,8 @@ export interface DegiroParseResult {
   rows: ParsedDegiroRow[];
   warnings: string[];
   skipped: number;
-  /**
-   * O checkpoint de saldo mais recente encontrado no ficheiro (de QUALQUER
-   * linha, incluindo movimentos de caixa que não geram uma
-   * "transação de bolsa"). Usado para reconciliar o saldo livre da conta
-   * com o valor que a própria DEGIRO reporta, em vez de o recalcularmos a
-   * partir da soma das nossas próprias transações (frágil e incompleto).
-   */
   latestBalance: { balance: number; occurredAt: string } | null;
 }
-
-// ---------------------------------------------------------------------
-// Deteção de delimitador e leitura crua do CSV
-// ---------------------------------------------------------------------
 
 function detectDelimiter(sampleLine: string): string {
   const semicolons = (sampleLine.match(/;/g) || []).length;
@@ -82,20 +53,12 @@ function detectDelimiter(sampleLine: string): string {
   return semicolons >= commas ? ";" : ",";
 }
 
-/** Faz parse cru do texto CSV para array de arrays de strings. */
 function parseRaw(text: string): string[][] {
   const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
   const delimiter = detectDelimiter(firstLine);
-  const result = Papa.parse<string[]>(text, {
-    delimiter,
-    skipEmptyLines: true,
-  });
+  const result = Papa.parse<string[]>(text, { delimiter, skipEmptyLines: true });
   return result.data as string[][];
 }
-
-// ---------------------------------------------------------------------
-// Resolução de colunas por "fuzzy matching" de aliases
-// ---------------------------------------------------------------------
 
 const HEADER_ALIASES: Record<string, string[]> = {
   date: ["data", "date", "fecha"],
@@ -106,34 +69,33 @@ const HEADER_ALIASES: Record<string, string[]> = {
   quantity: ["quantidade", "quantity", "cantidad"],
   price: ["preco", "price", "precio"],
   localValue: ["valor local", "local value", "valor en moneda local"],
-  value: ["valor", "value", "importe", "mutacao", "mutação", "mutation", "change", "mudanca", "mudança"],
-  exchangeRate: ["taxa de cambio", "taxa de câmbio", "exchange rate", "tipo de cambio"],
-  fees: ["custos de transacao", "custos de transação", "transaction fee", "transaction costs", "costes de transaccion"],
+  value: ["valor", "value", "importe", "mutacao", "mutation", "change", "mudanca", "variacao", "variation", "variacion"],
+  exchangeRate: ["taxa de cambio", "exchange rate", "tipo de cambio", "fx"],
+  fees: ["custos de transacao", "transaction fee", "transaction costs", "costes de transaccion"],
   total: ["total"],
-  description: ["descricao", "descrição", "description", "descripcion"],
+  description: ["descricao", "description", "descripcion"],
   orderId: ["id da ordem", "id ordem", "order id", "id de la orden"],
   balance: ["saldo", "balance"],
 };
 
-/** Normaliza um cabeçalho para comparação (sem acentos, minúsculas, sem excesso de espaço). */
 function normHeader(h: string): string {
   return normalize(h).replace(/\s+/g, " ");
 }
 
-/**
- * Localiza, para cada campo lógico, o índice da coluna correspondente no
- * cabeçalho, tentando todos os aliases conhecidos.
- */
 function resolveColumns(header: string[]): Record<string, number> {
   const normalized = header.map(normHeader);
   const cols: Record<string, number> = {};
   for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-    // 1ª passagem: correspondência exata (evita que "Data valor" seja
-    // confundido com a coluna "Valor" só porque contém essa substring).
+    // 1ª passagem: correspondência exata (evita "Data valor" ser lida como "Valor").
     let idx = normalized.findIndex((h) => aliases.includes(h));
-    // 2ª passagem: correspondência parcial, só usada se nada bateu certo.
+    // 2ª passagem: parcial, mas o campo "value" nunca aceita colunas de data.
     if (idx === -1) {
-      idx = normalized.findIndex((h) => h !== "" && aliases.some((a) => h.includes(a)));
+      idx = normalized.findIndex(
+        (h) =>
+          h !== "" &&
+          !(field === "value" && h.includes("data")) &&
+          aliases.some((a) => h.includes(a))
+      );
     }
     if (idx !== -1) cols[field] = idx;
   }
@@ -141,11 +103,8 @@ function resolveColumns(header: string[]): Record<string, number> {
 }
 
 /**
- * A DEGIRO por vezes exporta um par [código de moeda][valor] onde a coluna
- * do código de moeda não tem cabeçalho (fica em branco). Quando isso
- * acontece, o valor numérico está na coluna seguinte à que encontrámos.
- * Esta função deteta esse padrão: se a célula na posição `idx` parecer um
- * código de moeda (3 letras maiúsculas) em vez de um número, avança 1.
+ * A DEGIRO exporta por vezes pares [código de moeda][valor] em que a coluna
+ * da moeda não tem cabeçalho. Deteta o padrão e devolve valor + moeda.
  */
 function resolveValueAndCurrency(
   row: string[],
@@ -154,10 +113,8 @@ function resolveValueAndCurrency(
   if (idx === undefined) return { value: null, currency: null };
   const cell = (row[idx] ?? "").trim();
   if (/^[A-Z]{3}$/.test(cell)) {
-    // A própria coluna resolvida é o código de moeda -> o valor está a seguir.
     return { value: parseEuroNumber(row[idx + 1]), currency: cell };
   }
-  // Verifica se a coluna seguinte é que traz o código de moeda (par invertido).
   const nextCell = (row[idx + 1] ?? "").trim();
   if (/^[A-Z]{3}$/.test(nextCell)) {
     return { value: parseEuroNumber(cell), currency: nextCell };
@@ -165,20 +122,14 @@ function resolveValueAndCurrency(
   return { value: parseEuroNumber(cell), currency: null };
 }
 
-// ---------------------------------------------------------------------
-// Classificação da operação a partir do texto livre (Descrição / Mutação)
-// ---------------------------------------------------------------------
-
 const KEYWORDS: Record<AssetOperation, string[]> = {
   compra: ["compra", "buy", "compra de acciones"],
   venda: ["venda", "sell", "venta"],
   dividendo: ["dividendo", "dividend", "dividend tax", "imposto sobre dividendo", "retencao de imposto"],
   comissao: [
     "custos de transacao",
-    "custos de transação",
     "comissao",
-    "comissão",
-    "comiss", // cobre "Comissões de transação DEGIRO e/ou taxas de terceiros"
+    "comiss",
     "transaction fee",
     "transaction costs",
     "connectivity fee",
@@ -194,41 +145,29 @@ const KEYWORDS: Record<AssetOperation, string[]> = {
 
 export function classifyOperation(description: string, quantity: number | null): AssetOperation {
   const text = normalize(description);
+
+  // O verbo no INÍCIO do texto manda: "Compra 3 iShares Euro Dividend..." é uma
+  // compra, mesmo que o nome do produto contenha a palavra "dividend".
+  const lead = text.match(/^(compra|buy|venda|sell|venta)\b/);
+  if (lead) return lead[1] === "compra" || lead[1] === "buy" ? "compra" : "venda";
+
   for (const op of ["dividendo", "comissao", "compra", "venda"] as const) {
     if (KEYWORDS[op].some((kw) => text.includes(normalize(kw)))) return op;
   }
-  // Sem correspondência textual: usa o sinal da quantidade como último recurso.
   if (quantity !== null) return quantity > 0 ? "compra" : quantity < 0 ? "venda" : "outro";
   return "outro";
 }
 
-/**
- * Tenta extrair quantidade e preço embutidos no texto livre.
- *
- * A DEGIRO escreve, no "Estado de Conta", frases como:
- *   "Compra 3 SAP SE@147,54 EUR (DE0007164600)"
- *   "Compra 1 iShares Core S&P 500 UCITS ETF USD (Acc)@598,85 EUR (ISIN)"
- *
- * A quantidade vem logo a seguir a "Compra"/"Venda"; o preço vem a seguir ao
- * "@", com o nome do produto (que pode conter números, "&", parênteses...)
- * pelo meio — por isso não basta procurar "número @ número" diretamente.
- */
+/** Extrai quantidade e preço do texto livre do "Estado de Conta" ("Compra 3 SAP SE@147,54 EUR (ISIN)"). */
 function extractQtyPriceFromText(text: string): { quantity: number | null; price: number | null } {
-  const withVerb = text.match(
-    /^(?:compra|venda|buy|sell)\s+(\d+(?:[.,]\d+)?)\s+.+?@\s*(\d+(?:[.,]\d+)?)/i
-  );
+  const withVerb = text.match(/^(?:compra|venda|buy|sell)\s+(\d+(?:[.,]\d+)?)\s+.+?@\s*(\d+(?:[.,]\d+)?)/i);
   if (withVerb) {
     return { quantity: parseEuroNumber(withVerb[1]), price: parseEuroNumber(withVerb[2]) };
   }
-  // Fallback genérico para outros formatos: "10 @ 25,30".
   const generic = text.match(/(\d+[.,]?\d*)\s*(?:@|a)\s*(\d+[.,]?\d*)/i);
   if (!generic) return { quantity: null, price: null };
   return { quantity: parseEuroNumber(generic[1]), price: parseEuroNumber(generic[2]) };
 }
-
-// ---------------------------------------------------------------------
-// Parser principal
-// ---------------------------------------------------------------------
 
 export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
   const table = parseRaw(text);
@@ -263,6 +202,9 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
   let skipped = 0;
   let cashRowsSkipped = 0;
   let latestBalance: DegiroParseResult["latestBalance"] = null;
+  // Linhas idênticas dentro do mesmo ficheiro (ex: duas execuções parciais iguais)
+  // recebem um sufixo de ocorrência no hash, para não serem confundidas com duplicados.
+  const seenLines = new Map<string, number>();
 
   for (let i = 1; i < table.length; i++) {
     const raw = table[i];
@@ -277,10 +219,6 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     const time = cols.time !== undefined ? raw[cols.time] : undefined;
     const occurredAt = combineDateTime(isoDate, time) ?? `${isoDate}T00:00:00`;
 
-    // Regista o checkpoint de saldo desta linha (se existir), independen-
-    // temente de a linha vir a ser guardada como "transação de bolsa" ou
-    // ignorada como movimento de caixa — o saldo mais recente do ficheiro
-    // é o que interessa para reconciliar a conta, esteja onde estiver.
     const rowBalance = resolveValueAndCurrency(raw, cols.balance).value;
     if (rowBalance !== null && (!latestBalance || occurredAt > latestBalance.occurredAt)) {
       latestBalance = { balance: rowBalance, occurredAt };
@@ -289,18 +227,13 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     const rawProduct = (cols.product !== undefined ? raw[cols.product] : "")?.trim() || "";
     const isin = cols.isin !== undefined ? raw[cols.isin]?.trim() || null : null;
 
-    // No "Estado de Conta", movimentos puramente de caixa (depósitos,
-    // levantamentos, cash sweeps, juros...) não têm Produto nem ISIN —
-    // não são transações de bolsa, por isso ignoramo-los aqui em vez de
-    // os transformar num ativo fantasma "(sem nome)".
     if (format === "estado_conta" && !rawProduct && !isin) {
       cashRowsSkipped++;
       continue;
     }
 
     const product = rawProduct || "(sem nome)";
-    const description =
-      cols.description !== undefined ? raw[cols.description]?.trim() || "" : `${product}`;
+    const description = cols.description !== undefined ? raw[cols.description]?.trim() || "" : `${product}`;
     const orderId = cols.orderId !== undefined ? raw[cols.orderId]?.trim() || null : null;
 
     let quantity = cols.quantity !== undefined ? parseEuroNumber(raw[cols.quantity]) : null;
@@ -318,16 +251,24 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     const feesRes = resolveValueAndCurrency(raw, cols.fees);
     const exchangeRate = cols.exchangeRate !== undefined ? parseEuroNumber(raw[cols.exchangeRate]) : null;
 
-    // Valor total em EUR: preferimos a coluna "Total"; se não existir, usamos
-    // "Valor" (extrato de conta); em último caso o valor local.
     const totalValue = totalRes.value ?? valueRes.value ?? localValueRes.value ?? 0;
     const currency = totalRes.currency ?? valueRes.currency ?? localValueRes.currency ?? "EUR";
     const fees = Math.abs(feesRes.value ?? 0);
 
-    const operation = classifyOperation(description || product, quantity);
+    // No CSV de Transações não há descrição (só o nome do produto, que pode conter
+    // "Dividend", "Sell"...), por isso a operação vem SÓ do sinal da quantidade.
+    const operation: AssetOperation =
+      format === "transacoes" && quantity !== null && quantity !== 0
+        ? quantity > 0
+          ? "compra"
+          : "venda"
+        : classifyOperation(description || product, quantity);
 
-    const rowForHash = raw.join("|");
-    const sourceHash = await sha256Hex(rowForHash);
+    const lineKey = raw.join("|");
+    const occurrence = seenLines.get(lineKey) ?? 0;
+    seenLines.set(lineKey, occurrence + 1);
+    // 1ª ocorrência mantém o hash antigo => importações já feitas continuam a deduplicar.
+    const sourceHash = await sha256Hex(occurrence === 0 ? lineKey : `${lineKey}#${occurrence}`);
 
     const rawRecord: Record<string, string> = {};
     header.forEach((h, idx) => (rawRecord[h || `col_${idx}`] = raw[idx] ?? ""));
@@ -361,6 +302,9 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     warnings.push(
       `${cashRowsSkipped} movimento(s) de caixa (depósitos, levantamentos, juros, cash sweep) ignorado(s) por não estarem associados a nenhum ativo.`
     );
+  }
+  if (rows.some((r) => r.totalValue === 0)) {
+    warnings.push("Há linhas com valor 0 — confirma se o CSV tem a coluna de valores (Total/Valor/Variação).");
   }
 
   return { format, rows, warnings, skipped, latestBalance };

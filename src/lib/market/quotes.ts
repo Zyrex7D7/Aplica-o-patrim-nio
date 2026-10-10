@@ -2,6 +2,23 @@ import YahooFinance from "yahoo-finance2";
 
 const yahooFinance = new YahooFinance();
 
+/** Corta chamadas ao Yahoo que fiquem penduradas (as páginas esperam por elas). */
+function withTimeout<T>(promise: Promise<T>, ms = 7000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Yahoo Finance: sem resposta em ${ms / 1000}s`)), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}
+
 /**
  * Cotações via Yahoo Finance, alinhadas com a bolsa que a DEGIRO usa.
  *
@@ -77,7 +94,7 @@ async function findSiblingListing(primary: Listing, preferred: string[]): Promis
   const name = primary.longname ?? primary.shortname;
   if (!name) return null;
 
-  const res = await yahooFinance.search(name, { quotesCount: 25 });
+  const res = await withTimeout(yahooFinance.search(name, { quotesCount: 25 }));
   const siblings = (res.quotes ?? [])
     .filter((q) => "symbol" in q && typeof q.symbol === "string")
     .map((q) => q as unknown as Listing)
@@ -109,7 +126,7 @@ export async function resolveSymbolFromIsin(
   degiroExchange?: string | null
 ): Promise<ResolvedSymbol | null> {
   try {
-    const result = await yahooFinance.search(isinOrName, { quotesCount: 20 });
+    const result = await withTimeout(yahooFinance.search(isinOrName, { quotesCount: 20 }));
     const candidates = (result.quotes ?? []).filter((q) => {
       if (!("symbol" in q) || typeof q.symbol !== "string" || q.symbol.length === 0) return false;
       const type = "quoteType" in q && typeof q.quoteType === "string" ? q.quoteType : "";
@@ -175,7 +192,7 @@ async function getFxToEur(currency: string, cache: Map<string, number | null>): 
   if (currency === "EUR") return 1;
   if (cache.has(currency)) return cache.get(currency) ?? null;
   try {
-    const fx = await yahooFinance.quote(`${currency}EUR=X`);
+    const fx = await withTimeout(yahooFinance.quote(`${currency}EUR=X`));
     const rate = fx?.regularMarketPrice ?? null;
     cache.set(currency, rate);
     return rate;
@@ -191,11 +208,13 @@ export async function getHistoricalFxToEur(currency: string, isoDate: string): P
   if (currency === "EUR") return 1;
   try {
     const day = new Date(`${isoDate}T00:00:00Z`);
-    const res = await yahooFinance.chart(`${currency}EUR=X`, {
-      period1: new Date(day.getTime() - 6 * 86400000),
-      period2: new Date(day.getTime() + 2 * 86400000),
-      interval: "1d",
-    });
+    const res = await withTimeout(
+      yahooFinance.chart(`${currency}EUR=X`, {
+        period1: new Date(day.getTime() - 6 * 86400000),
+        period2: new Date(day.getTime() + 2 * 86400000),
+        interval: "1d",
+      })
+    );
     const points = (res.quotes ?? []).filter((q) => typeof q.close === "number");
     if (points.length === 0) return null;
     let best = points[0];
@@ -214,7 +233,7 @@ export async function getQuote(
   fxCache: Map<string, number | null> = new Map()
 ): Promise<LiveQuote | null> {
   try {
-    const q = await yahooFinance.quote(symbol);
+    const q = await withTimeout(yahooFinance.quote(symbol));
     if (!q || q.regularMarketPrice === undefined) return null;
 
     // Londres cota em pence (GBp): dividir por 100 para libras.
@@ -247,7 +266,7 @@ export async function getQuote(
 /** Procura o primeiro símbolo para um texto livre (ticker, nome ou ISIN). Usado no Radar. */
 export async function searchSymbol(query: string): Promise<{ symbol: string; name: string } | null> {
   try {
-    const result = await yahooFinance.search(query, { quotesCount: 6 });
+    const result = await withTimeout(yahooFinance.search(query, { quotesCount: 6 }));
     const hit = (result.quotes ?? []).find(
       (q) => "symbol" in q && typeof q.symbol === "string" && q.symbol.length > 0
     ) as { symbol: string; shortname?: string; longname?: string } | undefined;
@@ -270,7 +289,7 @@ export interface NewsItem {
 /** Notícias recentes para um símbolo (ou tema, ex: "stock market"). */
 export async function getNews(query: string, count = 4): Promise<NewsItem[]> {
   try {
-    const result = await yahooFinance.search(query, { quotesCount: 0, newsCount: count });
+    const result = await withTimeout(yahooFinance.search(query, { quotesCount: 0, newsCount: count }));
     return (result.news ?? []).map((n) => ({
       id: String(n.uuid),
       title: String(n.title),

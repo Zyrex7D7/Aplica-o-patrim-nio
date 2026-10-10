@@ -1,7 +1,7 @@
-// Tipos manuais que espelham supabase/schema.sql + 002_melhorias.sql +
-// 003_correcoes_build.sql + 004_regras_categorizacao_e_taxas.sql.
+// Tipos manuais que espelham supabase/schema.sql + migrações 002 a 007.
 // Para gerar automaticamente a partir do teu projeto real, corre:
 //   npx supabase gen types typescript --project-id <ID> > src/types/database.ts
+// (e depois troca o `Database = any` do fim do ficheiro pelo tipo gerado).
 
 export type AccountType = "banco" | "corretora" | "numerario" | "poupanca";
 export type CategoryKind = "receita" | "despesa";
@@ -17,6 +17,9 @@ export interface Account {
   currency: string;
   institution: string | null;
   opening_balance: number;
+  /** Saldo reportado pela DEGIRO na última importação (ponto de reconciliação). */
+  reconciled_balance: number | null;
+  reconciled_at: string | null;
   current_balance: number;
   is_archived: boolean;
   created_at: string;
@@ -55,7 +58,12 @@ export interface Transaction {
 export interface Asset {
   id: string;
   isin: string | null;
+  /** Símbolo Yahoo Finance da listagem escolhida (ex: "SXR8.DE"). */
   symbol: string | null;
+  /** Bolsa de referência da DEGIRO (EAM, XET, NDQ...), quando o CSV a traz. */
+  exchange: string | null;
+  /** Quando o símbolo foi descoberto pela última vez. */
+  symbol_resolved_at: string | null;
   name: string;
   currency: string;
   created_at: string;
@@ -66,6 +74,7 @@ export interface AssetTransaction {
   user_id: string;
   account_id: string;
   asset_id: string;
+  import_id: string | null;
   operation: AssetOperation;
   occurred_on: string;
   occurred_at: string | null;
@@ -73,7 +82,9 @@ export interface AssetTransaction {
   price: number | null;
   local_value: number | null;
   fees: number | null;
+  /** Fluxo de caixa em EUR, COM SINAL (compra < 0, venda > 0). */
   total_value: number;
+  /** Moeda original da operação (o total_value já está convertido para EUR). */
   currency: string | null;
   exchange_rate: number | null;
   description: string | null;
@@ -86,8 +97,14 @@ export interface AssetTransaction {
 
 export interface AssetQuote {
   asset_id: string;
+  /** Preço na moeda da listagem. */
   price: number;
   currency: string;
+  /** Preço convertido para EUR. */
+  price_eur: number | null;
+  previous_close_eur: number | null;
+  /** Variação do dia em %, ex: 1.53 = +1,53%. */
+  change_percent: number | null;
   fetched_at: string;
 }
 
@@ -101,6 +118,9 @@ export interface CsvImport {
   rows_inserted: number;
   rows_duplicated: number;
   rows_failed: number;
+  /** Saldo reportado pela DEGIRO neste ficheiro (usado para repor a reconciliação ao desfazer). */
+  balance: number | null;
+  balance_at: string | null;
   created_at: string;
 }
 
@@ -112,12 +132,14 @@ export interface PortfolioPosition {
   isin: string | null;
   currency: string;
   quantity_held: number;
+  /** Custo das unidades que AINDA tens (média ponderada das compras × quantidade). */
   net_invested: number;
   total_dividends: number;
   /** Comissões pagas neste ativo (embutidas nas compras/vendas + linhas avulsas). */
   total_fees: number;
   /** Data da primeira compra deste ativo, ou null se nunca houve uma. */
   first_purchase_at: string | null;
+  trade_count: number;
 }
 
 export interface NetWorthSnapshot {
@@ -184,6 +206,18 @@ export interface CategoryRule {
   created_at: string;
 }
 
+/** Ativo em observação no Radar. */
+export interface WatchlistItem {
+  id: string;
+  user_id: string;
+  symbol: string;
+  name: string;
+  currency: string;
+  added_price: number | null;
+  added_at: string;
+}
+
+/** Uma linha por chamada: `get_fees_summary` devolve `FeesSummary[]` (usa o primeiro elemento). */
 export interface FeesSummary {
   banking_fees: number;
   investment_fees: number;
@@ -198,6 +232,5 @@ export interface FeeTransactionRow {
 }
 
 // Tipo mínimo compatível com o genérico esperado por @supabase/ssr.
-// Substitui por `supabase gen types` quando ligares a um projeto real.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Database = any;

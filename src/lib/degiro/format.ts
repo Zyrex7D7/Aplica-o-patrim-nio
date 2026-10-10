@@ -15,14 +15,13 @@ export function normalize(text: string): string {
 }
 
 /**
- * Converte um número em formato europeu ("1.234,56" ou "1234,56" ou "-12,3")
- * para um `number` JS. Também aceita formato "americano" (1,234.56) como
- * fallback, caso o ficheiro tenha vindo doutro locale.
+ * Converte um número em formato europeu ("1.234,56", "1234,56", "-12,3" ou
+ * "1.000") para um `number` JS. Também aceita o formato americano (1,234.56).
  */
 export function parseEuroNumber(raw: string | undefined | null): number | null {
   if (raw === undefined || raw === null) return null;
   let s = String(raw).trim();
-  if (s === "" || s === "-" ) return null;
+  if (s === "" || s === "-") return null;
 
   // Remove símbolos de moeda e espaços (incluindo espaços não-separáveis).
   s = s.replace(/[€$£\s\u00A0]/g, "");
@@ -35,17 +34,16 @@ export function parseEuroNumber(raw: string | undefined | null): number | null {
     const lastComma = s.lastIndexOf(",");
     const lastDot = s.lastIndexOf(".");
     if (lastComma > lastDot) {
-      // formato europeu: 1.234,56
-      s = s.replace(/\./g, "").replace(",", ".");
+      s = s.replace(/\./g, "").replace(",", "."); // 1.234,56
     } else {
-      // formato US: 1,234.56
-      s = s.replace(/,/g, "");
+      s = s.replace(/,/g, ""); // 1,234.56
     }
   } else if (hasComma) {
-    // Só vírgula -> assume decimal europeu: 1234,56
-    s = s.replace(",", ".");
+    s = s.replace(",", "."); // 1234,56
+  } else if (hasDot && /^[-+]?[1-9]\d{0,2}(\.\d{3})+$/.test(s)) {
+    // "1.000" / "12.345" / "1.234.567": pontos só como separador de milhares.
+    s = s.replace(/\./g, "");
   }
-  // Só ponto, ou nenhum separador -> já está em formato JS válido.
 
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
@@ -60,7 +58,6 @@ export function parseDegiroDate(raw: string | undefined | null): string | null {
   const s = raw.trim();
   const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
   if (!m) {
-    // já pode vir em ISO
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     return null;
   }
@@ -76,7 +73,7 @@ export function combineDateTime(isoDate: string, time?: string | null): string |
   return `${isoDate}T${t}`;
 }
 
-/** Hash SHA-256 estável (hex) usando a Web Crypto API — funciona em browser, Node 19+ e edge runtime. */
+/** Hash SHA-256 estável (hex) usando a Web Crypto API. */
 export async function sha256Hex(input: string): Promise<string> {
   const data = new TextEncoder().encode(input);
   const digest = await crypto.subtle.digest("SHA-256", data);

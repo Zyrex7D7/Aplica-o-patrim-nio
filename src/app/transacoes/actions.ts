@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { TransactionType } from "@/types/database";
 
+type Result = { error?: string };
+
+const TYPES: TransactionType[] = ["receita", "despesa", "transferencia"];
+
 function parseAmount(raw: FormDataEntryValue | null): number {
   return Number(String(raw ?? "0").replace(",", "."));
 }
@@ -15,55 +19,27 @@ function revalidateTransactionPaths() {
   revalidatePath("/relatorios");
 }
 
-export async function createTransaction(formData: FormData) {
+async function getUser() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado.");
-
-  const type = String(formData.get("type") ?? "despesa") as TransactionType;
-  const amount = parseAmount(formData.get("amount"));
-  const occurredOn = String(formData.get("occurred_on") ?? "");
-  const accountId = String(formData.get("account_id") ?? "");
-  const transferAccountId = String(formData.get("transfer_account_id") ?? "") || null;
-  const categoryId = String(formData.get("category_id") ?? "") || null;
-  const description = String(formData.get("description") ?? "").trim() || null;
-
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error("O valor tem de ser maior que zero.");
-  if (!occurredOn) throw new Error("A data é obrigatória.");
-  if (!accountId) throw new Error("Escolhe a conta de origem/destino.");
-  if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
-    throw new Error("Escolhe uma conta de destino diferente da conta de origem.");
-  }
-
-  const { error } = await supabase.from("transactions").insert({
-    user_id: user.id,
-    type,
-    amount,
-    occurred_on: occurredOn,
-    account_id: accountId,
-    transfer_account_id: type === "transferencia" ? transferAccountId : null,
-    category_id: type === "transferencia" ? null : categoryId,
-    description,
-  });
-
-  if (error) throw new Error(error.message);
-  revalidateTransactionPaths();
+  return { supabase, user };
 }
 
-/** Edita um movimento existente. Devolve { error } em vez de rebentar, para uso em formulários com useTransition. */
-export async function updateTransaction(
-  transactionId: string,
-  formData: FormData
-): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+interface ParsedTransaction {
+  type: TransactionType;
+  amount: number;
+  occurredOn: string;
+  accountId: string;
+  transferAccountId: string | null;
+  categoryId: string | null;
+  description: string | null;
+}
 
-  const type = String(formData.get("type") ?? "despesa") as TransactionType;
+function parseTransactionForm(formData: FormData): { value?: ParsedTransaction; error?: string } {
+  const rawType = String(formData.get("type") ?? "despesa");
+  const type = TYPES.includes(rawType as TransactionType) ? (rawType as TransactionType) : null;
   const amount = parseAmount(formData.get("amount"));
   const occurredOn = String(formData.get("occurred_on") ?? "");
   const accountId = String(formData.get("account_id") ?? "");
@@ -71,23 +47,56 @@ export async function updateTransaction(
   const categoryId = String(formData.get("category_id") ?? "") || null;
   const description = String(formData.get("description") ?? "").trim() || null;
 
+  if (!type) return { error: "Tipo de movimento inválido." };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "O valor tem de ser maior que zero." };
-  if (!occurredOn) return { error: "A data é obrigatória." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(occurredOn)) return { error: "A data é obrigatória." };
   if (!accountId) return { error: "Escolhe a conta de origem/destino." };
   if (type === "transferencia" && (!transferAccountId || transferAccountId === accountId)) {
     return { error: "Escolhe uma conta de destino diferente da conta de origem." };
   }
+  return { value: { type, amount, occurredOn, accountId, transferAccountId, categoryId, description } };
+}
+
+export async function createTransaction(formData: FormData): Promise<Result> {
+  const { supabase, user } = await getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { value: v, error: validation } = parseTransactionForm(formData);
+  if (!v) return { error: validation };
+
+  const { error } = await supabase.from("transactions").insert({
+    user_id: user.id,
+    type: v.type,
+    amount: v.amount,
+    occurred_on: v.occurredOn,
+    account_id: v.accountId,
+    transfer_account_id: v.type === "transferencia" ? v.transferAccountId : null,
+    category_id: v.type === "transferencia" ? null : v.categoryId,
+    description: v.description,
+  });
+
+  if (error) return { error: error.message };
+  revalidateTransactionPaths();
+  return {};
+}
+
+export async function updateTransaction(transactionId: string, formData: FormData): Promise<Result> {
+  const { supabase, user } = await getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { value: v, error: validation } = parseTransactionForm(formData);
+  if (!v) return { error: validation };
 
   const { error } = await supabase
     .from("transactions")
     .update({
-      type,
-      amount,
-      occurred_on: occurredOn,
-      account_id: accountId,
-      transfer_account_id: type === "transferencia" ? transferAccountId : null,
-      category_id: type === "transferencia" ? null : categoryId,
-      description,
+      type: v.type,
+      amount: v.amount,
+      occurred_on: v.occurredOn,
+      account_id: v.accountId,
+      transfer_account_id: v.type === "transferencia" ? v.transferAccountId : null,
+      category_id: v.type === "transferencia" ? null : v.categoryId,
+      description: v.description,
     })
     .eq("id", transactionId)
     .eq("user_id", user.id);
@@ -97,46 +106,38 @@ export async function updateTransaction(
   return {};
 }
 
-export async function deleteTransaction(transactionId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("transactions").delete().eq("id", transactionId);
-  if (error) throw new Error(error.message);
+export async function deleteTransaction(transactionId: string): Promise<Result> {
+  const { supabase, user } = await getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase.from("transactions").delete().eq("id", transactionId).eq("user_id", user.id);
+  if (error) return { error: error.message };
   revalidateTransactionPaths();
+  return {};
 }
 
-export async function createCategory(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado.");
+export async function createCategory(formData: FormData): Promise<Result> {
+  const { supabase, user } = await getUser();
+  if (!user) return { error: "Não autenticado." };
 
   const name = String(formData.get("name") ?? "").trim();
-  const kind = String(formData.get("kind") ?? "despesa") as "receita" | "despesa";
+  const kind = String(formData.get("kind") ?? "despesa");
   const color = String(formData.get("color") ?? "#8B93A1");
 
-  if (!name) throw new Error("O nome da categoria é obrigatório.");
+  if (!name) return { error: "O nome da categoria é obrigatório." };
+  if (kind !== "receita" && kind !== "despesa") return { error: "Tipo de categoria inválido." };
 
-  const { error } = await supabase.from("categories").insert({
-    user_id: user.id,
-    name,
-    kind,
-    color,
-  });
-
-  if (error) throw new Error(error.message);
+  const { error } = await supabase.from("categories").insert({ user_id: user.id, name, kind, color });
+  if (error) {
+    return { error: error.code === "23505" ? "Já existe uma categoria com esse nome." : error.message };
+  }
   revalidatePath("/transacoes");
+  return {};
 }
 
-/** Edita nome, cor e a exclusão dos Relatórios de uma categoria existente. */
-export async function updateCategory(
-  categoryId: string,
-  formData: FormData
-): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/** Edita nome, cor, exclusão dos Relatórios e marca de comissão/taxa de uma categoria. */
+export async function updateCategory(categoryId: string, formData: FormData): Promise<Result> {
+  const { supabase, user } = await getUser();
   if (!user) return { error: "Não autenticado." };
 
   const name = String(formData.get("name") ?? "").trim();
@@ -159,16 +160,9 @@ export async function updateCategory(
   return {};
 }
 
-/**
- * Apaga uma categoria. As transações que a usavam ficam "Sem categoria"
- * (category_id passa a null via `on delete set null` no schema), nunca são
- * apagadas.
- */
-export async function deleteCategory(categoryId: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/** Apaga uma categoria; os movimentos que a usavam ficam "Sem categoria" (nunca são apagados). */
+export async function deleteCategory(categoryId: string): Promise<Result> {
+  const { supabase, user } = await getUser();
   if (!user) return { error: "Não autenticado." };
 
   const { error } = await supabase.from("categories").delete().eq("id", categoryId).eq("user_id", user.id);
@@ -179,16 +173,8 @@ export async function deleteCategory(categoryId: string): Promise<{ error?: stri
   return {};
 }
 
-/**
- * Cria uma regra de categorização automática: sempre que "keyword" aparecer
- * na descrição de um movimento, a categoria é sugerida automaticamente
- * (ver função SQL `suggest_category`, chamada a partir do formulário).
- */
-export async function createCategoryRule(formData: FormData): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function createCategoryRule(formData: FormData): Promise<Result> {
+  const { supabase, user } = await getUser();
   if (!user) return { error: "Não autenticado." };
 
   const keyword = String(formData.get("keyword") ?? "").trim();
@@ -197,26 +183,19 @@ export async function createCategoryRule(formData: FormData): Promise<{ error?: 
   if (!keyword) return { error: "Escreve uma palavra-chave (ex: 'continente', 'netflix')." };
   if (!categoryId) return { error: "Escolhe a categoria a sugerir." };
 
-  const { error } = await supabase.from("category_rules").insert({
-    user_id: user.id,
-    keyword: keyword.toLowerCase(),
-    category_id: categoryId,
-  });
+  const { error } = await supabase
+    .from("category_rules")
+    .insert({ user_id: user.id, keyword: keyword.toLowerCase(), category_id: categoryId });
 
   if (error) {
-    return {
-      error: error.code === "23505" ? "Já existe uma regra com essa palavra-chave." : error.message,
-    };
+    return { error: error.code === "23505" ? "Já existe uma regra com essa palavra-chave." : error.message };
   }
   revalidatePath("/transacoes");
   return {};
 }
 
-export async function deleteCategoryRule(ruleId: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function deleteCategoryRule(ruleId: string): Promise<Result> {
+  const { supabase, user } = await getUser();
   if (!user) return { error: "Não autenticado." };
 
   const { error } = await supabase.from("category_rules").delete().eq("id", ruleId).eq("user_id", user.id);

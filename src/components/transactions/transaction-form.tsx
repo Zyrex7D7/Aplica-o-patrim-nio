@@ -4,9 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createTransaction } from "@/app/transacoes/actions";
 import { createClient } from "@/lib/supabase/client";
+import { todayLocalISO } from "@/lib/dates";
 import type { Account, Category } from "@/types/database";
-
-const TODAY = new Date().toISOString().slice(0, 10);
 
 export function TransactionForm({
   accounts,
@@ -22,10 +21,8 @@ export function TransactionForm({
 
   const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
 
-  // Sempre que o utilizador sai do campo de descrição, pergunta à base de
-  // dados (função `suggest_category`, criada em 004_regras_categorizacao_e_taxas.sql)
-  // se alguma regra corresponde ao texto, e pré-seleciona essa categoria.
-  // O utilizador pode sempre mudar antes de guardar — isto é só um atalho.
+  // Ao sair do campo de descrição, pergunta à base de dados se alguma regra do utilizador
+  // corresponde ao texto e pré-seleciona essa categoria (continua editável).
   async function handleDescriptionBlur(description: string) {
     const text = description.trim();
     if (!text) return;
@@ -37,28 +34,27 @@ export function TransactionForm({
     }
   }
 
-  async function action(formData: FormData) {
+  // onSubmit (e não <form action>) para o React não limpar os campos antes de sabermos
+  // se a gravação correu bem: se falhar, o que escreveste fica lá.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     startTransition(async () => {
-      try {
-        await createTransaction(formData);
-        formRef.current?.reset();
-        setType("despesa");
-        setSuggestedCategoryId("");
-        toast.success("Movimento registado.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao registar movimento.");
+      const result = await createTransaction(formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
       }
+      form.reset();
+      setType("despesa");
+      setSuggestedCategoryId("");
+      toast.success("Movimento registado.");
     });
   }
 
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-3">
-      {/*
-        grid-cols-3 (em vez de flex + flex-1) garante que as 3 opções
-        ocupam sempre exatamente um terço da largura cada, sem nunca
-        esticar a linha para fora do cartão. Em ecrãs pequenos mostra-se
-        "Transf." em vez de "Transferência" para o texto caber sem cortar.
-      */}
+    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2">
         {(["despesa", "receita", "transferencia"] as const).map((t) => (
           <label
@@ -104,7 +100,8 @@ export function TransactionForm({
           name="occurred_on"
           type="date"
           required
-          defaultValue={TODAY}
+          defaultValue={todayLocalISO()}
+          suppressHydrationWarning
           className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
         />
         <select

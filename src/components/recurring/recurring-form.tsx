@@ -1,11 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createRecurringTransaction } from "@/app/recorrentes/actions";
+import { todayLocalISO } from "@/lib/dates";
 import type { Account, Category } from "@/types/database";
-
-const TODAY = new Date().toISOString().slice(0, 10);
 
 export function RecurringForm({
   accounts,
@@ -14,33 +13,29 @@ export function RecurringForm({
   accounts: Account[];
   categories: Category[];
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
   const [type, setType] = useState<"receita" | "despesa" | "transferencia">("despesa");
   const [isPending, startTransition] = useTransition();
 
   const filteredCategories = categories.filter((c) => c.kind === (type === "receita" ? "receita" : "despesa"));
 
-  async function action(formData: FormData) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     startTransition(async () => {
       const result = await createRecurringTransaction(formData);
       if (result.error) {
         toast.error(result.error);
         return;
       }
-      formRef.current?.reset();
+      form.reset();
       setType("despesa");
       toast.success("Recorrência criada.");
     });
   }
 
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-3">
-      {/*
-        grid-cols-3 (em vez de flex + flex-1) garante que as 3 opções
-        ocupam sempre exatamente um terço da largura cada, sem nunca
-        esticar a linha para fora do cartão. Em ecrãs pequenos mostra-se
-        "Transf." em vez de "Transferência" para o texto caber sem cortar.
-      */}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2">
         {(["despesa", "receita", "transferencia"] as const).map((t) => (
           <label
@@ -149,7 +144,8 @@ export function RecurringForm({
           name="start_date"
           type="date"
           required
-          defaultValue={TODAY}
+          defaultValue={todayLocalISO()}
+          suppressHydrationWarning
           className="rounded-md border border-line bg-surface-alt px-3 py-2 text-sm outline-none focus:border-gold tabular"
         />
         <input

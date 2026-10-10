@@ -1,29 +1,31 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useTransition } from "react";
 import { toast } from "sonner";
 import { upsertBudget } from "@/app/relatorios/actions";
 import type { Category } from "@/types/database";
 
 export function BudgetForm({ categories }: { categories: Category[] }) {
-  const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
-  const expenseCategories = categories.filter((c) => c.kind === "despesa");
+  const expenseCategories = categories.filter((c) => c.kind === "despesa" && !c.exclude_from_reports);
 
-  async function action(formData: FormData) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     startTransition(async () => {
       const result = await upsertBudget(formData);
       if (result.error) {
         toast.error(result.error);
         return;
       }
-      formRef.current?.reset();
+      form.reset();
       toast.success("Orçamento guardado.");
     });
   }
 
   return (
-    <form ref={formRef} action={action} className="flex flex-col sm:flex-row gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
       <select
         name="category_id"
         required

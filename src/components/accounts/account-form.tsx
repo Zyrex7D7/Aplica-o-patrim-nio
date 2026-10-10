@@ -1,27 +1,29 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useTransition } from "react";
 import { createAccount } from "@/app/contas/actions";
 import { toast } from "sonner";
 
 export function AccountForm() {
-  const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
 
-  async function action(formData: FormData) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     startTransition(async () => {
-      try {
-        await createAccount(formData);
-        formRef.current?.reset();
-        toast.success("Conta criada.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao criar conta.");
+      const result = await createAccount(formData);
+      if (result.error) {
+        toast.error(result.error);
+        return;
       }
+      form.reset();
+      toast.success("Conta criada.");
     });
   }
 
   return (
-    <form ref={formRef} action={action} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       <input
         name="name"
         required

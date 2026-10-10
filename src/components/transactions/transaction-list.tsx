@@ -38,9 +38,9 @@ export function TransactionList({
     const cat = t.category_id ? categoryById.get(t.category_id) : null;
     return {
       ...t,
-      accountName: accountById.get(t.account_id)?.name ?? "—",
+      accountName: accountById.get(t.account_id)?.name ?? "Conta arquivada",
       transferAccountName: t.transfer_account_id
-        ? accountById.get(t.transfer_account_id)?.name ?? "—"
+        ? accountById.get(t.transfer_account_id)?.name ?? "Conta arquivada"
         : null,
       categoryName: cat?.name ?? null,
       categoryColor: cat?.color ?? null,
@@ -52,7 +52,6 @@ export function TransactionList({
     return <p className="text-sm text-text-muted py-6 text-center">Nenhum movimento encontrado.</p>;
   }
 
-  // Agrupa por mês (assume que `rows` já vem ordenado por data decrescente).
   const groups: { label: string; rows: Row[] }[] = [];
   for (const row of rows) {
     const label = monthLabel(row.occurred_on);
@@ -110,12 +109,9 @@ function TransactionRow({
   function handleDelete() {
     if (!confirm("Eliminar este movimento?")) return;
     startTransition(async () => {
-      try {
-        await deleteTransaction(row.id);
-        toast.success("Movimento eliminado.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao eliminar movimento.");
-      }
+      const result = await deleteTransaction(row.id);
+      if (result.error) toast.error(result.error);
+      else toast.success("Movimento eliminado.");
     });
   }
 
@@ -160,6 +156,7 @@ function TransactionRow({
         disabled={isPending}
         className="text-text-faint hover:text-loss transition-colors disabled:opacity-50 shrink-0"
         title="Eliminar"
+        aria-label="Eliminar movimento"
       >
         <Trash2 size={14} strokeWidth={1.75} />
       </button>

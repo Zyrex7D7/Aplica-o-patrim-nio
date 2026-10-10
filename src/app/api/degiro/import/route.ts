@@ -10,16 +10,16 @@ export const maxDuration = 60;
  * POST /api/degiro/import
  * Body: { csvText: string, fileName: string, accountId: string }
  *
- * 1. Faz parse do CSV no servidor.
- * 2. Identifica cada ativo pelo ISIN (e pela bolsa da DEGIRO, quando o CSV a traz).
- * 3. Converte para EUR os valores em moeda estrangeira (ex: ações em USD), usando
- *    o câmbio do próprio CSV ou, na falta dele, o câmbio histórico do dia.
- * 4. Cria a linha em csv_imports ANTES das transações (a foreign key exige).
- * 5. Insere as transações (ignora duplicados) e reconcilia o saldo da conta.
- * 6. Atualiza automaticamente as cotações de todos os ativos.
+ * 1. Parse do CSV no servidor.
+ * 2. Converte para EUR os valores em moeda estrangeira (câmbio do CSV ou histórico do dia).
+ *    Se o câmbio não estiver disponível, ABORTA sem gravar nada (nunca grava dólares como euros).
+ * 3. Garante os ativos (por ISIN) e a bolsa de referência da DEGIRO.
+ * 4. Grava importação + transações + saldo reconciliado NUMA SÓ TRANSAÇÃO (RPC import_asset_transactions).
+ * 5. Atualiza as cotações automaticamente.
  */
 
-/** Lê a bolsa de referência da DEGIRO a partir da linha crua do CSV, se existir. */
+class FxUnavailableError extends Error {}
+
 function exchangeFromRaw(raw: Record<string, string>): string | null {
   const names = ["bolsa de referencia", "reference exchange", "bolsa de valores"];
   for (const [header, value] of Object.entries(raw)) {
@@ -41,11 +41,12 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const { csvText, fileName, accountId } = body ?? {};
-  if (!csvText || !fileName || !accountId) {
-    return NextResponse.json(
-      { error: "Faltam campos obrigatórios: csvText, fileName, accountId." },
-      { status: 400 }
-    );
+  if (
+    typeof csvText !== "string" || !csvText ||
+    typeof fileName !== "string" || !fileName ||
+    typeof accountId !== "string" || !accountId
+  ) {
+    return NextResponse.json({ error: "Faltam campos obrigatórios: csvText, fileName, accountId." }, { status: 400 });
   }
 
   const userId = auth.user.id;
@@ -67,7 +68,6 @@ export async function POST(req: NextRequest) {
   }
 
   const parsed = await parseDegiroCsv(csvText);
-
   if (parsed.rows.length === 0) {
     return NextResponse.json(
       { error: "Não foi possível extrair nenhuma transação válida do ficheiro.", warnings: parsed.warnings },
@@ -77,12 +77,49 @@ export async function POST(req: NextRequest) {
 
   const warnings = [...parsed.warnings];
 
-  // --- 1. Ativos (por ISIN; fallback pelo nome do produto) ----------------
+  // --- 1. Conversão para EUR (antes de gravar seja o que for) -------------
+  const histCache = new Map<string, number | null>();
+  async function histFx(currency: string, date: string): Promise<number | null> {
+    const key = `${currency}|${date}`;
+    if (!histCache.has(key)) histCache.set(key, await getHistoricalFxToEur(currency, date));
+    return histCache.get(key) ?? null;
+  }
+
+  /** O câmbio do CSV vem na convenção da DEGIRO (moeda por 1 EUR) ou invertido; o histórico decide. */
+  async function amountToEur(amount: number, currency: string, csvRate: number | null, date: string): Promise<number> {
+    if (!currency || currency === "EUR" || amount === 0) return amount;
+    const hist = await histFx(currency, date); // EUR por 1 unidade da moeda
+
+    if (csvRate && csvRate > 0) {
+      if (hist) {
+        if (Math.abs(csvRate / hist - 1) < 0.08) return amount * csvRate;
+        if (Math.abs(1 / csvRate / hist - 1) < 0.08) return amount / csvRate;
+      } else {
+        return amount / csvRate;
+      }
+    }
+    if (hist) return amount * hist;
+    throw new FxUnavailableError(`Não foi possível obter o câmbio ${currency}/EUR de ${date}.`);
+  }
+
+  const converted: number[] = [];
+  try {
+    for (const row of parsed.rows) {
+      converted.push(await amountToEur(row.totalValue, row.currency, row.exchangeRate, row.date));
+    }
+  } catch (err) {
+    if (err instanceof FxUnavailableError) {
+      return NextResponse.json(
+        { error: `${err.message} O Yahoo Finance pode estar indisponível — tenta novamente dentro de uns minutos. Nada foi gravado.` },
+        { status: 503 }
+      );
+    }
+    throw err;
+  }
+
+  // --- 2. Ativos (por ISIN; fallback pelo nome) ----------------------------
   const assetIdByKey = new Map<string, string>();
-  const uniqueAssets = new Map<
-    string,
-    { isin: string | null; name: string; currency: string; exchange: string | null }
-  >();
+  const uniqueAssets = new Map<string, { isin: string | null; name: string; currency: string; exchange: string | null }>();
   for (const row of parsed.rows) {
     const key = row.isin ?? `name:${row.product}`;
     const exchange = exchangeFromRaw(row.raw);
@@ -113,130 +150,62 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insertErr) {
-      const { data: fallback } = await supabase
-        .from("assets")
-        .select("id")
-        .eq("isin", asset.isin ?? "")
-        .maybeSingle();
+      const { data: fallback } = await supabase.from("assets").select("id").eq("isin", asset.isin ?? "").maybeSingle();
       if (fallback) assetIdByKey.set(key, fallback.id);
       continue;
     }
     assetIdByKey.set(key, inserted.id);
   }
 
-  // --- 2. Conversão para EUR de valores em moeda estrangeira --------------
-  const histCache = new Map<string, number | null>();
-  async function histFx(currency: string, date: string): Promise<number | null> {
-    const key = `${currency}|${date}`;
-    if (!histCache.has(key)) histCache.set(key, await getHistoricalFxToEur(currency, date));
-    return histCache.get(key) ?? null;
-  }
-
-  /** O câmbio do CSV vem na convenção da DEGIRO (moeda por 1 EUR) ou invertido; o histórico decide. */
-  async function amountToEur(amount: number, currency: string, csvRate: number | null, date: string): Promise<number> {
-    if (!currency || currency === "EUR" || amount === 0) return amount;
-    const hist = await histFx(currency, date); // EUR por 1 unidade da moeda
-
-    if (csvRate && csvRate > 0) {
-      if (hist) {
-        if (Math.abs(csvRate / hist - 1) < 0.08) return amount * csvRate;
-        if (Math.abs(1 / csvRate / hist - 1) < 0.08) return amount / csvRate;
-      } else {
-        return amount / csvRate;
-      }
-    }
-    if (hist) return amount * hist;
-
-    warnings.push(`Sem câmbio para converter ${currency} em ${date}; valor mantido sem conversão.`);
-    return amount;
-  }
-
-  const rowsToInsert = [];
-  for (const row of parsed.rows) {
-    const key = row.isin ?? `name:${row.product}`;
-    const totalEur = await amountToEur(row.totalValue, row.currency, row.exchangeRate, row.date);
-    rowsToInsert.push({
-      user_id: userId,
-      account_id: accountId,
-      asset_id: assetIdByKey.get(key)!,
-      operation: row.operation,
-      occurred_on: row.date,
-      occurred_at: row.datetime,
-      quantity: row.quantity,
-      price: row.price,
-      local_value: row.localValue,
-      fees: row.fees,
-      total_value: totalEur, // sempre em EUR
-      currency: row.currency, // moeda original da operação
-      exchange_rate: row.exchangeRate,
-      description: row.description,
-      order_id: row.orderId,
-      source_hash: row.sourceHash,
-      source: "degiro",
-      raw_row: row.raw,
-    });
-  }
-
-  // --- 3. Importação PRIMEIRO (a FK exige), depois as transações ----------
-  const { data: importRow, error: importInsertError } = await supabase
-    .from("csv_imports")
-    .insert({
-      user_id: userId,
-      account_id: accountId,
-      file_name: fileName,
-      file_hash: fileHash,
-      rows_total: parsed.rows.length,
-      rows_inserted: 0,
-      rows_duplicated: 0,
-      rows_failed: parsed.skipped,
-    })
-    .select("id")
-    .single();
-
-  if (importInsertError || !importRow) {
+  const missing = [...uniqueAssets.entries()].filter(([key]) => !assetIdByKey.has(key)).map(([, a]) => a.name);
+  if (missing.length > 0) {
     return NextResponse.json(
-      { error: importInsertError?.message ?? "Falha ao registar a importação." },
+      { error: `Não foi possível registar o(s) ativo(s): ${missing.join(", ")}. Nada foi gravado.` },
       { status: 500 }
     );
   }
 
-  const importId = importRow.id;
-  const withImport = rowsToInsert.map((r) => ({ ...r, import_id: importId }));
+  // --- 3. Importação atómica ----------------------------------------------
+  const payload = parsed.rows.map((row, i) => ({
+    asset_id: assetIdByKey.get(row.isin ?? `name:${row.product}`),
+    operation: row.operation,
+    occurred_on: row.date,
+    occurred_at: row.datetime,
+    quantity: row.quantity,
+    price: row.price,
+    local_value: row.localValue,
+    fees: row.fees,
+    total_value: converted[i], // sempre em EUR
+    currency: row.currency, // moeda original da operação
+    exchange_rate: row.exchangeRate,
+    description: row.description,
+    order_id: row.orderId,
+    source_hash: row.sourceHash,
+    raw_row: row.raw,
+  }));
 
-  const { data: insertedRows, error: insertError } = await supabase
-    .from("asset_transactions")
-    .upsert(withImport, { onConflict: "user_id,source_hash", ignoreDuplicates: true })
-    .select("id");
+  const { data: result, error: rpcError } = await supabase.rpc("import_asset_transactions", {
+    p_account_id: accountId,
+    p_file_name: fileName,
+    p_file_hash: fileHash,
+    p_rows_failed: parsed.skipped,
+    p_rows: payload,
+    p_balance: parsed.latestBalance?.balance ?? null,
+    p_balance_at: parsed.latestBalance?.occurredAt ?? null,
+  });
 
-  if (insertError) {
-    await supabase.from("csv_imports").delete().eq("id", importId);
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
-  }
-
-  const rowsInserted = insertedRows?.length ?? 0;
-  const rowsDuplicated = withImport.length - rowsInserted;
-
-  await supabase
-    .from("csv_imports")
-    .update({ rows_inserted: rowsInserted, rows_duplicated: rowsDuplicated })
-    .eq("id", importId);
-
-  // --- 4. Reconcilia o saldo livre com o "Saldo" reportado pela DEGIRO ----
-  let reconciledBalance: { balance: number; at: string } | null = null;
-  if (parsed.latestBalance) {
-    const { error: reconcileError } = await supabase.rpc("reconcile_account_balance", {
-      p_account_id: accountId,
-      p_balance: parsed.latestBalance.balance,
-      p_at: parsed.latestBalance.occurredAt,
-    });
-    if (reconcileError) {
-      console.error("Falha ao reconciliar saldo da conta:", reconcileError.message);
-    } else {
-      reconciledBalance = { balance: parsed.latestBalance.balance, at: parsed.latestBalance.occurredAt };
+  if (rpcError) {
+    if (rpcError.code === "23505") {
+      // importado em simultâneo por outro pedido
+      return NextResponse.json({ alreadyImported: true, message: "Este ficheiro já foi importado." });
     }
+    return NextResponse.json({ error: rpcError.message }, { status: rpcError.code === "42501" ? 403 : 500 });
   }
 
-  // --- 5. Atualiza as cotações automaticamente ----------------------------
+  const rowsInserted: number = result?.rows_inserted ?? 0;
+  const rowsDuplicated: number = result?.rows_duplicated ?? 0;
+
+  // --- 4. Cotações automáticas --------------------------------------------
   const quotes = await refreshQuotes(supabase, userId);
   if (quotes.failed > 0) {
     warnings.push(`${quotes.failed} ativo(s) sem cotação — carrega em "Atualizar cotações" para tentar de novo.`);
@@ -250,7 +219,9 @@ export async function POST(req: NextRequest) {
     rowsDuplicated,
     rowsSkipped: parsed.skipped,
     warnings,
-    reconciledBalance,
+    reconciledBalance: parsed.latestBalance
+      ? { balance: parsed.latestBalance.balance, at: parsed.latestBalance.occurredAt }
+      : null,
     quotesUpdated: quotes.updated,
   });
 }
