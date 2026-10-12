@@ -20,13 +20,16 @@ export interface NetWorthBreakdown {
   portfolioValue: number;
   portfolioCost: number;
   portfolioPnl: number;
-  /** Soma dos dividendos recebidos em todas as posições. */
+  /** Dividendos recebidos e comissões/taxas pagas em TODAS as posições (também as já vendidas). */
   totalDividends: number;
+  totalFees: number;
   /** Variação do dia do portefólio inteiro, em EUR e em fração. */
   dayChangeEur: number;
   dayChangePct: number;
   /** Momento da cotação mais recente, ou null se nunca foram atualizadas. */
   lastQuoteAt: string | null;
+  /** Hora do último preço de mercado: a sessão a que a variação diária diz respeito. */
+  lastSessionAt: string | null;
   accounts: Account[];
   positions: EnrichedPosition[];
 }
@@ -37,6 +40,7 @@ interface QuoteRow {
   currency: string;
   price_eur: number | null;
   previous_close_eur: number | null;
+  market_time: string | null;
   fetched_at: string;
 }
 
@@ -72,7 +76,9 @@ export async function getNetWorthBreakdown(
 
   const portfolioValue = enrichedPositions.reduce((sum, p) => sum + p.marketValue, 0);
   const portfolioCost = activePositions.reduce((sum: number, p: PortfolioPosition) => sum + p.net_invested, 0);
-  const totalDividends = enrichedPositions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+  const allPositions: PortfolioPosition[] = positions ?? [];
+  const totalDividends = allPositions.reduce((sum, p) => sum + Number(p.total_dividends), 0);
+  const totalFees = allPositions.reduce((sum, p) => sum + Number(p.total_fees), 0);
 
   const dayChangeEur = enrichedPositions.reduce((sum, p) => sum + (p.dayChangeEur ?? 0), 0);
   const valueYesterday = portfolioValue - dayChangeEur;
@@ -81,6 +87,12 @@ export async function getNetWorthBreakdown(
   const lastQuoteAt =
     (quotes ?? []).reduce<string | null>(
       (latest, q: QuoteRow) => (!latest || q.fetched_at > latest ? q.fetched_at : latest),
+      null
+    ) ?? null;
+
+  const lastSessionAt =
+    (quotes ?? []).reduce<string | null>(
+      (latest, q: QuoteRow) => (q.market_time && (!latest || q.market_time > latest) ? q.market_time : latest),
       null
     ) ?? null;
 
@@ -103,9 +115,11 @@ export async function getNetWorthBreakdown(
     portfolioCost,
     portfolioPnl: portfolioValue - portfolioCost,
     totalDividends,
+    totalFees,
     dayChangeEur,
     dayChangePct,
     lastQuoteAt,
+    lastSessionAt,
     accounts: accountsList,
     positions: enrichedPositions,
   };

@@ -3,6 +3,7 @@ import "./globals.css";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { MobileHeader } from "@/components/mobile-header";
 import { BottomNav } from "@/components/bottom-nav";
+import { QuickAddFab } from "@/components/transactions/quick-add-fab";
 import { RegisterServiceWorker } from "@/components/register-sw";
 import { getHeaderSummary } from "@/lib/data/header-summary";
 import { Toaster } from "sonner";
@@ -35,6 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
         <MobileHeader summary={summary} />
         <BottomNav />
+        <QuickAddFab />
         <RegisterServiceWorker />
         <Toaster theme="dark" position="top-center" richColors />
       </body>

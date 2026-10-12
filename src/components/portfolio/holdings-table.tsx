@@ -104,7 +104,8 @@ export function HoldingsTable({
           <ul className="flex flex-col gap-3">
             {open.map((p) => {
               const pnl = p.marketValue - p.net_invested;
-              const totalReturn = pnl + p.total_dividends;
+              // igual ao "L/P total" da DEGIRO: não realizado + dividendos − comissões
+              const totalReturn = pnl + p.total_dividends - p.total_fees;
               const totalPct = p.net_invested !== 0 ? totalReturn / Math.abs(p.net_invested) : 0;
               const t = shortTicker(p.symbol, p.name);
               return (

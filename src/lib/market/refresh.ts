@@ -77,6 +77,7 @@ export async function refreshQuotes(
           price_eur: quote.priceEur,
           previous_close_eur: quote.previousCloseEur,
           change_percent: quote.changePercent,
+          market_time: quote.marketTime,
           fetched_at: nowIso,
         },
       };

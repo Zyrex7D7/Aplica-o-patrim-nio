@@ -21,7 +21,8 @@ export async function getHeaderSummary(): Promise<HeaderSummary | null> {
       hasQuotes: b.lastQuoteAt !== null && b.positions.some((p) => p.dayChangeEur !== null),
       dayChangeEur: b.dayChangeEur,
       dayChangePct: b.dayChangePct,
-      lastQuoteAt: b.lastQuoteAt,
+      // data da SESSÃO de mercado (não a da atualização), para o topo dizer a verdade
+      lastQuoteAt: b.lastSessionAt ?? b.lastQuoteAt,
       marketOpen: isMarketOpen(),
     };
   } catch {

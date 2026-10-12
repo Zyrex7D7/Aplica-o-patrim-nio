@@ -31,13 +31,14 @@ export default async function PortfolioPage() {
 
   const brokerAccounts: Account[] = (accounts ?? []).filter((a: Account) => a.type === "corretora");
   const freeCash = brokerAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
-  const totalFees = b.positions.reduce((sum, p) => sum + Number(p.total_fees), 0);
+  const totalFees = b.totalFees; // inclui comissões de posições já vendidas e custos de conectividade
 
   const realized = (realizedRows ?? []) as RealizedPnlRow[];
   const realizedById = new Map(realized.map((r) => [r.asset_id, Number(r.realized_pnl)]));
   const totalRealized = realized.reduce((s, r) => s + Number(r.realized_pnl), 0);
 
-  const closed: ClosedRow[] = (closedPositions ?? []).map(
+  // sem ISIN = linha agregadora de custos da plataforma (conectividade), não é uma posição
+  const closed: ClosedRow[] = (closedPositions ?? []).filter((p: { isin: string | null }) => !!p.isin).map(
     (p: { asset_id: string; name: string; symbol: string | null; total_dividends: number }) => ({
       asset_id: p.asset_id,
       name: p.name,

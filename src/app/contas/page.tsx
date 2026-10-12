@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { getNetWorthBreakdown } from "@/lib/data/net-worth";
+import { getInvestedByAccount } from "@/lib/data/account-values";
 import { AccountForm } from "@/components/accounts/account-form";
 import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
+import { DeleteAccountButton } from "@/components/accounts/delete-account-button";
 import { EditAccountDialog } from "@/components/accounts/edit-account-dialog";
 import { Card, CardLabel } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
@@ -19,16 +22,28 @@ export default async function ContasPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("user_id", user!.id)
-    .eq("is_archived", false)
-    .order("type")
-    .order("name");
+  const [{ data: accounts }, breakdown] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("*")
+      .eq("user_id", user!.id)
+      .eq("is_archived", false)
+      .order("type")
+      .order("name"),
+    getNetWorthBreakdown(supabase, user!.id),
+  ]);
 
   const list: Account[] = accounts ?? [];
-  const total = list.reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const brokerIds = list.filter((a) => a.type === "corretora").map((a) => a.id);
+  const investedByAccount = await getInvestedByAccount(supabase, user!.id, brokerIds, breakdown.positions);
+
+  // Corretora = tudo o que tens lá: ações/ETFs ao preço atual + saldo livre à espera de investir.
+  const rows = list.map((a) => {
+    const invested = investedByAccount.get(a.id) ?? 0;
+    const cash = Number(a.current_balance);
+    return { account: a, invested, cash, total: cash + invested };
+  });
+  const total = rows.reduce((sum, r) => sum + r.total, 0);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
@@ -56,30 +71,36 @@ export default async function ContasPage() {
           </span>
         </div>
 
-        {list.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="text-sm text-text-muted py-6 text-center">
             Ainda não tens contas. Cria a primeira acima.
           </p>
         ) : (
           <ul className="flex flex-col">
-            {list.map((a) => (
+            {rows.map(({ account: a, invested, cash, total: accountTotal }) => (
               <li
                 key={a.id}
-                className="flex items-center justify-between py-3 border-b border-line-soft last:border-0"
+                className="flex items-center justify-between gap-3 py-3 border-b border-line-soft last:border-0"
               >
-                <div>
-                  <p className="text-sm text-text">{a.name}</p>
+                <div className="min-w-0">
+                  <p className="text-sm text-text truncate">{a.name}</p>
                   <p className="text-xs text-text-faint mt-0.5">
                     {TYPE_LABEL[a.type]}
                     {a.institution ? ` · ${a.institution}` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="tabular text-sm text-text">
-                    {formatCurrency(Number(a.current_balance), a.currency)}
-                  </span>
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="text-right">
+                    <span className="tabular text-sm text-text">{formatCurrency(accountTotal, a.currency)}</span>
+                    {a.type === "corretora" && (
+                      <p className="text-[11px] text-text-faint tabular mt-0.5">
+                        {formatCurrency(invested)} investido · {formatCurrency(cash)} livre
+                      </p>
+                    )}
+                  </div>
                   <EditAccountDialog account={a} />
                   <ArchiveAccountButton accountId={a.id} />
+                  <DeleteAccountButton accountId={a.id} accountName={a.name} />
                 </div>
               </li>
             ))}

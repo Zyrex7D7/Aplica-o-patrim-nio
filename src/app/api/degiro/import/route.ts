@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hashFileContent, parseDegiroCsv } from "@/lib/degiro/parser";
 import { getHistoricalFxToEur } from "@/lib/market/quotes";
+import { convertRowsToEur, FxUnavailableError } from "@/lib/degiro/convert";
 import { refreshQuotes } from "@/lib/market/refresh";
 
 export const maxDuration = 60;
@@ -17,8 +18,6 @@ export const maxDuration = 60;
  * 4. Grava importação + transações + saldo reconciliado NUMA SÓ TRANSAÇÃO (RPC import_asset_transactions).
  * 5. Atualiza as cotações automaticamente.
  */
-
-class FxUnavailableError extends Error {}
 
 function exchangeFromRaw(raw: Record<string, string>): string | null {
   const names = ["bolsa de referencia", "reference exchange", "bolsa de valores"];
@@ -85,28 +84,9 @@ export async function POST(req: NextRequest) {
     return histCache.get(key) ?? null;
   }
 
-  /** O câmbio do CSV vem na convenção da DEGIRO (moeda por 1 EUR) ou invertido; o histórico decide. */
-  async function amountToEur(amount: number, currency: string, csvRate: number | null, date: string): Promise<number> {
-    if (!currency || currency === "EUR" || amount === 0) return amount;
-    const hist = await histFx(currency, date); // EUR por 1 unidade da moeda
-
-    if (csvRate && csvRate > 0) {
-      if (hist) {
-        if (Math.abs(csvRate / hist - 1) < 0.08) return amount * csvRate;
-        if (Math.abs(1 / csvRate / hist - 1) < 0.08) return amount / csvRate;
-      } else {
-        return amount / csvRate;
-      }
-    }
-    if (hist) return amount * hist;
-    throw new FxUnavailableError(`Não foi possível obter o câmbio ${currency}/EUR de ${date}.`);
-  }
-
-  const converted: number[] = [];
+  let converted: number[] = [];
   try {
-    for (const row of parsed.rows) {
-      converted.push(await amountToEur(row.totalValue, row.currency, row.exchangeRate, row.date));
-    }
+    converted = await convertRowsToEur(parsed.rows, histFx);
   } catch (err) {
     if (err instanceof FxUnavailableError) {
       return NextResponse.json(
@@ -139,6 +119,14 @@ export async function POST(req: NextRequest) {
         if (asset.exchange) {
           await supabase.from("assets").update({ exchange: asset.exchange }).eq("id", existing.id);
         }
+        continue;
+      }
+    }
+
+    if (!asset.isin) {
+      const { data: byName } = await supabase.from("assets").select("id").is("isin", null).eq("name", asset.name).limit(1);
+      if (byName && byName.length > 0) {
+        assetIdByKey.set(key, byName[0].id);
         continue;
       }
     }

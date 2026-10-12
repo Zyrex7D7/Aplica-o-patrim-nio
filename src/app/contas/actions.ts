@@ -95,3 +95,27 @@ export async function archiveAccount(accountId: string): Promise<Result> {
   revalidatePath("/dashboard");
   return {};
 }
+
+/**
+ * Apaga a conta DE VEZ, com todos os movimentos e transações de bolsa dela (numa só transação).
+ * Transferências que entravam nesta conta ficam como despesas na conta de origem.
+ * Para só esconder uma conta, usa antes "Arquivar".
+ */
+export async function deleteAccount(accountId: string): Promise<{ error?: string; message?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { data, error } = await supabase.rpc("delete_account", { p_account_id: accountId });
+  if (error) return { error: error.message };
+
+  revalidatePath("/contas");
+  revalidatePath("/dashboard");
+  revalidatePath("/transacoes");
+  revalidatePath("/portfolio");
+  revalidatePath("/recorrentes");
+  revalidatePath("/relatorios");
+  return { message: `Conta "${data?.name ?? ""}" apagada.` };
+}

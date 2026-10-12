@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { TransactionForm } from "@/components/transactions/transaction-form";
+import { QuickEntry } from "@/components/transactions/quick-entry";
 import { TransactionList } from "@/components/transactions/transaction-list";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
 import { CategoryQuickAdd } from "@/components/transactions/category-quick-add";
@@ -41,27 +41,35 @@ export default async function TransacoesPage({
   if (category) query = query.eq("category_id", category);
   if (q) query = query.ilike("description", `%${q}%`);
 
-  const [{ data: accounts }, { data: categories }, { data: rules }, { data: transactions }] = await Promise.all([
-    supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
-    supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
-    supabase.from("category_rules").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
-    query,
-  ]);
+  const [{ data: accounts }, { data: categories }, { data: rules }, { data: transactions }, { data: recent }] =
+    await Promise.all([
+      supabase.from("accounts").select("*").eq("user_id", user!.id).eq("is_archived", false).order("name"),
+      supabase.from("categories").select("*").eq("user_id", user!.id).order("name"),
+      supabase.from("category_rules").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
+      query,
+      // categorias mais usadas (independente dos filtros), para aparecerem primeiro no registo rápido
+      supabase.from("transactions").select("category_id").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(300),
+    ]);
 
   const accountsList: Account[] = accounts ?? [];
   const categoriesList: Category[] = categories ?? [];
   const rulesList: CategoryRule[] = rules ?? [];
   const transactionsList: Transaction[] = transactions ?? [];
 
+  const usage: Record<string, number> = {};
+  for (const t of (recent ?? []) as { category_id: string | null }[]) {
+    if (t.category_id) usage[t.category_id] = (usage[t.category_id] ?? 0) + 1;
+  }
+
   return (
-    <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10">
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.16em] text-text-faint mb-2">Orçamento</p>
           <h1 className="font-display text-3xl text-text">Movimentos</h1>
           <p className="text-sm text-text-muted mt-2">
             Regista receitas, despesas e transferências entre contas. Os saldos das contas
-            envolvidas atualizam-se de imediato.
+            envolvidas atualizam-se de imediato. Em qualquer página, o botão + faz o mesmo.
           </p>
         </div>
         <a
@@ -83,12 +91,12 @@ export default async function TransacoesPage({
           </p>
         </Card>
       ) : (
-        <Card className="mb-8">
-          <div className="flex items-center justify-between mb-3">
+        <Card className="mb-8 max-w-xl">
+          <div className="flex items-center justify-between mb-4">
             <CardLabel>Novo Movimento</CardLabel>
             <CategoryQuickAdd />
           </div>
-          <TransactionForm accounts={accountsList} categories={categoriesList} />
+          <QuickEntry accounts={accountsList} categories={categoriesList} usage={usage} />
         </Card>
       )}
 

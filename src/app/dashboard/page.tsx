@@ -6,7 +6,7 @@ import { shortTicker } from "@/lib/ticker";
 import { HeroCard } from "@/components/dashboard/hero-card";
 import { TopMovers } from "@/components/dashboard/top-movers";
 import { RecordCard } from "@/components/dashboard/record-card";
-import { ReturnChart } from "@/components/dashboard/return-chart";
+import { PortfolioChart } from "@/components/dashboard/portfolio-chart";
 import { WeightTreemap } from "@/components/dashboard/weight-treemap";
 import { BestWorst } from "@/components/dashboard/best-worst";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -20,12 +20,15 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [b, history] = await Promise.all([
+  const [b, history, { data: realizedRows }] = await Promise.all([
     getNetWorthBreakdown(supabase, user!.id),
     getNetWorthHistory(supabase, user!.id, 3650),
+    supabase.rpc("get_realized_pnl", { p_user_id: user!.id }),
   ]);
 
-  const totalReturnEur = b.portfolioPnl + b.totalDividends;
+  // Igual ao "L/P total" da DEGIRO: lucro não realizado + realizado + dividendos − comissões e taxas.
+  const realizedPnl = ((realizedRows ?? []) as { realized_pnl: number }[]).reduce((s, r) => s + Number(r.realized_pnl), 0);
+  const totalReturnEur = b.portfolioPnl + realizedPnl + b.totalDividends - b.totalFees;
   const totalReturnPct = b.portfolioCost !== 0 ? totalReturnEur / Math.abs(b.portfolioCost) : 0;
   const hasQuotes = b.lastQuoteAt !== null && b.positions.some((p) => p.dayChangeEur !== null);
 
@@ -55,6 +58,7 @@ export default async function DashboardPage() {
         totalReturnPct={totalReturnPct}
         dividends={b.totalDividends}
         lastQuoteAt={b.lastQuoteAt}
+        lastSessionAt={b.lastSessionAt}
       />
 
       <details className="group rounded-3xl border border-line bg-surface">
@@ -74,7 +78,7 @@ export default async function DashboardPage() {
 
       <TopMovers positions={b.positions} />
       <RecordCard current={b.totalNetWorth} snapshots={history} />
-      <ReturnChart snapshots={history} />
+      <PortfolioChart />
       <WeightTreemap items={treemapItems} />
 
       <section className="rounded-3xl border border-line bg-surface p-5">

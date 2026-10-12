@@ -185,6 +185,8 @@ export interface LiveQuote {
   /** Variação do dia em %, ex: 1.53 significa +1,53%. */
   changePercent: number | null;
   marketState: string | null;
+  /** Hora do último preço de mercado (a sessão a que a variação diária diz respeito). */
+  marketTime: string | null;
 }
 
 /** Câmbio atual moeda -> EUR, com cache partilhado durante um pedido. */
@@ -256,6 +258,7 @@ export async function getQuote(
       previousCloseEur: fx !== null && prev !== null ? prev * fx : null,
       changePercent: q.regularMarketChangePercent ?? null,
       marketState: q.marketState ?? null,
+      marketTime: q.regularMarketTime ? new Date(q.regularMarketTime as unknown as string | number | Date).toISOString() : null,
     };
   } catch (err) {
     console.error(`Falha ao obter cotação para "${symbol}":`, err);
@@ -300,5 +303,53 @@ export async function getNews(query: string, count = 4): Promise<NewsItem[]> {
   } catch (err) {
     console.error(`Falha ao obter notícias de "${query}":`, err);
     return [];
+  }
+}
+
+export interface DailyClose {
+  date: string; // aaaa-mm-dd
+  close: number; // em EUR
+}
+
+/**
+ * Fechos diários de um ativo, já em EUR (convertidos com o câmbio de cada dia).
+ * Devolve null se o Yahoo não responder ou não tiver dados — quem chama decide o que fazer.
+ */
+export async function getHistoricalPricesEur(symbol: string, fromIso: string, toIso: string): Promise<DailyClose[] | null> {
+  try {
+    const period1 = new Date(`${fromIso}T00:00:00Z`);
+    const period2 = new Date(new Date(`${toIso}T00:00:00Z`).getTime() + 2 * 86400000);
+
+    const res = await withTimeout(yahooFinance.chart(symbol, { period1, period2, interval: "1d" }), 12000);
+    let currency = res.meta?.currency ?? "EUR";
+    let divisor = 1;
+    if (currency === "GBp" || currency === "GBX") {
+      currency = "GBP";
+      divisor = 100;
+    }
+    const closes = (res.quotes ?? [])
+      .filter((q) => typeof q.close === "number")
+      .map((q) => ({ date: q.date.toISOString().slice(0, 10), close: (q.close as number) / divisor }));
+    if (closes.length === 0) return null;
+    if (currency === "EUR") return closes;
+
+    const fx = await withTimeout(yahooFinance.chart(`${currency}EUR=X`, { period1, period2, interval: "1d" }), 12000);
+    const rates = (fx.quotes ?? [])
+      .filter((q) => typeof q.close === "number")
+      .map((q) => ({ date: q.date.toISOString().slice(0, 10), rate: q.close as number }));
+    if (rates.length === 0) return null;
+
+    let j = 0;
+    let last = rates[0].rate;
+    return closes.map((c) => {
+      while (j < rates.length && rates[j].date <= c.date) {
+        last = rates[j].rate;
+        j++;
+      }
+      return { date: c.date, close: c.close * last };
+    });
+  } catch (err) {
+    console.error(`Falha ao obter histórico de "${symbol}":`, err);
+    return null;
   }
 }

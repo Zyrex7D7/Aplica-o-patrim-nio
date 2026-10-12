@@ -32,12 +32,20 @@ export interface ParsedDegiroRow {
   exchangeRate: number | null;
   description: string;
   orderId: string | null;
+  /**
+   * Valor EXATO em EUR quando o próprio CSV o indica (linhas "Levantamento/Crédito de divisa"
+   * da mesma ordem). É mais fiel do que converter com um câmbio de mercado.
+   */
+  eurAmount: number | null;
   /** Saldo da conta reportado pela DEGIRO nesta linha, se existir. */
   balance: number | null;
   /** Hash estável da linha original — usado para deduplicação. */
   sourceHash: string;
   raw: Record<string, string>;
 }
+
+/** Nome do "ativo" que agrega os custos da plataforma que não pertencem a nenhum produto (ex: conectividade). */
+export const PLATFORM_COSTS_PRODUCT = "DEGIRO — Custos da plataforma";
 
 export interface DegiroParseResult {
   format: "transacoes" | "estado_conta" | "desconhecido";
@@ -70,7 +78,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   price: ["preco", "price", "precio"],
   localValue: ["valor local", "local value", "valor en moneda local"],
   value: ["valor", "value", "importe", "mutacao", "mutation", "change", "mudanca", "variacao", "variation", "variacion"],
-  exchangeRate: ["taxa de cambio", "exchange rate", "tipo de cambio", "fx"],
+  exchangeRate: ["taxa de cambio", "exchange rate", "tipo de cambio", "fx", "t."],
   fees: ["custos de transacao", "transaction fee", "transaction costs", "costes de transaccion"],
   total: ["total"],
   description: ["descricao", "description", "descripcion"],
@@ -219,7 +227,10 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     const time = cols.time !== undefined ? raw[cols.time] : undefined;
     const occurredAt = combineDateTime(isoDate, time) ?? `${isoDate}T00:00:00`;
 
-    const rowBalance = resolveValueAndCurrency(raw, cols.balance).value;
+    // O extrato tem um saldo por moeda na mesma coluna (ex: "USD 0,50"); só o saldo em EUR
+    // serve para reconciliar a conta.
+    const balRes = resolveValueAndCurrency(raw, cols.balance);
+    const rowBalance = balRes.currency && balRes.currency !== "EUR" ? null : balRes.value;
     if (rowBalance !== null && (!latestBalance || occurredAt > latestBalance.occurredAt)) {
       latestBalance = { balance: rowBalance, occurredAt };
     }
@@ -227,12 +238,16 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
     const rawProduct = (cols.product !== undefined ? raw[cols.product] : "")?.trim() || "";
     const isin = cols.isin !== undefined ? raw[cols.isin]?.trim() || null : null;
 
-    if (format === "estado_conta" && !rawProduct && !isin) {
+    const descriptionRaw = cols.description !== undefined ? raw[cols.description]?.trim() || "" : "";
+    const isPlatformCost =
+      format === "estado_conta" && !rawProduct && !isin && /conectividade|connectivity/.test(normalize(descriptionRaw));
+
+    if (format === "estado_conta" && !rawProduct && !isin && !isPlatformCost) {
       cashRowsSkipped++;
       continue;
     }
 
-    const product = rawProduct || "(sem nome)";
+    const product = rawProduct || (isPlatformCost ? PLATFORM_COSTS_PRODUCT : "(sem nome)");
     const description = cols.description !== undefined ? raw[cols.description]?.trim() || "" : `${product}`;
     const orderId = cols.orderId !== undefined ? raw[cols.orderId]?.trim() || null : null;
 
@@ -289,10 +304,26 @@ export async function parseDegiroCsv(text: string): Promise<DegiroParseResult> {
       exchangeRate,
       description: description || product,
       orderId,
+      eurAmount: null,
       balance: rowBalance,
       sourceHash,
       raw: rawRecord,
     });
+  }
+
+  // Compras/vendas em moeda estrangeira: a DEGIRO escreve, com o mesmo ID de ordem, uma linha
+  // "Levantamento de divisa" (compra) ou "Crédito de divisa" (venda) JÁ em EUR — é o valor real.
+  const fxEurByOrder = new Map<string, number>();
+  for (const r of rows) {
+    if (r.orderId && r.currency === "EUR" && /(levantamento|credito) de divisa|currency (debit|credit)/.test(normalize(r.description))) {
+      fxEurByOrder.set(r.orderId, r.totalValue);
+    }
+  }
+  for (const r of rows) {
+    if (r.currency !== "EUR" && r.orderId && (r.operation === "compra" || r.operation === "venda")) {
+      const eur = fxEurByOrder.get(r.orderId);
+      if (eur !== undefined) r.eurAmount = eur;
+    }
   }
 
   if (skipped > 0) {

@@ -105,6 +105,8 @@ export interface AssetQuote {
   previous_close_eur: number | null;
   /** Variação do dia em %, ex: 1.53 = +1,53%. */
   change_percent: number | null;
+  /** Hora do último preço de mercado (a sessão a que a variação diária diz respeito). */
+  market_time: string | null;
   fetched_at: string;
 }
 
