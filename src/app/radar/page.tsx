@@ -1,4 +1,7 @@
+import Link from "next/link";
+import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { analyzeSymbol } from "@/app/radar/analyze-action";
 import { getQuote } from "@/lib/market/quotes";
 import { shortTicker } from "@/lib/ticker";
 import { formatCurrency, formatPercent, cx } from "@/lib/format";
@@ -17,7 +20,8 @@ interface WatchRow {
 
 const tone = (v: number) => (v > 0 ? "text-gain" : v < 0 ? "text-loss" : "text-text-muted");
 
-export default async function RadarPage() {
+export default async function RadarPage({ searchParams }: { searchParams: Promise<{ analise?: string }> }) {
+  const { analise } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,6 +39,21 @@ export default async function RadarPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 flex flex-col gap-4">
       <WatchlistAdd />
+
+      <form action={analyzeSymbol} className="flex gap-2">
+        <input
+          name="query"
+          required
+          placeholder="Analisar uma ação (nome, ticker ou ISIN)"
+          aria-label="Analisar uma ação"
+          className="flex-1 min-w-0 rounded-2xl border border-line bg-surface px-4 py-3 text-sm outline-none focus:border-gold"
+        />
+        <button type="submit" className="flex items-center gap-1.5 rounded-2xl border border-gold px-4 py-3 text-sm font-bold text-gold">
+          <Search size={16} />
+          Analisar
+        </button>
+      </form>
+      {analise && <p className="text-sm text-loss">Não encontrei nada para &quot;{analise}&quot;.</p>}
       <p className="text-sm text-text-muted">{rows.length} {rows.length === 1 ? "título" : "títulos"} em observação</p>
 
       {rows.length === 0 ? (
@@ -80,7 +99,12 @@ export default async function RadarPage() {
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between text-sm text-text-muted">
-                  <span>Segues desde {new Date(r.added_at).toLocaleDateString("pt-PT")}</span>
+                  <span>
+                    Segues desde {new Date(r.added_at).toLocaleDateString("pt-PT")}
+                    <Link href={`/radar/${encodeURIComponent(r.symbol)}`} className="ml-3 font-semibold text-gold">
+                      Ver análise →
+                    </Link>
+                  </span>
                   <span className="flex items-center gap-3">
                     {sincePct !== null && (
                       <span className={cx("tabular font-semibold", tone(sincePct))}>{formatPercent(sincePct)}</span>
